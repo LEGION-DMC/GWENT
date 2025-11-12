@@ -282,6 +282,50 @@
 	width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; 
 }
 
+/* Анимации для общих счетчиков */
+@keyframes scorePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.score-update {
+    animation: scorePulse 0.3s ease-in-out;
+}
+
+/* Стили для общих счетчиков */
+.total-score-display {
+    pointer-events: none;
+}
+
+.opponent-total-score {
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7));
+}
+
+.player-total-score {
+    filter: drop-shadow(0 -2px 4px rgba(0,0,0,0.7));
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+    .total-score-display .score-background {
+        width: 100px !important;
+        height: 50px !important;
+    }
+    
+    .total-score-display .score-value {
+        font-size: 20px !important;
+    }
+    
+    .opponent-total-score {
+        top: -60px !important;
+    }
+    
+    .player-total-score {
+        bottom: -60px !important;
+    }
+}
+
 @media (max-width: 1850px) {
 	.player-rows-area { 
 		bottom: 21.4%; 
