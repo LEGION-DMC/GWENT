@@ -59,6 +59,7 @@ const gameModule = {
         console.log('🎮 Инициализация игрового движка...');
         
 		this.addMessageStyles();
+		this.createTotalScoreDisplays();
 		
         this.loadPlayerDeck();
         this.loadOpponentDeck();
@@ -89,23 +90,22 @@ const gameModule = {
 		console.log('🎯 Ход игрока');
 		this.gameState.gamePhase = 'playerTurn';
 		this.gameState.currentPlayer = 'player';
-		this.gameState.cardsPlayedThisTurn = 0;
+		this.gameState.cardsPlayedThisTurn = 0; // ✅ УБЕДИТЕСЬ что счетчик сброшен
+		this.gameState.selectingRow = false; // ✅ СБРАСЫВАЕМ состояние выбора
+		this.gameState.selectedCard = null; // ✅ СБРАСЫВАЕМ выбранную карту
+		
 		this.updateTurnIndicator();
 		this.updateControlButtons();
 		
-		// ✅ Показываем сообщение в зависимости от статуса паса
-		if (this.gameState.player.passed) {
-			this.showGameMessage('Вы пасовали - ожидайте противника', 'info');
-		} else {
-			this.showGameMessage('Ваш ход', 'info');
-		}
+		this.showGameMessage('Ваш ход', 'info');
 	},
 
 	startOpponentTurn: function() {
 		console.log('🤖 Ход противника');
 		this.gameState.gamePhase = 'opponentTurn'; 
 		this.gameState.currentPlayer = 'opponent';
-		this.gameState.cardsPlayedThisTurn = 0;
+		this.gameState.cardsPlayedThisTurn = 0; // ✅ УБЕДИТЕСЬ что счетчик сброшен
+		
 		this.updateTurnIndicator();
 		this.updateControlButtons();
 		
@@ -138,8 +138,13 @@ const gameModule = {
 		const currentPlayer = this.gameState.currentPlayer;
 		console.log(`Текущий игрок: ${currentPlayer}, Пасс: ${this.gameState[currentPlayer].passed}`);
 		
-		// ✅ УПРОЩАЕМ логику: если игрок пасовал, проверяем конец раунда
-		// если не пасовал, просто передаем ход
+		// ✅ СБРАСЫВАЕМ счетчик карт за ход
+		this.gameState.cardsPlayedThisTurn = 0;
+		
+		// ✅ УБЕДИТЕСЬ что состояние selectingRow сброшено
+		this.gameState.selectingRow = false;
+		this.gameState.selectedCard = null;
+		
 		if (this.gameState[currentPlayer].passed) {
 			console.log(`⏸️ ${currentPlayer} пасовал - проверяем конец раунда`);
 			this.checkRoundEnd();
@@ -193,10 +198,34 @@ const gameModule = {
 		}
 	},
 
-    calculateTotalScore: function(player) {
-        const rows = this.gameState[player].rows;
-        return Object.values(rows).reduce((total, row) => total + row.strength, 0);
-    },
+	calculateTotalScore: function(player) {
+		const rows = this.gameState[player].rows;
+		let totalScore = 0;
+		
+		// ✅ ОПТИМИЗИРОВАННЫЙ расчет с кешированием
+		if (this.gameState[player].cachedTotalScore !== undefined) {
+			// Используем кешированное значение если ряды не менялись
+			const rowsChanged = Object.values(rows).some(row => 
+				row.cards.length !== (this.gameState[player].cachedRowLengths?.[row] || 0)
+			);
+			
+			if (!rowsChanged) {
+				return this.gameState[player].cachedTotalScore;
+			}
+		}
+		
+		// Пересчитываем счет
+		totalScore = Object.values(rows).reduce((total, row) => total + row.strength, 0);
+		
+		// Кешируем значения
+		this.gameState[player].cachedTotalScore = totalScore;
+		this.gameState[player].cachedRowLengths = {};
+		Object.keys(rows).forEach(rowKey => {
+			this.gameState[player].cachedRowLengths[rowKey] = rows[rowKey].cards.length;
+		});
+		
+		return totalScore;
+	},
 
     resolveTie: function() {
         // Способность Нильфгаарда - победа при ничье
@@ -224,14 +253,13 @@ const gameModule = {
 		this.gameState.opponent.passed = false;
 		this.gameState.cardsPlayedThisTurn = 0;
 		
-		// ✅ Обрабатываем карты погоды - отправляем в сброс их владельцев
+		// Обрабатываем карты погоды
 		this.gameState.weather.cards.forEach(weatherCard => {
 			const cardOwner = this.getWeatherCardOwner(weatherCard);
 			console.log(`🗑️ Погода: ${weatherCard.name} -> сброс ${cardOwner}`);
 			this.addCardToDiscard(weatherCard, cardOwner);
 		});
 		
-		// ✅ Очищаем слот погоды
 		this.gameState.weather.cards = [];
 		this.clearAllWeatherEffects();
 		
@@ -239,13 +267,12 @@ const gameModule = {
 		const rows = ['close', 'ranged', 'siege'];
 		
 		rows.forEach(row => {
-			// Карты юнитов игрока идут в сброс
+			// Карты юнитов идут в сброс
 			this.gameState.player.rows[row].cards.forEach(card => {
 				console.log(`🗑️ Игрок: ${card.name} -> сброс`);
 				this.addCardToDiscard(card, 'player');
 			});
 			
-			// Карты юнитов противника идут в сброс
 			this.gameState.opponent.rows[row].cards.forEach(card => {
 				console.log(`🗑️ Противник: ${card.name} -> сброс`);
 				this.addCardToDiscard(card, 'opponent');
@@ -269,7 +296,10 @@ const gameModule = {
 		
 		// Очищаем визуальное отображение
 		this.clearAllBoardRows();
-		this.displayWeatherCards(); // Обновляем отображение погоды (должно быть пусто)
+		this.displayWeatherCards();
+		
+		// ✅ ОБНОВЛЯЕМ общие счетчики (должны показать 0)
+		this.updateTotalScoreDisplays();
 		
 		console.log('✅ Состояние раунда сброшено');
 	},
@@ -379,26 +409,29 @@ const gameModule = {
         this.displayWeatherCards();
     },
 
-    applyWeatherEffect: function(card) {
-        const weatherEffect = this.getWeatherEffectForCard(card);
-        if (!weatherEffect) return;
-        
-        const { row, image, sound } = weatherEffect;
-        
-        // Устанавливаем эффект
-        this.gameState.weather.effects[row] = {
-            card: card,
-            image: image
-        };
-        
-        // Применяем визуально и механически
-        this.applyVisualWeatherEffect(row, image);
-        this.reduceRowStrengthTo1(row, 'player');
-        this.reduceRowStrengthTo1(row, 'opponent');
-        this.playWeatherSound(sound);
-        
-        console.log(`🌧️ Применен эффект погоды на ряд ${row}: ${card.name}`);
-    },
+	 applyWeatherEffect: function(card) {
+		const weatherEffect = this.getWeatherEffectForCard(card);
+		if (!weatherEffect) return;
+		
+		const { row, image, sound } = weatherEffect;
+		
+		// Устанавливаем эффект
+		this.gameState.weather.effects[row] = {
+			card: card,
+			image: image
+		};
+		
+		// Применяем визуально и механически
+		this.applyVisualWeatherEffect(row, image);
+		this.reduceRowStrengthTo1(row, 'player');
+		this.reduceRowStrengthTo1(row, 'opponent');
+		this.playWeatherSound(sound);
+		
+		// ✅ ОБНОВЛЯЕМ общий счет после применения погоды
+		this.updateTotalScoreDisplays();
+		
+		console.log(`🌧️ Применен эффект погоды на ряд ${row}: ${card.name}`);
+	},
 
 	clearAllWeatherEffects: function() {
 		const rows = ['close', 'ranged', 'siege'];
@@ -425,6 +458,9 @@ const gameModule = {
 				this.updateRowStrength(row, player);
 			});
 		});
+		
+		// ✅ ОБНОВЛЯЕМ общий счет после восстановления силы
+		this.updateTotalScoreDisplays();
 	},
 	
 	reduceRowStrengthTo1: function(row, player) {
@@ -508,6 +544,124 @@ const gameModule = {
         });
     },
 
+	createTotalScoreDisplays: function() {
+		console.log('🎯 Создание общих счетчиков очков');
+		
+		const weatherSlot = document.getElementById('weatherSlot');
+		if (!weatherSlot) return;
+		
+		// ✅ СЧЕТЧИК ПРОТИВНИКА - над слотом погоды
+		const opponentScoreDisplay = document.createElement('div');
+		opponentScoreDisplay.id = 'opponentTotalScore';
+		opponentScoreDisplay.className = 'total-score-display opponent-total-score';
+		opponentScoreDisplay.style.cssText = `
+			position: absolute;
+			top: -80px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 100;
+			text-align: center;
+		`;
+		
+		opponentScoreDisplay.innerHTML = `
+			<div class="score-background" style="
+				background: url('gwent/score.png') center/contain no-repeat;
+				width: 120px;
+				height: 60px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				position: relative;
+			">
+				<div class="score-value" style="
+					color: #f44336;
+					font-size: 24px;
+					font-weight: bold;
+					font-family: 'Gwent', sans-serif;
+					text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+					margin-top: 5px;
+				">0</div>
+			</div>
+		`;
+		
+		// ✅ СЧЕТЧИК ИГРОКА - под слотом погоды
+		const playerScoreDisplay = document.createElement('div');
+		playerScoreDisplay.id = 'playerTotalScore';
+		playerScoreDisplay.className = 'total-score-display player-total-score';
+		playerScoreDisplay.style.cssText = `
+			position: absolute;
+			bottom: -80px;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 100;
+			text-align: center;
+		`;
+		
+		playerScoreDisplay.innerHTML = `
+			<div class="score-background" style="
+				background: url('gwent/score.png') center/contain no-repeat;
+				width: 120px;
+				height: 60px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				position: relative;
+			">
+				<div class="score-value" style="
+					color: #4CAF50;
+					font-size: 24px;
+					font-weight: bold;
+					font-family: 'Gwent', sans-serif;
+					text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+					margin-top: 5px;
+				">0</div>
+			</div>
+		`;
+		
+		// Добавляем счетчики к слоту погоды
+		weatherSlot.style.position = 'relative';
+		weatherSlot.appendChild(opponentScoreDisplay);
+		weatherSlot.appendChild(playerScoreDisplay);
+		
+		console.log('✅ Общие счетчики очков созданы');
+	},
+
+	updateTotalScoreDisplays: function() {
+		const playerTotalScore = this.calculateTotalScore('player');
+		const opponentTotalScore = this.calculateTotalScore('opponent');
+		
+		const playerScoreElement = document.getElementById('playerTotalScore');
+		const opponentScoreElement = document.getElementById('opponentTotalScore');
+		
+		if (playerScoreElement) {
+			const scoreValue = playerScoreElement.querySelector('.score-value');
+			if (scoreValue) {
+				scoreValue.textContent = playerTotalScore;
+				
+				// Анимация при изменении счета
+				scoreValue.classList.add('score-update');
+				setTimeout(() => {
+					scoreValue.classList.remove('score-update');
+				}, 500);
+			}
+		}
+		
+		if (opponentScoreElement) {
+			const scoreValue = opponentScoreElement.querySelector('.score-value');
+			if (scoreValue) {
+				scoreValue.textContent = opponentTotalScore;
+				
+				// Анимация при изменении счета
+				scoreValue.classList.add('score-update');
+				setTimeout(() => {
+					scoreValue.classList.remove('score-update');
+				}, 500);
+			}
+		}
+		
+		console.log(`📊 Общий счет: Игрок ${playerTotalScore} - ${opponentTotalScore} Противник`);
+	},
+
     // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
 
 	completeCardPlay: function() {
@@ -518,16 +672,21 @@ const gameModule = {
 		
 		console.log(`🎯 Карт размещено за ход: ${this.gameState.cardsPlayedThisTurn}/${this.gameState.maxCardsPerTurn}`);
 		
-		// ✅ ПРОВЕРЯЕМ лимит для игрока и автоматически завершаем ход при достижении
+		// ✅ ОБНОВЛЯЕМ общий счет
+		this.updateTotalScoreDisplays();
+		
+		// ✅ ПРОВЕРЯЕМ лимит карт и автоматически завершаем ход если достигнут
 		if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-			console.log(`🔄 Игрок достиг лимита карт (${this.gameState.cardsPlayedThisTurn}/${this.gameState.maxCardsPerTurn})`);
-			this.showGameMessage('Лимит карт за ход достигнут!', 'info');
+			console.log(`🔄 Достигнут лимит карт (${this.gameState.cardsPlayedThisTurn}/${this.gameState.maxCardsPerTurn}) - завершение хода`);
+			this.showGameMessage('Лимит карт за ход достигнут', 'info');
+			
+			// Небольшая задержка для визуальной обратной связи
 			setTimeout(() => {
 				this.handleTurnEnd();
-			}, 1000);
+			}, 800);
+		} else {
+			this.updateControlButtons();
 		}
-		
-		this.updateControlButtons();
 		
 		// Уведомляем модуль игрока о завершении размещения
 		if (window.playerModule && window.playerModule.cancelRowSelection) {
@@ -697,18 +856,21 @@ const gameModule = {
         tacticSlot.appendChild(cardElement);
     },
 
-    updateRowStrength: function(row, player = 'player') {
-        const rowState = this.gameState[player].rows[row];
-        const totalStrength = rowState.cards.reduce((sum, card) => sum + (card.strength || 0), 0);
-        rowState.strength = totalStrength;
-        
-        const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
-        if (strengthElement) {
-            strengthElement.textContent = totalStrength;
-            strengthElement.classList.add('strength-update');
-            setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
-        }
-    },
+	updateRowStrength: function(row, player = 'player') {
+		const rowState = this.gameState[player].rows[row];
+		const totalStrength = rowState.cards.reduce((sum, card) => sum + (card.strength || 0), 0);
+		rowState.strength = totalStrength;
+		
+		const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
+		if (strengthElement) {
+			strengthElement.textContent = totalStrength;
+			strengthElement.classList.add('strength-update');
+			setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
+		}
+		
+		// ✅ ОБНОВЛЯЕМ общий счет после обновления ряда
+		this.updateTotalScoreDisplays();
+	},
 
     createHandCardElement: function(card, index) {
 		const cardElement = document.createElement('div');
@@ -944,41 +1106,139 @@ const gameModule = {
 		const weatherSlot = document.getElementById('weatherSlot');
 		if (!weatherSlot) return;
 
-		// ✅ ПОЛНОСТЬЮ очищаем слот перед отображением
-		weatherSlot.innerHTML = '';
+		// ✅ СОХРАНЯЕМ существующие счетчики перед очисткой
+		const opponentScoreDisplay = document.getElementById('opponentTotalScore');
+		const playerScoreDisplay = document.getElementById('playerTotalScore');
 		
-		// ✅ Показываем слот только если есть карты погоды
-		if (this.gameState.weather.cards.length === 0) {
-			console.log('🌤️ Нет карт погоды для отображения');
-			return;
+		// ✅ ОЧИЩАЕМ только контейнер карт погоды, не весь слот
+		const weatherContainer = weatherSlot.querySelector('.weather-cards-container');
+		if (weatherContainer) {
+			weatherContainer.remove();
 		}
 		
-		console.log(`🌧️ Отображение ${this.gameState.weather.cards.length} карт погоды`);
-		
-		// Создаем контейнер для карт погоды
-		const weatherContainer = document.createElement('div');
-		weatherContainer.className = 'weather-cards-container';
-		
-		// ✅ УБЕДИТЕСЬ что отображаем только уникальные карты
-		const uniqueCards = [];
-		const seenCardIds = new Set();
-		
-		this.gameState.weather.cards.forEach((card, index) => {
-			if (!seenCardIds.has(card.id)) {
-				seenCardIds.add(card.id);
-				uniqueCards.push(card);
-				
-				const cardElement = this.createWeatherCardElement(card, index);
-				weatherContainer.appendChild(cardElement);
-			} else {
-				console.log(`⚠️ Пропущена дублирующая карта погоды: ${card.name}`);
-			}
-		});
+		// ✅ СОЗДАЕМ новый контейнер для карт погоды если есть карты
+		if (this.gameState.weather.cards.length > 0) {
+			console.log(`🌧️ Отображение ${this.gameState.weather.cards.length} карт погоды`);
+			
+			const newWeatherContainer = document.createElement('div');
+			newWeatherContainer.className = 'weather-cards-container';
+			
+			// ✅ УБЕДИТЕСЬ что отображаем только уникальные карты
+			const uniqueCards = [];
+			const seenCardIds = new Set();
+			
+			this.gameState.weather.cards.forEach((card, index) => {
+				if (!seenCardIds.has(card.id)) {
+					seenCardIds.add(card.id);
+					uniqueCards.push(card);
+					
+					const cardElement = this.createWeatherCardElement(card, index);
+					newWeatherContainer.appendChild(cardElement);
+				} else {
+					console.log(`⚠️ Пропущена дублирующая карта погоды: ${card.name}`);
+				}
+			});
 
-		weatherSlot.appendChild(weatherContainer);
+			weatherSlot.appendChild(newWeatherContainer);
+		} else {
+			console.log('🌤️ Нет карт погоды для отображения');
+		}
+		
+		// ✅ ВОССТАНАВЛИВАЕМ счетчики если они были удалены
+		if (!opponentScoreDisplay || !document.getElementById('opponentTotalScore')) {
+			this.restoreScoreDisplays();
+		}
 		
 		// Обновляем счетчик карт погоды
 		this.updateWeatherCounter();
+	},
+
+	restoreScoreDisplays: function() {
+		console.log('🔄 Восстановление счетчиков очков');
+		
+		const weatherSlot = document.getElementById('weatherSlot');
+		if (!weatherSlot) return;
+		
+		// Проверяем и восстанавливаем счетчик противника
+		if (!document.getElementById('opponentTotalScore')) {
+			const opponentScoreDisplay = document.createElement('div');
+			opponentScoreDisplay.id = 'opponentTotalScore';
+			opponentScoreDisplay.className = 'total-score-display opponent-total-score';
+			opponentScoreDisplay.style.cssText = `
+				position: absolute;
+				top: -80px;
+				left: 50%;
+				transform: translateX(-50%);
+				z-index: 100;
+				text-align: center;
+			`;
+			
+			opponentScoreDisplay.innerHTML = `
+				<div class="score-background" style="
+					background: url('gwent/score.png') center/contain no-repeat;
+					width: 120px;
+					height: 60px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					position: relative;
+				">
+					<div class="score-value" style="
+						color: #f44336;
+						font-size: 24px;
+						font-weight: bold;
+						font-family: 'Gwent', sans-serif;
+						text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+						margin-top: 5px;
+					">0</div>
+				</div>
+			`;
+			
+			weatherSlot.appendChild(opponentScoreDisplay);
+		}
+		
+		// Проверяем и восстанавливаем счетчик игрока
+		if (!document.getElementById('playerTotalScore')) {
+			const playerScoreDisplay = document.createElement('div');
+			playerScoreDisplay.id = 'playerTotalScore';
+			playerScoreDisplay.className = 'total-score-display player-total-score';
+			playerScoreDisplay.style.cssText = `
+				position: absolute;
+				bottom: -80px;
+				left: 50%;
+				transform: translateX(-50%);
+				z-index: 100;
+				text-align: center;
+			`;
+			
+			playerScoreDisplay.innerHTML = `
+				<div class="score-background" style="
+					background: url('gwent/score.png') center/contain no-repeat;
+					width: 120px;
+					height: 60px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					position: relative;
+				">
+					<div class="score-value" style="
+						color: #4CAF50;
+						font-size: 24px;
+						font-weight: bold;
+						font-family: 'Gwent', sans-serif;
+						text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+						margin-top: 5px;
+					">0</div>
+				</div>
+			`;
+			
+			weatherSlot.appendChild(playerScoreDisplay);
+		}
+		
+		// ✅ ОБНОВЛЯЕМ значения счетчиков после восстановления
+		this.updateTotalScoreDisplays();
+		
+		console.log('✅ Счетчики очков восстановлены');
 	},
 
 	updateTurnIndicator: function() {
