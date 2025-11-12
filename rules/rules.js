@@ -9,7 +9,7 @@ const rulesData = {
 				</div>
 				
                 <div class="bloc-rule">
-					<img src="faction/nilfgaard/logo_nilfgaard.png" alt="Нильфгаард" class="rule-modal__image">
+					<img src="faction/nilfgaard/logo_faction.png" alt="Нильфгаард" class="rule-modal__image">
 					<div class="faction">
 						<h3>Нильфгаард</h3>
 						<p>Государство крайностей. Самое большое, самое многонаселённое, самое могущественное, самое богатое... и, конечно, самое безжало</p>
@@ -18,7 +18,7 @@ const rulesData = {
                 </div>
 				
 				<div class="bloc-rule">
-					<img src="faction/realms/logo_realms.png" alt="Королевства Севера" class="rule-modal__image">
+					<img src="faction/realms/logo_faction.png" alt="Королевства Севера" class="rule-modal__image">
 					<div class="faction">
 						<h3>Королевства Севера</h3>
 						<p>Королевства Севера славятся внушительными армиями, смертоносной военной техникой и отважными военачальниками.</p>
@@ -27,7 +27,7 @@ const rulesData = {
                 </div>
 				
 				<div class="bloc-rule">
-					<img src="faction/monsters/logo_monsters.png" alt="Чудовища" class="rule-modal__image">                
+					<img src="faction/monsters/logo_faction.png" alt="Чудовища" class="rule-modal__image">                
 					<div class="faction">
 						<h3>Чудовища</h3>
 						<p>Эти жуткие чудовища подчиняются звериным инстинктам и ради еще большей мощи готовы даже поглотить своих собратьев.</p>
@@ -36,7 +36,7 @@ const rulesData = {
                 </div>
 				
  				<div class="bloc-rule">
-					<img src="faction/scoiatael/logo_scoiatael.png" alt="Скоя\'таэли" class="rule-modal__image"> 
+					<img src="faction/scoiatael/logo_faction.png" alt="Скоя\'таэли" class="rule-modal__image"> 
 					<div class="faction">
 						<h3>Скоя\'таэли</h3>
 						<p>Эльфы и краснолюды, лишённые всяческих прав и загнанные в переполненные гетто, ждали удобного момента, чтобы броситься в бой против королевств Севера.</p>
@@ -45,7 +45,7 @@ const rulesData = {
                 </div>
 				
 				<div class="bloc-rule">	
-					<img src="faction/skellige/logo_skellige.png" alt="Скеллиге" class="rule-modal__image">	
+					<img src="faction/skellige/logo_faction.png" alt="Скеллиге" class="rule-modal__image">	
 					<div class="faction">
 						<h3>Скеллиге</h3>
 						<p>Воины Скеллиге без страха бросаются на врага, а потери и полученные раны лишь придают им сил в бою.</p>
@@ -54,7 +54,7 @@ const rulesData = {
                 </div>
 				
 				<div class="bloc-rule">	
-					<img src="faction/neutral/logo_neutral.png" alt="Нейтралитет" class="rule-modal__image">	
+					<img src="faction/neutral/logo_faction.png" alt="Нейтралитет" class="rule-modal__image">	
 					<div class="faction">
 						<h3>Нейтралитет</h3>
 						<p>Воины Скеллиге без страха бросаются на врага, а потери и полученные раны лишь придают им сил в бою.</p>
