@@ -362,14 +362,20 @@ const playerModule = {
 			return;
 		}
 		
+		// ✅ ПРОВЕРЯЕМ не пасовал ли уже игрок
+		if (this.gameState.player.passed) {
+			console.log('❌ Игрок уже пасовал');
+			return;
+		}
+		
 		audioManager.playSound('button');
 		console.log('🔄 Игрок завершает ход');
 		
 		if (window.gameModule) {
-			window.gameModule.handleTurnEnd(); // ✅ Вызываем исправленный метод
+			window.gameModule.handleTurnEnd();
 		}
-	},
-	
+	}, 
+
     // Вспомогательные методы
     capitalizeFirst: function(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
