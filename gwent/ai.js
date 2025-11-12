@@ -17,6 +17,13 @@ makeMove: function() {
         return;
     }
     
+    // ✅ ПРОВЕРЯЕМ лимит карт для ИИ
+    if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
+        console.log(`🔄 AI достиг лимита карт (${this.gameState.cardsPlayedThisTurn}/${this.gameState.maxCardsPerTurn}) - завершение хода`);
+        this.endAITurn();
+        return;
+    }
+    
     // ✅ СТРАТЕГИЯ: если игрок уже пасовал, AI должен тоже пасовать после одной карты
     if (this.gameState.player.passed) {
         console.log('🎯 Игрок уже пасовал - AI играет стратегически');
@@ -55,12 +62,6 @@ makeMove: function() {
     }
     
     // Обычная логика для начала раунда
-    if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-        console.log(`🔄 AI достиг лимита карт (${this.gameState.cardsPlayedThisTurn}/${this.gameState.maxCardsPerTurn}) - завершение хода`);
-        this.endAITurn();
-        return;
-    }
-    
     if (this.gameState.opponent.hand.length === 0) {
         console.log('❌ У AI нет карт в руке - пас');
         this.pass();
@@ -86,6 +87,7 @@ makeMove: function() {
         console.log(`🎯 AI разместил карт: ${this.gameState.cardsPlayedThisTurn}/${this.gameState.maxCardsPerTurn}`);
         
         setTimeout(() => {
+            // ✅ ПРОВЕРЯЕМ лимит после размещения карты
             if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
                 console.log(`✅ AI разместил все карты за ход`);
                 this.endAITurn();
