@@ -253,6 +253,10 @@ const gameModule = {
 		this.gameState.opponent.passed = false;
 		this.gameState.cardsPlayedThisTurn = 0;
 		
+		// ✅ СБРАСЫВАЕМ кеш счетов
+		this.invalidateScoreCache('player');
+		this.invalidateScoreCache('opponent');
+		
 		// Обрабатываем карты погоды
 		this.gameState.weather.cards.forEach(weatherCard => {
 			const cardOwner = this.getWeatherCardOwner(weatherCard);
@@ -302,6 +306,13 @@ const gameModule = {
 		this.updateTotalScoreDisplays();
 		
 		console.log('✅ Состояние раунда сброшено');
+	},
+
+	invalidateScoreCache: function(player) {
+		if (this.gameState[player]) {
+			this.gameState[player].cachedTotalScore = undefined;
+			this.gameState[player].cachedRowLengths = undefined;
+		}
 	},
 
 	endGame: function() {
@@ -409,7 +420,7 @@ const gameModule = {
         this.displayWeatherCards();
     },
 
-	 applyWeatherEffect: function(card) {
+	applyWeatherEffect: function(card) {
 		const weatherEffect = this.getWeatherEffectForCard(card);
 		if (!weatherEffect) return;
 		
@@ -547,18 +558,25 @@ const gameModule = {
 	createTotalScoreDisplays: function() {
 		console.log('🎯 Создание общих счетчиков очков');
 		
-		const weatherSlot = document.getElementById('weatherSlot');
-		if (!weatherSlot) return;
+		const gameBoard = document.querySelector('.game-board');
+		const playerLeader = document.getElementById('playerLeader');
+		const opponentLeader = document.getElementById('opponentLeader');
 		
-		// ✅ СЧЕТЧИК ПРОТИВНИКА - над слотом погоды
+		if (!gameBoard || !playerLeader || !opponentLeader) return;
+		
+		// Получаем позиции лидеров
+		const playerLeaderRect = playerLeader.getBoundingClientRect();
+		const opponentLeaderRect = opponentLeader.getBoundingClientRect();
+		const gameBoardRect = gameBoard.getBoundingClientRect();
+		
+		// ✅ СЧЕТЧИК ПРОТИВНИКА - справа от лидера противника
 		const opponentScoreDisplay = document.createElement('div');
 		opponentScoreDisplay.id = 'opponentTotalScore';
 		opponentScoreDisplay.className = 'total-score-display opponent-total-score';
 		opponentScoreDisplay.style.cssText = `
 			position: absolute;
-			top: -80px;
-			left: 50%;
-			transform: translateX(-50%);
+			top: ${opponentLeaderRect.top - gameBoardRect.top + (opponentLeaderRect.height / 2) - 30}px;
+			left: ${opponentLeaderRect.right - gameBoardRect.left + 20}px;
 			z-index: 100;
 			text-align: center;
 		`;
@@ -572,6 +590,8 @@ const gameModule = {
 				align-items: center;
 				justify-content: center;
 				position: relative;
+				left: 150px;
+				top: 80px;
 			">
 				<div class="score-value" style="
 					color: #f44336;
@@ -579,20 +599,19 @@ const gameModule = {
 					font-weight: bold;
 					font-family: 'Gwent', sans-serif;
 					text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-					margin-top: 5px;
+					margin-bottom: 5px;
 				">0</div>
 			</div>
 		`;
 		
-		// ✅ СЧЕТЧИК ИГРОКА - под слотом погоды
+		// ✅ СЧЕТЧИК ИГРОКА - справа от лидера игрока
 		const playerScoreDisplay = document.createElement('div');
 		playerScoreDisplay.id = 'playerTotalScore';
 		playerScoreDisplay.className = 'total-score-display player-total-score';
 		playerScoreDisplay.style.cssText = `
 			position: absolute;
-			bottom: -80px;
-			left: 50%;
-			transform: translateX(-50%);
+			top: ${playerLeaderRect.top - gameBoardRect.top + (playerLeaderRect.height / 2) - 30}px;
+			left: ${playerLeaderRect.right - gameBoardRect.left + 20}px;
 			z-index: 100;
 			text-align: center;
 		`;
@@ -606,6 +625,8 @@ const gameModule = {
 				align-items: center;
 				justify-content: center;
 				position: relative;
+				left: 150px;
+				bottom: 85px;
 			">
 				<div class="score-value" style="
 					color: #4CAF50;
@@ -613,17 +634,16 @@ const gameModule = {
 					font-weight: bold;
 					font-family: 'Gwent', sans-serif;
 					text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-					margin-top: 5px;
+					margin-bottom: 5px;
 				">0</div>
 			</div>
 		`;
 		
-		// Добавляем счетчики к слоту погоды
-		weatherSlot.style.position = 'relative';
-		weatherSlot.appendChild(opponentScoreDisplay);
-		weatherSlot.appendChild(playerScoreDisplay);
+		// ✅ ДОБАВЛЯЕМ счетчики к игровому полю
+		gameBoard.appendChild(opponentScoreDisplay);
+		gameBoard.appendChild(playerScoreDisplay);
 		
-		console.log('✅ Общие счетчики очков созданы');
+		console.log('✅ Общие счетчики очков созданы (рядом с лидерами)');
 	},
 
 	updateTotalScoreDisplays: function() {
