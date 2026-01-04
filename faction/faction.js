@@ -30,7 +30,7 @@ const factionsData = {
         description: 'Людям нравится думать, что они хозяева Большой земли. Но достаточно сойти с привычного большака или навострить ухо во время полнолуния, как станет ясно, насколько далека эта мысль от истины. Посреди лесной чащи, в тенистых оврагах и сырых погребах покинутых домов сверкает множество глаз и мокрых от слюны клыков.',
         logo: 'faction/monsters/faction.png',
         background: 'faction/monsters/fon_faction.jpg',
-    },
+    },/*
     skellige: {
         id: 'skellige',
         name: 'Скеллиге',
@@ -39,7 +39,7 @@ const factionsData = {
         logo: 'faction/skellige/faction.png',
         background: 'faction/skellige/fon_faction.jpg',
     },
-    /*
+    
 	syndicate: {
         id: 'syndicate',
         name: 'Синдикат',

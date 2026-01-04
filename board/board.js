@@ -12,7 +12,7 @@ const boardModule = {
 		if (window.gameModule && window.gameModule.init) {
 			window.gameModule.init();
 		}
-	}, 1000);
+	}, 100);
 	},
 
     hideDeckBuilding: function() {

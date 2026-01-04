@@ -563,7 +563,7 @@ const gameModule = {
         
         const doneButton = document.createElement('button');
         doneButton.id = 'mulliganDoneBtn';
-        doneButton.textContent = 'ГОТОВО';
+        doneButton.textContent = 'ЗАМЕНИТЬ';
         doneButton.style.cssText = `
             background: linear-gradient(145deg, rgb(42, 42, 42), rgb(26, 26, 26));
             color: rgb(212, 175, 55);
@@ -1004,7 +1004,7 @@ const gameModule = {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 1);
+            background: url('ui/fon.jpg') center/cover no-repeat;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1147,44 +1147,41 @@ const gameModule = {
     },
 
     animateCoinToss: function() {
-        const coinElement = document.getElementById('coinElement');
-        const coinResult = document.getElementById('coinResult');
-        
-        if (!coinElement || !coinResult) {
-            return;
-        }
-        
-        setTimeout(() => {
-            coinElement.classList.add('coin-tossing');
-            
-            if (audioManager && audioManager.playSound) {
-                audioManager.playSound('coinToss');
-            }
-        }, 500);
-        
-        setTimeout(() => {
-            coinElement.classList.remove('coin-tossing');
-            const goesFirst = Math.random() < 0.5 ? 'player' : 'opponent';
-            coinElement.style.transition = 'none';
-            
-            if (goesFirst === 'player') {
-                coinElement.style.transform = 'rotateY(0deg)';
-                coinResult.textContent = 'ИГРОК ХОДИТ ПЕРВЫМ';
-                coinResult.style.color = '#4CAF50';
-            } else {
-                coinElement.style.transform = 'rotateY(180deg)';
-                coinResult.textContent = 'ПРОТИВНИК ХОДИТ ПЕРВЫМ';
-                coinResult.style.color = '#f44336';
-            }
-            
-            coinResult.classList.add('show');
-            this.gameState.currentPlayer = goesFirst;
-            
-            setTimeout(() => {
-                this.startGameAfterCoinToss(goesFirst);
-            }, 2000);
-        }, 3500);
-    },
+		const coinElement = document.getElementById('coinElement');
+		const coinResult = document.getElementById('coinResult');
+		if (!coinElement || !coinResult) {
+			return;
+		}
+		setTimeout(() => {
+			coinElement.classList.add('coin-tossing');
+			if (audioManager && audioManager.playSound) {
+				audioManager.playSound('coinToss');
+			}
+		}, 500);
+		setTimeout(() => {
+			coinElement.classList.remove('coin-tossing');
+			const randomValue = Math.random();
+			const goesFirst = randomValue < 0.5 ? 'player' : 'opponent';
+			
+			coinElement.style.transition = 'none';
+			
+			if (goesFirst === 'player') {
+				coinElement.style.transform = 'rotateY(0deg)';
+				coinResult.textContent = 'ИГРОК ХОДИТ ПЕРВЫМ';
+				coinResult.style.color = '#4CAF50';
+			} else {
+				coinElement.style.transform = 'rotateY(180deg)';
+				coinResult.textContent = 'ПРОТИВНИК ХОДИТ ПЕРВЫМ';
+				coinResult.style.color = '#f44336';
+			}
+			coinResult.classList.add('show');
+			this.gameState.currentPlayer = goesFirst;
+			
+			setTimeout(() => {
+				this.startGameAfterCoinToss(goesFirst);
+			}, 2000);
+		}, 3500);
+	},
 
     startGameAfterCoinToss: function(firstPlayer) {
         const coinOverlay = document.getElementById('coinTossOverlay');
@@ -1629,19 +1626,23 @@ const gameModule = {
     },
 
     handleClearWeather: function(card) {
-        this.playWeatherSound('clear');
-        
-        this.gameState.weather.cards.forEach(weatherCard => {
-            const cardOwner = this.getWeatherCardOwner(weatherCard);
-            this.addCardToDiscard(weatherCard, cardOwner);
-        });
-        
-        this.gameState.weather.cards = [];
-        this.gameState.weather.cards.push(card);
-        this.clearAllWeatherEffects();
-        this.restoreAllRowStrengths();
-        this.displayWeatherCards();
-    },
+		this.playWeatherSound('clear');
+		const weatherCardsToDiscard = [...this.gameState.weather.cards];
+		this.gameState.weather.cards = [];
+		this.gameState.weather.cards.push(card);
+		this.clearAllWeatherEffects();
+		this.restoreAllRowStrengths();
+		weatherCardsToDiscard.forEach(weatherCard => {
+			const cardOwner = this.getWeatherCardOwner(weatherCard);
+			const isAlreadyInDiscard = this.gameState[cardOwner].discard.some(
+				discardedCard => discardedCard.id === weatherCard.id
+			);
+			if (!isAlreadyInDiscard) {
+				this.addCardToDiscard(weatherCard, cardOwner);
+			}
+		});
+		this.displayWeatherCards();
+	},
 
     removeCardFromHand: function(card, player) {
         const cardIndex = this.gameState[player].hand.findIndex(c => c.id === card.id);
@@ -3842,7 +3843,7 @@ const gameModule = {
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         transition: all 0.3s ease;
-                    ">ИГРАТЬ СНОВА</button>
+                    ">В ГЛАВНОЕ МЕНЮ</button>
                     
                     <button class="menu-btn" style="
                         background: #666;
@@ -3856,7 +3857,7 @@ const gameModule = {
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         transition: all 0.3s ease;
-                    ">ГЛАВНОЕ МЕНЮ</button>
+                    ">К СБОРУ КОЛОДЫ</button>
                 </div>
             </div>
         `;

@@ -33,204 +33,179 @@ const factionAbilitiesModule = {
             }
         },
         'scoiatael': {
-            id: 'scoiatael',
-            name: 'Скоя\'таэли',
-            effect: 'choose_first_turn',
-            description: 'Право выбора первого хода',
-            isActive: false,
-            applyEffect: function(gameState) {
-                return true;
-            },
-            chooseFirstTurn: function(gameState) {
-                return this.showTurnChoiceModal(gameState);
-            },
-            showTurnChoiceModal: function(gameState) {
-                return new Promise((resolve) => {
-                    const modalOverlay = document.createElement('div');
-                    modalOverlay.className = 'turn-choice-overlay';
-                    modalOverlay.style.cssText = `
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0, 0, 0, 0.85);
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 10000;
-                        font-family: 'Gwent', sans-serif;
-                    `;
+			id: 'scoiatael',
+			name: 'Скоя\'таэли',
+			effect: 'choose_first_turn',
+			description: 'Право выбора первого хода',
+			isActive: false,
+			applyEffect: function(gameState) {
+				return true;
+			},
+			chooseFirstTurn: function(gameState) {
+				return this.showTurnChoiceModal(gameState);
+			},
+			showTurnChoiceModal: function(gameState) {
+				return new Promise((resolve) => {
+					const modalOverlay = document.createElement('div');
+					modalOverlay.className = 'turn-choice-overlay';
+					modalOverlay.style.cssText = `
+						position: fixed;
+						top: 0;
+						left: 0;
+						width: 100%;
+						height: 100%;
+						background: url('ui/fon.jpg') center/cover no-repeat;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: center;
+						z-index: 10000;
+						font-family: 'Gwent', sans-serif;
+					`;
 
-                    const isPlayerScoiatael = gameState.player.faction === 'scoiatael';
-                    const opponentFaction = gameState.opponent.faction;
-                    
-                    modalOverlay.innerHTML = `
-                        <div style="
-                            background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
-                            border: 2px solid #d4af37;
-                            border-radius: 10px;
-                            padding: 20px;
-                            text-align: center;
-                            max-width: 500px;
-                            animation: modalAppear 0.3s ease-out;
-                        ">
-                            <div style="
-                                color: #d4af37;
-                                font-size: 20px;
-                                margin-bottom: 15px;
-                                text-transform: uppercase;
-                                letter-spacing: 2px;
-                            ">${isPlayerScoiatael ? 'ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ' : 'ПРОТИВНИК ВЫБИРАЕТ ХОД'}</div>
-                            
-                            ${isPlayerScoiatael ? `
-                                <div style="display: flex; gap: 20px; margin: 20px 0;">
-                                    <button class="choice-btn player-choice" style="
-                                        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-                                        color: #4CAF50;
-                                        border: 2px solid #4CAF50;
-                                        padding: 10px 20px;
-                                        font-size: 16px;
-                                        font-family: 'Gwent', sans-serif;
-                                        cursor: pointer;
-                                        border-radius: 5px;
-                                        flex: 1;
-                                    ">
-                                        <div style="font-size: 14px; color: #888; margin-bottom: 5px;">ИГРОК</div>
-                                        <div style="font-size: 18px; font-weight: bold;">ХОДИТ ПЕРВЫМ</div>
-                                    </button>
-                                    
-                                    <button class="choice-btn opponent-choice" style="
-                                        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-                                        color: #f44336;
-                                        border: 2px solid #f44336;
-                                        padding: 10px 20px;
-                                        font-size: 16px;
-                                        font-family: 'Gwent', sans-serif;
-                                        cursor: pointer;
-                                        border-radius: 5px;
-                                        flex: 1;
-                                    ">
-                                        <div style="font-size: 14px; color: #888; margin-bottom: 5px;">ПРОТИВНИК</div>
-                                        <div style="font-size: 18px; font-weight: bold;">ХОДИТ ПЕРВЫМ</div>
-                                    </button>
-                                </div>
-                            ` : `
-                                <div style="
-                                    color: #ccc;
-                                    font-size: 16px;
-                                    margin: 20px 0;
-                                    padding: 20px;
-                                    background: rgba(0,0,0,0.3);
-                                    border-radius: 5px;
-                                ">
-                                    Противник (${this.getFactionName(opponentFaction)}) выбирает первый ход...
-                                </div>
-                            `}
-                            
-                            <div style="
-                                color: #888;
-                                font-size: 12px;
-                                margin-top: 15px;
-                                font-style: italic;
-                            ">
-                                Способность фракции: Право выбора первого хода
-                            </div>
-                        </div>
-                    `;
+					const isPlayerScoiatael = gameState.player.faction === 'scoiatael';
+					
+					modalOverlay.innerHTML = `
+						<div style="text-align: center;">
+							<div style="
+								color: #d4af37;
+								font-size: 25px;
+								margin-bottom: 15px;
+								text-transform: uppercase;
+								letter-spacing: 2px;
+							">${isPlayerScoiatael ? 'ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ' : 'ПРОТИВНИК ВЫБИРАЕТ КТО ХОДИТ ПЕРВЫМ'}</div>
+							
+							${isPlayerScoiatael ? `
+								<div style="display: flex; gap: 13px; margin: 20px 0;">
+									<button class="choice-btn player-choice" style="
+										background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+										color: #4CAF50;
+										border: 1px solid #d4af37;
+										padding: 8px 10px;
+										font-size: 16px;
+										font-family: 'Gwent', sans-serif;
+										cursor: url('ui/cursor_hover.png'), pointer;
+										border-radius: 5px;
+										flex: 1;
+										transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+										transform-origin: center;
+									">
+										<div style="font-size: 15px; color: #999; margin-bottom: 5px;">ИГРОК</div>
+										<div style="font-size: 18px; -webkit-text-stroke: 0.2px black;">ХОДИТ ПЕРВЫМ</div>
+									</button>
+									
+									<button class="choice-btn opponent-choice" style="
+										background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+										color: #f44336;
+										border: 1px solid #d4af37;
+										padding: 8px 10px;
+										font-size: 16px;
+										font-family: 'Gwent', sans-serif;
+										cursor: url('ui/cursor_hover.png'), pointer;
+										border-radius: 5px;
+										flex: 1;
+										transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+										transform-origin: center;
+									">
+										<div style="font-size: 15px; color: #999; margin-bottom: 5px;">ПРОТИВНИК</div>
+										<div style="font-size: 18px; -webkit-text-stroke: 0.2px black;">ХОДИТ ПЕРВЫМ</div>
+									</button>
+								</div>
+							` : ''}
+							
+							<div style="
+								color: #999;
+								font-size: 14px;
+								margin-top: 15px;
+								font-style: italic;
+							">
+								Способность фракции: Право выбора первого хода
+							</div>
+						</div>
+					`;
 
-                    document.body.appendChild(modalOverlay);
-                    audioManager.playSound('button');
+					document.body.appendChild(modalOverlay);
+					audioManager.playSound('button');
 
-                    if (isPlayerScoiatael) {
-                        const playerChoiceBtn = modalOverlay.querySelector('.player-choice');
-                        const opponentChoiceBtn = modalOverlay.querySelector('.opponent-choice');
+					if (isPlayerScoiatael) {
+						const playerChoiceBtn = modalOverlay.querySelector('.player-choice');
+						const opponentChoiceBtn = modalOverlay.querySelector('.opponent-choice');
 
-                        playerChoiceBtn.addEventListener('click', () => {
-                            audioManager.playSound('choice');
-                            this.animateChoiceSelection(playerChoiceBtn, true);
-                            setTimeout(() => {
-                                document.body.removeChild(modalOverlay);
-                                resolve('player');
-                            }, 1000);
-                        });
+						const setupButtonHover = (button, color) => {
+							button.addEventListener('mouseenter', () => {
+								audioManager.playSound('touch');
+								button.style.transform = 'scale(1.05)';
+								button.style.boxShadow = `0 0 15px ${color}80`;
+								button.style.borderColor = color;
+							});
+							
+							button.addEventListener('mouseleave', () => {
+								button.style.transform = 'scale(1)';
+								button.style.boxShadow = 'none';
+								button.style.borderColor = '#d4af37';
+							});
+						};
 
-                        opponentChoiceBtn.addEventListener('click', () => {
-                            audioManager.playSound('choice');
-                            this.animateChoiceSelection(opponentChoiceBtn, false);
-                            setTimeout(() => {
-                                document.body.removeChild(modalOverlay);
-                                resolve('opponent');
-                            }, 1000);
-                        });
+						setupButtonHover(playerChoiceBtn, '#4CAF50');
+						setupButtonHover(opponentChoiceBtn, '#f44336');
 
-                        playerChoiceBtn.addEventListener('mouseenter', () => audioManager.playSound('touch'));
-                        opponentChoiceBtn.addEventListener('mouseenter', () => audioManager.playSound('touch'));
-                    } else {
-                        setTimeout(() => {
-                            const aiChoice = this.makeAIChoice(gameState);
-                            audioManager.playSound('choice');
-                            
-                            modalOverlay.innerHTML = `
-                                <div style="
-                                    background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
-                                    border: 2px solid #d4af37;
-                                    border-radius: 10px;
-                                    padding: 20px;
-                                    text-align: center;
-                                    max-width: 500px;
-                                ">
-                                    <div style="color: #d4af37; font-size: 20px; margin-bottom: 15px;">
-                                        ПРОТИВНИК ВЫБРАЛ
-                                    </div>
-                                    
-                                    <div style="
-                                        background: ${aiChoice === 'opponent' ? '#f44336' : '#4CAF50'};
-                                        color: white;
-                                        padding: 15px;
-                                        border-radius: 5px;
-                                        font-size: 18px;
-                                        font-weight: bold;
-                                        margin: 20px 0;
-                                        animation: choiceReveal 0.5s ease-out;
-                                    ">
-                                        ${aiChoice === 'opponent' ? 'ХОЖУ ПЕРВЫМ' : 'ХОДИТЕ ПЕРВЫМ'}
-                                    </div>
-                                    
-                                    <div style="color: #888; font-size: 12px;">
-                                        Противник выбрал в свою пользу
-                                    </div>
-                                </div>
-                            `;
-                            
-                            setTimeout(() => {
-                                document.body.removeChild(modalOverlay);
-                                resolve(aiChoice);
-                            }, 2000);
-                        }, 2000);
-                    }
-                });
-            },
-            makeAIChoice: function(gameState) {
-                return 'opponent';
-            },
-            animateChoiceSelection: function(button, isPlayer) {
-                button.style.animation = 'choiceSelected 0.5s ease-out';
-                button.style.transform = 'scale(1.05)';
-                button.style.boxShadow = `0 0 20px ${isPlayer ? '#4CAF50' : '#f44336'}`;
-            },
-            getFactionName: function(factionId) {
-                const factions = {
-                    'scoiatael': 'Скоя\'таэли',
-                    'realms': 'Королевства Севера',
-                    'nilfgaard': 'Нильфгаард',
-                    'monsters': 'Чудовища',
-                    'skellige': 'Скеллиге'
-                };
-                return factions[factionId] || factionId;
-            }
-        },
+						playerChoiceBtn.addEventListener('click', () => {
+							audioManager.playSound('choice');
+							this.animateChoiceSelection(playerChoiceBtn, true);
+							setTimeout(() => {
+								document.body.removeChild(modalOverlay);
+								resolve('player');
+							}, 100);
+						});
+
+						opponentChoiceBtn.addEventListener('click', () => {
+							audioManager.playSound('choice');
+							this.animateChoiceSelection(opponentChoiceBtn, false);
+							setTimeout(() => {
+								document.body.removeChild(modalOverlay);
+								resolve('opponent');
+							}, 100);
+						});
+					} else {
+						setTimeout(() => {
+							const aiChoice = this.makeAIChoice(gameState);
+							audioManager.playSound('choice');
+							
+							modalOverlay.innerHTML = `
+								<div style="text-align: center;">
+									<div style="color: #d4af37; font-size: 30px; margin-bottom: 15px;">
+										ПРОТИВНИК ВЫБРАЛ
+									</div>
+									
+									<div style="
+										color: white;
+										font-size: 25px;
+										animation: choiceReveal 0.5s ease-out;
+										-webkit-text-stroke: 0.2px black;
+									">
+										${aiChoice === 'opponent' ? 'ХОЖУ ПЕРВЫМ' : 'ХОДИТЕ ПЕРВЫМ'}
+									</div>
+								</div>
+							`;
+							
+							setTimeout(() => {
+								document.body.removeChild(modalOverlay);
+								resolve(aiChoice);
+							}, 2500);
+						}, 5000);
+					}
+				});
+			},
+			makeAIChoice: function(gameState) {
+				const randomValue = Math.random();
+				return randomValue < 0.6 ? 'opponent' : 'player';
+			},
+			animateChoiceSelection: function(button, isPlayer) {
+				button.style.animation = 'choiceSelected 0.5s ease-out';
+				button.style.transform = 'scale(1.05)';
+				button.style.boxShadow = `0 0 20px ${isPlayer ? '#4CAF50' : '#f44336'}`;
+			}
+		},
         'monsters': {
             id: 'monsters',
             name: 'Чудовища',
