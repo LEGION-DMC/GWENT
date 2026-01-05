@@ -260,18 +260,21 @@ const factionAbilitiesModule = {
 				if (gameState.currentRound !== 3) {
 					return [];
 				}
-				
 				const discard = gameState[player].discard;
 				if (discard.length === 0) {
 					return [];
 				}
+				const handSize = gameState[player].hand.length;
+				const maxHandSize = 10;
+				const availableSpace = maxHandSize - handSize;
 				
+				if (availableSpace <= 0) {
+					return [];
+				}
 				const cardsToResurrect = [];
 				const shuffled = [...discard].sort(() => Math.random() - 0.5);
-				
-				const maxCards = Math.min(2, shuffled.length);
-				
-				for (let i = 0; i < maxCards; i++) {
+				const maxCardsToTry = Math.min(2, shuffled.length, availableSpace);
+				for (let i = 0; i < maxCardsToTry; i++) {
 					const card = shuffled[i];
 					const originalIndex = discard.findIndex(c => c.id === card.id);
 					if (originalIndex !== -1) {
@@ -279,10 +282,9 @@ const factionAbilitiesModule = {
 						cardsToResurrect.push(removedCard);
 					}
 				}
-				
 				return cardsToResurrect;
 			}
-		}
+		},
     },
 
     init: function(gameState) {
@@ -404,28 +406,47 @@ const factionAbilitiesModule = {
 	},
 
     handleRound3ForSkellige: function(gameState) {
-        if (gameState.currentRound !== 3) return;
-        
-        const players = ['player', 'opponent'];
-        
-        players.forEach(player => {
-            const faction = gameState[player].faction;
-            if (faction === 'skellige') {
-                const skelligeAbility = this.abilities['skellige'];
-                if (skelligeAbility && skelligeAbility.isActive) {
-                    const resurrectedCards = skelligeAbility.resurrectCards(gameState, player);
-                    
-                    if (resurrectedCards.length > 0) {
-                        gameState[player].hand.push(...resurrectedCards);
-                        
-                        if (player === 'player' && window.gameModule) {
-                            window.gameModule.displayPlayerHand();
-                        }
-                    }
-                }
-            }
-        });
-    },
+		if (gameState.currentRound !== 3) return;
+		const players = ['player', 'opponent'];
+		players.forEach(player => {
+			const faction = gameState[player].faction;
+			if (faction === 'skellige') {
+				const skelligeAbility = this.abilities['skellige'];
+				if (skelligeAbility && skelligeAbility.isActive) {
+					const resurrectedCards = skelligeAbility.resurrectCards(gameState, player);
+					if (resurrectedCards.length > 0) {
+						const handSize = gameState[player].hand.length;
+						const maxHandSize = 10;
+						const availableSpace = maxHandSize - handSize;
+						
+						if (availableSpace > 0) {
+							const cardsToAdd = resurrectedCards.slice(0, availableSpace);
+							gameState[player].hand.push(...cardsToAdd);
+							const remainingCards = resurrectedCards.slice(availableSpace);
+							if (remainingCards.length > 0) {
+								gameState[player].deck.push(...remainingCards);
+								if (player === 'player') {
+									this.showGameMessage(`Часть карт возвращена в колоду (макс. карт в руке: 10)`, 'info');
+								}
+							}
+							if (player === 'player' && window.gameModule) {
+								window.gameModule.displayPlayerHand();
+							}
+						}
+						if (window.gameModule && window.gameModule.updateDiscardDisplay) {
+							window.gameModule.updateDiscardDisplay(player);
+						}
+						if (window.gameModule && window.gameModule.displayPlayerDeck && player === 'player') {
+							window.gameModule.displayPlayerDeck();
+						}
+						if (window.gameModule && window.gameModule.displayOpponentDeck && player === 'opponent') {
+							window.gameModule.displayOpponentDeck();
+						}
+					}
+				}
+			}
+		});
+	},
 
     getFactionAbility: function(factionId) {
         return this.abilities[factionId] || null;

@@ -31,7 +31,6 @@ const factionsData = {
         logo: 'faction/monsters/faction.png',
         background: 'faction/monsters/fon_faction.jpg',
     },
-	/*
     skellige: {
         id: 'skellige',
         name: 'Скеллиге',
@@ -40,6 +39,7 @@ const factionsData = {
         logo: 'faction/skellige/faction.png',
         background: 'faction/skellige/fon_faction.jpg',
     },
+	/*
 	syndicate: {
         id: 'syndicate',
         name: 'Синдикат',

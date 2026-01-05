@@ -1152,7 +1152,7 @@ const cardsData = {
                 strength: 9,
                 type: 'unit',
                 faction: 'syndicate',
-                image: 'diykstra.mp4',
+                image: 'dijkstra.mp4',
                 description: 'Предводитель группировки «Сиги Ройвена»',
 				descriptionfull: 'Член правления Синдиката. Бывший шеф реданской разведки. Именуется графом, дабы не вызывать у окружения подозрений и недоброжелательности',
 				ability: '---',

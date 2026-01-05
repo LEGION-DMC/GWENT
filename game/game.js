@@ -1464,27 +1464,30 @@ const gameModule = {
     },
 
     startNewRound: function() {
-        this.gameState.currentRound++;
-        if (window.audioManager && window.audioManager.playSound) {
-            audioManager.playSound('round_start');
-        }
-        if (window.factionAbilitiesModule) {
-            window.factionAbilitiesModule.handleRound3ForSkellige(this.gameState);
-        }
-        
-        const mode = this.gameState.gameSettings.mode;
-        
-        if (mode === 'classic') {
-            this.showGameMessage(`Классический режим | Раунд ${this.gameState.currentRound}`, 'info');
-        } else {
-            this.showGameMessage(`CDPRed режим | Раунд ${this.gameState.currentRound}`, 'info');
-        }
-        
-        this.updateRoundCounter();
-        this.resetRoundState();
-        this.dealAdditionalCards();
-        this.startPlayerTurn();
-    },
+		this.gameState.currentRound++;
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('round_start');
+		}
+		
+		if (window.factionAbilitiesModule) {
+			window.factionAbilitiesModule.handleRound3ForSkellige(this.gameState);
+		}
+		
+		const mode = this.gameState.gameSettings.mode;
+		if (mode === 'classic') {
+			this.showGameMessage(`Классический режим | Раунд ${this.gameState.currentRound}`, 'info');
+		} else {
+			this.showGameMessage(`CDPRed режим | Раунд ${this.gameState.currentRound}`, 'info');
+		}
+		
+		this.updateRoundCounter();
+		this.resetRoundState();
+		this.dealAdditionalCards();
+		this.startPlayerTurn();
+		
+        this.showGameMessage(`Начало раунда ${this.gameState.currentRound}`, 'info');
+	},
 
     updateGameModeIndicator: function() {
         const mode = this.gameState.gameSettings.mode;
@@ -2694,29 +2697,6 @@ const gameModule = {
         }
         
         return shuffled;
-    },
-
-    startNewRound: function() {
-        this.gameState.currentRound++;
-        if (window.audioManager && window.audioManager.playSound) {
-            audioManager.playSound('round_start');
-        }
-        if (window.factionAbilitiesModule) {
-            window.factionAbilitiesModule.handleRound3ForSkellige(this.gameState);
-        }
-        
-        const mode = this.gameState.gameSettings.mode;
-        
-        if (mode === 'classic') {
-            this.showGameMessage(`Классический режим | Раунд ${this.gameState.currentRound}`, 'info');
-        } else {
-            this.showGameMessage(`CDPRed режим | Раунд ${this.gameState.currentRound}`, 'info');
-        }
-        
-        this.updateRoundCounter();
-        this.resetRoundState();
-        this.dealAdditionalCards();
-        this.startPlayerTurn();
     },
 
     displayPlayerDeck: function() {
@@ -3954,18 +3934,6 @@ const gameModule = {
                 (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
         }
         return color;
-    },
-
-    startNewRound: function() {
-        this.gameState.currentRound++;
-        if (window.audioManager && window.audioManager.playSound) {
-            audioManager.playSound('round_start');
-        }
-        this.updateRoundCounter();
-        this.resetRoundState();
-        this.dealAdditionalCards();
-        this.startPlayerTurn();
-        this.showGameMessage(`Начало раунда ${this.gameState.currentRound}`, 'info');
     },
 
     showGameMessage: function(text, type = 'info') {
