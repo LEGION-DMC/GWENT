@@ -961,7 +961,6 @@ const gameModule = {
         const opponentUsed = this.gameState.mulligan.opponent.used;
         
         this.displayPlayerHand();
-        this.showGameMessage('ИГРА НАЧИНАЕТСЯ!', 'info');
         if (window.audioManager && window.audioManager.playSound) {
             audioManager.playSound('round_start');
         }
@@ -1475,18 +1474,11 @@ const gameModule = {
 		}
 		
 		const mode = this.gameState.gameSettings.mode;
-		if (mode === 'classic') {
-			this.showGameMessage(`Классический режим | Раунд ${this.gameState.currentRound}`, 'info');
-		} else {
-			this.showGameMessage(`CDPRed режим | Раунд ${this.gameState.currentRound}`, 'info');
-		}
-		
+		this.showGameMessage(`Раунд ${this.gameState.currentRound}`, 'info');
 		this.updateRoundCounter();
 		this.resetRoundState();
 		this.dealAdditionalCards();
 		this.startPlayerTurn();
-		
-        this.showGameMessage(`Начало раунда ${this.gameState.currentRound}`, 'info');
 	},
 
     updateGameModeIndicator: function() {
@@ -1628,22 +1620,30 @@ const gameModule = {
         });
     },
 
-    handleClearWeather: function(card) {
-		this.playWeatherSound('clear');
-		const weatherCardsToDiscard = [...this.gameState.weather.cards];
-		this.gameState.weather.cards = [];
-		this.gameState.weather.cards.push(card);
-		this.clearAllWeatherEffects();
-		this.restoreAllRowStrengths();
-		weatherCardsToDiscard.forEach(weatherCard => {
-			const cardOwner = this.getWeatherCardOwner(weatherCard);
-			const isAlreadyInDiscard = this.gameState[cardOwner].discard.some(
-				discardedCard => discardedCard.id === weatherCard.id
+    handleRegularWeather: function(card) {
+		const clearWeatherIndex = this.gameState.weather.cards.findIndex(
+			weatherCard => this.isClearWeatherCard(weatherCard)
+		);
+		if (clearWeatherIndex !== -1) {
+			const clearWeatherCard = this.gameState.weather.cards[clearWeatherIndex];
+			const clearWeatherOwner = this.getWeatherCardOwner(clearWeatherCard);
+			this.addCardToDiscard(clearWeatherCard, clearWeatherOwner);
+			this.gameState.weather.cards.splice(clearWeatherIndex, 1);
+			this.clearAllWeatherEffects();
+			this.restoreAllRowStrengths();
+		} else {
+			const regularWeatherCards = this.gameState.weather.cards.filter(wc => 
+				!this.isClearWeatherCard(wc)
 			);
-			if (!isAlreadyInDiscard) {
-				this.addCardToDiscard(weatherCard, cardOwner);
+			if (regularWeatherCards.length >= this.gameState.weather.maxWeatherCards) {
+				return;
 			}
-		});
+		}
+		if (!card.owner) {
+			card.owner = this.gameState.currentPlayer === 'player' ? 'player' : 'opponent';
+		}
+		this.gameState.weather.cards.push(card);
+		this.applyWeatherEffect(card);
 		this.displayWeatherCards();
 	},
 
@@ -1657,29 +1657,24 @@ const gameModule = {
         }
     },
 
-    handleRegularWeather: function(card) {
-        const clearWeatherIndex = this.gameState.weather.cards.findIndex(
-            weatherCard => this.isClearWeatherCard(weatherCard)
-        );
-        
-        if (clearWeatherIndex !== -1) {
-            const clearWeatherCard = this.gameState.weather.cards[clearWeatherIndex];
-            const clearWeatherOwner = this.getWeatherCardOwner(clearWeatherCard);
-            this.addCardToDiscard(clearWeatherCard, clearWeatherOwner);
-            this.gameState.weather.cards.splice(clearWeatherIndex, 1);
-            
-            this.clearAllWeatherEffects();
-            this.restoreAllRowStrengths();
-        }
-        
-        if (!card.owner) {
-            card.owner = this.gameState.currentPlayer === 'player' ? 'player' : 'opponent';
-        }
-        
-        this.gameState.weather.cards.push(card);
-        this.applyWeatherEffect(card);
-        this.displayWeatherCards();
-    },
+    handleClearWeather: function(card) {
+		this.playWeatherSound('clear');
+		const weatherCardsToDiscard = [...this.gameState.weather.cards];
+		this.gameState.weather.cards = [];
+		this.gameState.weather.cards.push(card);
+		weatherCardsToDiscard.forEach(weatherCard => {
+			const cardOwner = this.getWeatherCardOwner(weatherCard);
+			const isAlreadyInDiscard = this.gameState[cardOwner].discard.some(
+				discardedCard => discardedCard.id === weatherCard.id
+			);
+			if (!isAlreadyInDiscard) {
+				this.addCardToDiscard(weatherCard, cardOwner);
+			}
+		});
+		this.clearAllWeatherEffects();
+		this.restoreAllRowStrengths();
+		this.displayWeatherCards();
+	},
 
     applyWeatherEffect: function(card) {
         const weatherEffect = this.getWeatherEffectForCard(card);
@@ -1913,7 +1908,6 @@ const gameModule = {
         this.resetTimeoutCounter();
         
         if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-            this.showGameMessage('Лимит карт за ход достигнут', 'info');
             setTimeout(() => {
                 this.handleTurnEnd();
             }, 800);
@@ -1994,8 +1988,7 @@ const gameModule = {
 
     checkRoundEnd: function() {
         if (this.gameState.player.passed && this.gameState.opponent.passed) {
-            this.showGameMessage('Оба игрока пасовали! Конец раунда', 'warning');
-            setTimeout(() => this.endRound(), 1500);
+            setTimeout(() => this.endRound(), 1000);
         } else {
             let nextPlayer;
             if (this.gameState.player.passed && !this.gameState.opponent.passed) {
@@ -2051,9 +2044,6 @@ const gameModule = {
 		this.displayPlayerHand();
 		this.displayPlayerDeck();
 		this.displayOpponentDeck();
-		if (cardsPerRound > 0) {
-			this.showGameMessage(`Добор ${cardsPerRound} карт в новом раунде`, 'info');
-		}
 	},
 
     displayPlayerHand: function() {

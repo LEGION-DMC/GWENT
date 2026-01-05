@@ -128,43 +128,58 @@ const aiModule = {
     },
     
     canPlayWeatherCard: function(card) {
-        if (this.gameState.weather.cards.length >= this.gameState.weather.maxWeatherCards) {
-            return false;
-        }
-        
-        if (this.isClearWeatherCard(card)) {
-            const hasClearWeather = this.gameState.weather.cards.some(wc => 
-                this.isClearWeatherCard(wc)
-            );
-            if (hasClearWeather) {
-                return false;
-            }
-            return true;
-        }
-        
-        const weatherEffect = this.getWeatherEffectForCard(card);
-        if (!weatherEffect || !weatherEffect.rows) {
-            return false;
-        }
-        
-        const hasValidTargetRow = weatherEffect.rows.some(row => 
-            !this.gameState.weather.effects[row]
-        );
-        
-        if (!hasValidTargetRow) {
-            return false;
-        }
-        
-        const hasSameWeather = this.gameState.weather.cards.some(wc => 
-            wc.name === card.name
-        );
-        
-        if (hasSameWeather) {
-            return false;
-        }
-        
-        return true;
-    },
+		const isClearWeather = this.isClearWeatherCard(card);
+		if (isClearWeather) {
+			const hasSameClearWeather = this.gameState.weather.cards.some(wc => 
+				wc.name === card.name || wc.id === card.id
+			);
+			
+			if (hasSameClearWeather) {
+				return false;
+			}
+			return true;
+		} else {
+			const sameWeatherExists = this.gameState.weather.cards.some(weatherCard => {
+				if (this.isClearWeatherCard(weatherCard)) return false;
+				return weatherCard.name === card.name;
+			});
+			if (sameWeatherExists) {
+				return false;
+			}
+			const weatherEffect = this.getWeatherEffectForCard(card);
+			if (!weatherEffect || !weatherEffect.rows) {
+				return false;
+			}
+			const targetRows = weatherEffect.rows;
+			if (targetRows.length > 1) {
+				let occupiedRowsCount = 0;
+				targetRows.forEach(row => {
+					if (this.gameState.weather.effects[row]) {
+						occupiedRowsCount++;
+					}
+				});
+				if (occupiedRowsCount === targetRows.length) {
+					return false;
+				}
+			}
+			else if (targetRows.length === 1) {
+				const targetRow = targetRows[0];
+				if (this.gameState.weather.effects[targetRow]) {
+					return false;
+				}
+			}
+			const regularWeatherCards = this.gameState.weather.cards.filter(wc => 
+				!this.isClearWeatherCard(wc)
+			);
+			const hasClearWeather = this.gameState.weather.cards.some(wc => 
+				this.isClearWeatherCard(wc)
+			);
+			if (!hasClearWeather && regularWeatherCards.length >= this.gameState.weather.maxWeatherCards) {
+				return false;
+			}
+			return true;
+		}
+	},
 
     hasDuplicateWeather: function(card) {
         const weatherEffect = this.getWeatherEffectForCard(card);
@@ -413,36 +428,20 @@ const aiModule = {
     },
 
     playWeatherCard: function(card) {
-        const weatherCardWithOwner = { ...card, owner: 'opponent' };
-        
-        this.removeCardFromHand(card);
-        
-        if (window.gameModule) {
-            if (this.isClearWeatherCard(card)) {
-                window.gameModule.handleClearWeather(weatherCardWithOwner);
-            } else {
-                this.gameState.weather.cards.push(weatherCardWithOwner);
-                
-                window.gameModule.handleRegularWeather(weatherCardWithOwner);
-                
-                const weatherEffect = this.getWeatherEffectForCard(card);
-                if (weatherEffect && weatherEffect.rows) {
-                    weatherEffect.rows.forEach(row => {
-                        this.gameState.weather.effects[row] = {
-                            card: weatherCardWithOwner,
-                            image: weatherEffect.images[row],
-                            owner: 'opponent'
-                        };
-                        
-                        window.gameModule.reduceRowStrengthTo1(row, 'player');
-                        window.gameModule.reduceRowStrengthTo1(row, 'opponent');
-                    });
-                }
-            }
-            
-            window.gameModule.displayWeatherCards();
-        }
-    },
+		const weatherCardWithOwner = { ...card, owner: 'opponent' };
+		
+		this.removeCardFromHand(card);
+		
+		if (window.gameModule) {
+			if (this.isClearWeatherCard(card)) {
+				window.gameModule.handleClearWeather(weatherCardWithOwner);
+			} else {
+				window.gameModule.handleRegularWeather(weatherCardWithOwner);
+			}
+			
+			window.gameModule.displayWeatherCards();
+		}
+	},
 
     getRowsUnderWeather: function() {
         const rowsUnderWeather = [];

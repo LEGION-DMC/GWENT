@@ -6,55 +6,55 @@ const playerModule = {
     },
     
     handleCardSelection: function(card, cardElement) {
-        if (this.gameState.mulligan.phase === 'player') {
-            return;
-        }
-    
-        if (this.gameState.player.passed) {
-            this.showMessage('Вы уже пасовали в этом раунде!');
-            return;
-        }
-        
-        if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-            this.showMessage(`Вы уже разместили ${this.gameState.maxCardsPerTurn} карт за этот ход!`);
-            return;
-        }
-        
-        if (this.gameState.gamePhase !== 'playerTurn') {
-            return;
-        }
-        
-        if (this.gameState.selectingRow) {
-            this.cancelRowSelection();
-            return;
-        }
+		if (this.gameState.mulligan.phase === 'player') {
+			return;
+		}
+		
+		if (this.gameState.gamePhase !== 'playerTurn') {
+			return;
+		}
+		
+		if (this.gameState.selectingRow) {
+			this.cancelRowSelection();
+			return;
+		}
+		
+		if (this.gameState.selectedCardElement && this.gameState.selectedCardElement !== cardElement) {
+			this.gameState.selectedCardElement.classList.remove('card-selected');
+		}
+		
+		if (this.gameState.selectedCard === card) {
+			this.cancelCardSelection();
+			this.cancelRowSelection();
+			return;
+		}
+		
+		this.gameState.selectedCard = card;
+		this.gameState.selectedCardElement = cardElement;
+		
+		if (cardElement) {
+			cardElement.classList.add('card-selected');
+		}
+		
+		audioManager.playSound('card_selected');
 
-        this.gameState.selectedCard = card;
-        this.gameState.selectedCardElement = cardElement;
-        
-        if (cardElement) {
-            cardElement.classList.add('card-selected');
-        }
-        
-        audioManager.playSound('card_selected');
-
-        if (this.isWeatherCard(card)) {
-            this.playWeatherCard(card);
-        } else {
-            switch (card.type) {
-                case 'tactic':
-                    this.startTacticCardPlacement(card);
-                    break;
-                case 'unit':
-                case 'special':
-                case 'artifact':
-                    this.startUnitCardPlacement(card);
-                    break;
-                default:
-                    this.cancelCardSelection();
-            }
-        }
-    },
+		if (this.isWeatherCard(card)) {
+			this.playWeatherCard(card);
+		} else {
+			switch (card.type) {
+				case 'tactic':
+					this.startTacticCardPlacement(card);
+					break;
+				case 'unit':
+				case 'special':
+				case 'artifact':
+					this.startUnitCardPlacement(card);
+					break;
+				default:
+					this.cancelCardSelection();
+			}
+		}
+	},
 
     isWeatherCard: function(card) {
         return (card.tags && card.tags.includes('weather')) || 
@@ -69,30 +69,112 @@ const playerModule = {
         return weatherCardNames.includes(cardName);
     },
     
+	getWeatherEffectForCard: function(card) {
+    const weatherEffects = {
+        'Трескучий мороз': { 
+            rows: ['close'], 
+            images: {'close': 'board/frost.png'}, 
+            sounds: {'close': 'frost'} 
+        },
+        'Белый Хлад': { 
+            rows: ['close', 'ranged'], 
+            images: {'close': 'board/frost.png', 'ranged': 'board/fog.png'},
+            sounds: {'close': 'frost', 'ranged': 'fog'}
+        },
+        'Густой туман': { 
+            rows: ['ranged'], 
+            images: {'ranged': 'board/fog.png'},
+            sounds: {'ranged': 'fog'}
+        },
+        'Проливной дождь': { 
+            rows: ['siege'], 
+            images: {'siege': 'board/rain.png'},
+            sounds: {'siege': 'rain'}
+        },
+        'Шторм Скеллиге': { 
+            rows: ['ranged', 'siege'], 
+            images: {'ranged': 'board/fog.png', 'siege': 'board/rain.png'},
+            sounds: {'ranged': 'fog', 'siege': 'rain'}
+        },
+        'Чистое небо': { 
+            rows: [], 
+            images: {},
+            sounds: {'clear': 'clear'}
+        }
+    };
+    return weatherEffects[card.name];
+},
+
     playWeatherCard: function(card) {
-        const isClearWeather = this.isClearWeatherCard(card);
-        
-        if (!isClearWeather && this.gameState.weather.cards.length >= this.gameState.weather.maxWeatherCards) {
-            this.showMessage('Максимум 3 карты погоды на поле!');
-            this.cancelCardSelection();
-            return;
-        }
+		const isClearWeather = this.isClearWeatherCard(card);
+	
+		if (isClearWeather) {
+			const hasSameClearWeather = this.gameState.weather.cards.some(wc => 
+				wc.name === card.name || wc.id === card.id
+			);
+			if (hasSameClearWeather) {
+				this.cancelCardSelection();
+				return;
+			}
+		} 
+		else {
+			const sameWeatherExists = this.gameState.weather.cards.some(weatherCard => {
+				if (this.isClearWeatherCard(weatherCard)) return false;
+				return weatherCard.name === card.name;
+			});
+			if (sameWeatherExists) {
+				this.cancelCardSelection();
+				return;
+			}
+			const weatherEffect = this.getWeatherEffectForCard(card);
+			if (weatherEffect && weatherEffect.rows) {
+				const targetRows = weatherEffect.rows;
+				if (targetRows.length > 1) {
+					let occupiedRowsCount = 0;
+					targetRows.forEach(row => {
+						if (this.gameState.weather.effects[row]) {
+							occupiedRowsCount++;
+						}
+					});
+					if (occupiedRowsCount === targetRows.length) {
+						this.cancelCardSelection();
+						return;
+					}
+				}
+				else if (targetRows.length === 1) {
+					const targetRow = targetRows[0];
+					if (this.gameState.weather.effects[targetRow]) {
+						this.cancelCardSelection();
+						return;
+					}
+				}
+			}
+			const regularWeatherCards = this.gameState.weather.cards.filter(wc => 
+				!this.isClearWeatherCard(wc)
+			);
+			const hasClearWeather = this.gameState.weather.cards.some(wc => 
+				this.isClearWeatherCard(wc)
+			);
+		
+			if (!hasClearWeather && regularWeatherCards.length >= this.gameState.weather.maxWeatherCards) {
+				this.cancelCardSelection();
+				return;
+			}
+		}
+		card.owner = 'player';
 
-        card.owner = 'player';
+		if (isClearWeather) {
+			this.handleClearWeather(card);
+		} else {
+			this.handleRegularWeather(card);
+		}
 
-        if (isClearWeather) {
-            this.handleClearWeather(card);
-        } else {
-            this.handleRegularWeather(card);
-        }
-
-        this.removeCardFromHand(card);
-        
-        if (window.gameModule) {
-            window.gameModule.displayWeatherCards();
-            window.gameModule.completeCardPlay();
-        }
-    },
+		this.removeCardFromHand(card);
+		if (window.gameModule) {
+			window.gameModule.displayWeatherCards();
+			window.gameModule.completeCardPlay();
+		}
+	},
     
     isClearWeatherCard: function(card) {
         return card.name === 'Чистое небо' || card.id === 'neutral_special_4';
@@ -276,36 +358,43 @@ const playerModule = {
     },
     
     cancelCardSelection: function() {
-        this.gameState.selectedCard = null;
-        this.gameState.selectedCardElement = null;
-        
-        if (this.gameState.selectedCardElement) {
-            this.gameState.selectedCardElement.classList.remove('card-selected');
-        }
-    },
-    
+		if (this.gameState.selectedCardElement) {
+			this.gameState.selectedCardElement.classList.remove('card-selected');
+		}
+		
+		this.gameState.selectedCard = null;
+		this.gameState.selectedCardElement = null;
+		this.cancelRowSelection();
+	},
+
     cancelRowSelection: function() {
-        this.gameState.selectingRow = false;
-        this.gameState.placementType = null;
-        
-        this.removeAllRowHighlights();
-        this.removeAllTacticSlotHighlights();
-        
-        if (this.gameState.rowSelectionHandlers) {
-            this.gameState.rowSelectionHandlers.forEach(({ element, handler }) => {
-                element.removeEventListener('click', handler);
-            });
-            this.gameState.rowSelectionHandlers = [];
-        }
-        
-        if (this.gameState.tacticSlotSelectionHandlers) {
-            this.gameState.tacticSlotSelectionHandlers.forEach(({ element, handler }) => {
-                element.removeEventListener('click', handler);
-            });
-            this.gameState.tacticSlotSelectionHandlers = [];
-        }
-    },
-    
+		this.gameState.selectingRow = false;
+		this.gameState.placementType = null;
+		
+		this.removeAllRowHighlights();
+		this.removeAllTacticSlotHighlights();
+		
+		if (this.gameState.rowSelectionHandlers) {
+			this.gameState.rowSelectionHandlers.forEach(({ element, handler }) => {
+				element.removeEventListener('click', handler);
+			});
+			this.gameState.rowSelectionHandlers = [];
+		}
+		
+		if (this.gameState.tacticSlotSelectionHandlers) {
+			this.gameState.tacticSlotSelectionHandlers.forEach(({ element, handler }) => {
+				element.removeEventListener('click', handler);
+			});
+			this.gameState.tacticSlotSelectionHandlers = [];
+		}
+		
+		if (this.gameState.selectedCardElement) {
+			this.gameState.selectedCardElement.classList.remove('card-selected');
+			this.gameState.selectedCard = null;
+			this.gameState.selectedCardElement = null;
+		}
+	},
+
     removeAllTacticSlotHighlights: function() {
         const rows = ['close', 'ranged', 'siege'];
         rows.forEach(row => {
@@ -344,7 +433,6 @@ const playerModule = {
         }
         
         if (window.gameModule) {
-            window.gameModule.showGameMessage('Вы пасуете', 'info');
             window.gameModule.updateControlButtons();
             window.gameModule.handleTurnEnd();
         }
