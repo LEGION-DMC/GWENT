@@ -25,7 +25,7 @@ const localization = {
         wild_hunt: 'Дикая Охота',
         emperor: 'Император',
         king: 'Король',
-        kingser: 'Знать',
+        kingser: 'Аристократия',
         mage: 'Чародей',
         witcher: 'Ведьмак',
         soldier: 'Солдат',

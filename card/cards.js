@@ -1088,6 +1088,86 @@ const cardsData = {
             },
 		]
     },
+	
+	syndicate: {
+        units: [
+            {
+                id: 'syndicate_unit_1',
+                name: 'Тесак',
+				namefull: 'Карл Варезе',
+                strength: 10,
+                type: 'unit',
+                faction: 'syndicate',
+                image: 'vareze.mp4',
+                description: 'Предводитель группировки «Златорубы»',
+				descriptionfull: 'Член правления Синдиката. Немолодой краснолюд крепкого и коренастого телосложения в развитой физической форме.',
+				ability: '---',
+                position: 'close-row',
+                positionBanner: 'faction/syndicate/banner_position.png',
+                rarity: 'gold',
+                tags: ['leader', 'king', 'Краснолюд'],
+                border: 'deck/bord_gold.png',
+                banner: 'faction/syndicate/banner_gold.png'
+            },
+            {
+                id: 'syndicate_unit_2',
+                name: 'Ублюдок Младший',
+				namefull: 'Киприан Вилли',
+                strength: 9,
+                type: 'unit',
+                faction: 'syndicate',
+                image: 'villi.mp4',
+                description: 'Предводитель группировки «Сердцееды»',
+				descriptionfull: 'Член правления Синдиката. Садист и безжалостный, морально разложившийся человек, олицетворяющий крайнюю жестокость.',
+				ability: '---',
+                position: 'close-row',
+                positionBanner: 'faction/syndicate/banner_position.png',
+                rarity: 'silver',
+                tags: ['king'],
+                border: 'deck/bord_gold.png',
+                banner: 'faction/syndicate/banner_gold.png'
+            },
+            {
+                id: 'syndicate_unit_3',
+                name: 'Король Нищих',
+				namefull: 'Франциск Бедлам',
+                strength: 9,
+                type: 'unit',
+                faction: 'syndicate',
+                image: 'bedlam.mp4',
+                description: 'Предводитель группировки «Невидимые»',
+				descriptionfull: 'Член правления Синдиката. Личность Франциска определяет и вид деятельности его группировки и декларируемых ценностей преступного лидера ― стремление к власти и контролю над городом.',
+				ability: '---',
+                position: 'close-row',
+                positionBanner: 'faction/syndicate/banner_position.png',
+                rarity: 'silver',
+                tags: ['king'],
+                border: 'deck/bord_gold.png',
+                banner: 'faction/syndicate/banner_gold.png'
+            },
+            {
+                id: 'syndicate_unit_4',
+                name: 'Сиги Ройвен',
+				namefull: 'Сигизмунд Дийкстра',
+                strength: 9,
+                type: 'unit',
+                faction: 'syndicate',
+                image: 'diykstra.mp4',
+                description: 'Предводитель группировки «Сиги Ройвена»',
+				descriptionfull: 'Член правления Синдиката. Бывший шеф реданской разведки. Именуется графом, дабы не вызывать у окружения подозрений и недоброжелательности',
+				ability: '---',
+                position: 'close-row',
+                positionBanner: 'faction/syndicate/banner_position.png',
+                rarity: 'silver',
+                tags: ['king'],
+                border: 'deck/bord_gold.png',
+                banner: 'faction/syndicate/banner_gold.png'
+            },
+        ],
+        specials: [],
+        tactics: [],
+        artifacts: []
+    },
 };
 
 function normalizeCardPositions(cards) {
