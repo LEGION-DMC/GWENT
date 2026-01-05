@@ -216,30 +216,37 @@ const factionAbilitiesModule = {
                 return true;
             },
             keepRandomCard: function(gameState, player) {
-                const rows = ['close', 'ranged', 'siege'];
-                let allCards = [];
-                
-                rows.forEach(row => {
-                    const rowCards = gameState[player].rows[row].cards;
-                    allCards.push(...rowCards.map(card => ({ card, row, type: 'unit' })));
-                    
-                    if (gameState[player].rows[row].tactic) {
-                        allCards.push({ 
-                            card: gameState[player].rows[row].tactic, 
-                            row, 
-                            type: 'tactic' 
-                        });
-                    }
-                });
-                
-                if (allCards.length === 0) return null;
-                
-                const randomIndex = Math.floor(Math.random() * allCards.length);
-                const selected = allCards[randomIndex];
-                
-                return selected;
-            }
-        },
+				const rows = ['close', 'ranged', 'siege'];
+				let allCards = [];
+				
+				rows.forEach(row => {
+					const rowCards = gameState[player].rows[row].cards;
+					// Берем копию карт, чтобы не модифицировать оригиналы
+					rowCards.forEach(card => {
+						allCards.push({
+							card: JSON.parse(JSON.stringify(card)), // Глубокая копия
+							row: row,
+							type: 'unit'
+						});
+					});
+					
+					if (gameState[player].rows[row].tactic) {
+						allCards.push({ 
+							card: JSON.parse(JSON.stringify(gameState[player].rows[row].tactic)), // Глубокая копия
+							row: row, 
+							type: 'tactic' 
+						});
+					}
+				});
+				
+				if (allCards.length === 0) return null;
+				
+				const randomIndex = Math.floor(Math.random() * allCards.length);
+				const selected = allCards[randomIndex];
+				
+				return selected;
+			}
+		},
         'skellige': {
 			id: 'skellige',
 			name: 'Скеллиге',
@@ -324,45 +331,77 @@ const factionAbilitiesModule = {
     },
 
     handleRoundEndForMonsters: function(gameState) {
-    const players = ['player', 'opponent'];
-    
-    players.forEach(player => {
-        const faction = gameState[player].faction;
-        if (faction === 'monsters') {
-            const monstersAbility = this.abilities['monsters'];
-            if (monstersAbility && monstersAbility.isActive) {
-                const keptCard = monstersAbility.keepRandomCard(gameState, player);
-                
-                if (keptCard) {
-                    if (keptCard.card.originalStrength !== undefined) {
-                        keptCard.card.strength = keptCard.card.originalStrength;
-                        delete keptCard.card.originalStrength;
-                    }
-                    
-                    const cardToKeep = {
-                        ...keptCard.card,
-                        strength: keptCard.card.originalStrength || keptCard.card.strength
-                    };
-                    
-                    if (cardToKeep.originalStrength) {
-                        delete cardToKeep.originalStrength;
-                    }
-                    
-                    gameState[player].hand.push(cardToKeep);
-                    
-                    const rowIndex = gameState[player].rows[keptCard.row].cards.findIndex(
-                        c => c.id === keptCard.card.id
-                    );
-                    if (rowIndex !== -1) {
-                        gameState[player].rows[keptCard.row].cards.splice(rowIndex, 1);
-                    } else if (keptCard.type === 'tactic') {
-                        gameState[player].rows[keptCard.row].tactic = null;
-                    }
-                }
-            }
-        }
-    });
-},
+		const players = ['player', 'opponent'];
+		const cardsToReturn = [];
+		players.forEach(player => {
+			const faction = gameState[player].faction;
+			if (faction === 'monsters') {
+				const monstersAbility = this.abilities['monsters'];
+				if (monstersAbility && monstersAbility.isActive) {
+					const keptCard = monstersAbility.keepRandomCard(gameState, player);
+					if (keptCard) {
+						cardsToReturn.push({
+							player: player,
+							card: keptCard.card,
+							row: keptCard.row,
+							type: keptCard.type
+						});
+					}
+				}
+			}
+		});
+		cardsToReturn.forEach(item => {
+			const rowIndex = gameState[item.player].rows[item.row].cards.findIndex(
+				c => c.id === item.card.id
+			);
+			if (rowIndex !== -1) {
+				gameState[item.player].rows[item.row].cards.splice(rowIndex, 1);
+			} else if (item.type === 'tactic') {
+				gameState[item.player].rows[item.row].tactic = null;
+			}
+		});
+		players.forEach(player => {
+			const rows = ['close', 'ranged', 'siege'];
+			rows.forEach(row => {
+				gameState[player].rows[row].cards = gameState[player].rows[row].cards.filter(card => {
+					const isReturningCard = cardsToReturn.some(item => 
+						item.player === player && item.card.id === card.id
+					);
+					return !isReturningCard;
+				});
+				if (gameState[player].rows[row].tactic) {
+					const isReturningTactic = cardsToReturn.some(item => 
+						item.player === player && 
+						item.type === 'tactic' && 
+						item.row === row
+					);
+					if (!isReturningTactic) {
+						gameState[player].discard.push(gameState[player].rows[row].tactic);
+						gameState[player].rows[row].tactic = null;
+					}
+				}
+				gameState[player].rows[row].cards.forEach(card => {
+					gameState[player].discard.push(card);
+				});
+				gameState[player].rows[row].cards = [];
+				gameState[player].rows[row].strength = 0;
+			});
+			if (window.gameModule && window.gameModule.updateDiscardDisplay) {
+				window.gameModule.updateDiscardDisplay(player);
+			}
+		});
+		cardsToReturn.forEach(item => {
+			const cardToReturn = { ...item.card };
+			if (cardToReturn.originalStrength !== undefined) {
+				cardToReturn.strength = cardToReturn.originalStrength;
+				delete cardToReturn.originalStrength;
+			}
+			gameState[item.player].hand.push(cardToReturn);
+			if (item.player === 'player' && window.gameModule) {
+				window.gameModule.displayPlayerHand();
+			}
+		});
+	},
 
     handleRound3ForSkellige: function(gameState) {
         if (gameState.currentRound !== 3) return;

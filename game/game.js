@@ -534,7 +534,7 @@ const gameModule = {
             display: block;
             overflow: hidden;
             transform: scale(1);
-            width: 150px;
+            width: 170px;
         `;
         
         const infoPanel = document.createElement('div');
@@ -563,7 +563,7 @@ const gameModule = {
         
         const doneButton = document.createElement('button');
         doneButton.id = 'mulliganDoneBtn';
-        doneButton.textContent = 'ЗАМЕНИТЬ';
+        doneButton.textContent = 'ЗАВЕРШИТЬ ЗАМЕНУ';
         doneButton.style.cssText = `
             background: linear-gradient(145deg, rgb(42, 42, 42), rgb(26, 26, 26));
             color: rgb(212, 175, 55);
@@ -581,7 +581,7 @@ const gameModule = {
             display: block;
             overflow: hidden;
             transform: scale(1);
-            width: 150px;
+            width: 170px;
         `;
         
         controlsContainer.appendChild(resetButton);
@@ -1214,7 +1214,7 @@ const gameModule = {
             this.gameState.gameSettings.cardsPerRound = 0;
         } else {
             this.gameState.gameSettings.initialHandSize = 10;
-            this.gameState.gameSettings.cardsPerRound = 10;
+            this.gameState.gameSettings.cardsPerRound = 3;
         }
     },
 
@@ -2017,38 +2017,41 @@ const gameModule = {
     },
 
     dealAdditionalCards: function() {
-        const mode = this.gameState.gameSettings.mode;
-        
-        if (mode === 'classic') {
-            return;
-        }
-        
-        const targetHandSize = 10;
-        this.shuffleDeck('player');
-        this.shuffleDeck('opponent');
-        
-        const playerCurrentHandSize = this.gameState.player.hand.length;
-        const playerCardsNeeded = targetHandSize - playerCurrentHandSize;
-        
-        if (playerCardsNeeded > 0 && this.gameState.player.deck.length > 0) {
-            const cardsToDeal = Math.min(playerCardsNeeded, this.gameState.player.deck.length);
-            const newCards = this.gameState.player.deck.splice(0, cardsToDeal);
-            this.gameState.player.hand.push(...newCards);
-        }
-        
-        const opponentCurrentHandSize = this.gameState.opponent.hand.length;
-        const opponentCardsNeeded = targetHandSize - opponentCurrentHandSize;
-        
-        if (opponentCardsNeeded > 0 && this.gameState.opponent.deck.length > 0) {
-            const cardsToDeal = Math.min(opponentCardsNeeded, this.gameState.opponent.deck.length);
-            const newCards = this.gameState.opponent.deck.splice(0, cardsToDeal);
-            this.gameState.opponent.hand.push(...newCards);
-        }
-        
-        this.displayPlayerHand();
-        this.displayPlayerDeck();
-        this.displayOpponentDeck();
-    },
+		const mode = this.gameState.gameSettings.mode;
+		
+		if (mode === 'classic') {
+			return;
+		}
+		const cardsPerRound = this.gameState.gameSettings.cardsPerRound; 
+		const maxHandSize = 10;
+		const playerCurrentHandSize = this.gameState.player.hand.length;
+		const playerCardsCanDraw = Math.min(
+			cardsPerRound,
+			this.gameState.player.deck.length, 
+			maxHandSize - playerCurrentHandSize 
+		);
+		if (playerCardsCanDraw > 0) {
+			const newCards = this.gameState.player.deck.splice(0, playerCardsCanDraw);
+			this.gameState.player.hand.push(...newCards);
+		}
+
+		const opponentCurrentHandSize = this.gameState.opponent.hand.length;
+		const opponentCardsCanDraw = Math.min(
+			cardsPerRound,
+			this.gameState.opponent.deck.length, 
+			maxHandSize - opponentCurrentHandSize 
+		);
+		if (opponentCardsCanDraw > 0) {
+			const newCards = this.gameState.opponent.deck.splice(0, opponentCardsCanDraw);
+			this.gameState.opponent.hand.push(...newCards);
+		}
+		this.displayPlayerHand();
+		this.displayPlayerDeck();
+		this.displayOpponentDeck();
+		if (cardsPerRound > 0) {
+			this.showGameMessage(`Добор ${cardsPerRound} карт в новом раунде`, 'info');
+		}
+	},
 
     displayPlayerHand: function() {
         const handContainer = document.getElementById('playerHand');
