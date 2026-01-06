@@ -81,6 +81,11 @@ const gameModule = {
             penaltyApplied: false 
         },
         roundLossDueToTimeout: null,
+		roundResults: [],
+		roundsWon: {
+			player: 0,
+			opponent: 0
+		},
     },
 	
     currentSettings: {
@@ -174,7 +179,7 @@ const gameModule = {
     hideTimerDisplay: function() {
         const timerDisplay = document.getElementById('turnTimerDisplay');
         if (timerDisplay) {
-            timerDisplay.style.display = 'none';
+            timerDisplay.style.setProperty('display', 'none', 'important');
             timerDisplay.style.animation = 'none';
         }
     },
@@ -182,9 +187,9 @@ const gameModule = {
     playTimerWarningSound: function() {
         if (window.audioManager && window.audioManager.playSound) {
             if (window.audioManager.sounds && window.audioManager.sounds.timer) {
-                window.audioManager.playSound('timer');
-            } else {
-                window.audioManager.playSound('button');
+                window.audioManager.playSound('warning');
+            }else {
+                window.audioManager.playSound('warning');
             }
         }
     },
@@ -219,9 +224,11 @@ const gameModule = {
         this.gameState.turnTimer.timeLeft--;
         this.updateTimerDisplay();
         
-        if (this.gameState.turnTimer.timeLeft === 10) {
+        if (this.gameState.turnTimer.timeLeft === 30) {
             this.playTimerWarningSound();
-        } else if (this.gameState.turnTimer.timeLeft === 5) {
+        } else if (this.gameState.turnTimer.timeLeft === 10) {
+            this.playTimerWarningSound();
+        }else if (this.gameState.turnTimer.timeLeft === 5) {
             this.playTimerWarningSound();
         }
         
@@ -276,7 +283,7 @@ const gameModule = {
         this.showGameMessage(message, 'warning');
         
         if (audioManager && audioManager.playSound) {
-            audioManager.playSound('button');
+            audioManager.playSound('warning');
         }
     },
 
@@ -373,8 +380,8 @@ const gameModule = {
     },
 
     startMulliganPhase: function() {
-        this.resetMulliganState();
-        
+        this.hideTimerDisplay();
+		this.resetMulliganState();
         const playerIsRealms = this.gameState.player.faction === 'realms';
         const opponentIsRealms = this.gameState.opponent.faction === 'realms';
         
@@ -448,7 +455,7 @@ const gameModule = {
                     visibility: element.style.visibility || ''
                 };
                 
-                element.style.opacity = '0.05';
+                element.style.opacity = '0.01';
                 element.style.pointerEvents = 'none';
             }
         });
@@ -1308,7 +1315,7 @@ const gameModule = {
     },
 
     startPlayerTurn: function() {
-        if (this.gameState.mulligan.phase !== 'completed') {
+		if (this.gameState.mulligan.phase !== 'completed') {
             return;
         }
         this.gameState.gamePhase = 'playerTurn';
@@ -1327,6 +1334,7 @@ const gameModule = {
         this.updateTurnIndicator();
         this.updateControlButtons();
         this.showGameMessage('Ваш ход', 'info');
+		audioManager.playSound('warning');
     },
 
     startOpponentTurn: function() {
@@ -1337,6 +1345,7 @@ const gameModule = {
         this.updateTurnIndicator();
         this.updateControlButtons();
         this.showGameMessage('Ход противника', 'warning');
+		audioManager.playSound('warning');
         
         if (this.gameState.opponent.passed) {
             this.showGameMessage('Противник пасовал', 'info');
@@ -1375,7 +1384,8 @@ const gameModule = {
     },
 
     endRound: function() {
-        const playerScore = this.calculateTotalScore('player');
+        this.hideTimerDisplay();
+		const playerScore = this.calculateTotalScore('player');
         const opponentScore = this.calculateTotalScore('opponent');
         
         if (this.gameState.roundLossDueToTimeout) {
@@ -1463,7 +1473,7 @@ const gameModule = {
     },
 
     startNewRound: function() {
-		this.gameState.currentRound++;
+		this.hideTimerDisplay();
 		
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('round_start');
@@ -3401,244 +3411,192 @@ const gameModule = {
     },
 
     showRoundResult: function(winner, playerScore, opponentScore) {
-        if (window.audioManager && window.audioManager.playSound) {
-            if (winner === 'player') {
-                audioManager.playSound('win');
-            } else if (winner === 'opponent') {
-                audioManager.playSound('lose');
-            } else {
-                audioManager.playSound('draw');
-            }
+		if (window.audioManager && window.audioManager.playSound) {
+			if (winner === 'player') {
+				audioManager.playSound('win');
+			} else if (winner === 'opponent') {
+				audioManager.playSound('lose');
+			} else {
+				audioManager.playSound('draw');
+			}
+		}
+		
+		if (!this.gameState.roundResults) {
+			this.gameState.roundResults = [];
+		}
+		this.gameState.roundResults.push(winner);
+		
+		const resultOverlay = document.createElement('div');
+		resultOverlay.className = 'round-result-overlay';
+		resultOverlay.style.cssText = `
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.9);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			z-index: 10000;
+			font-family: 'Gwent', sans-serif;
+		`;
+
+		let resultImage, resultText, resultColor, borderColor;
+		
+		if (winner === 'player') {
+			resultImage = 'board/win.png';
+			resultText = 'ПОБЕДА В РАУНДЕ';
+			resultColor = '#4CAF50';
+			borderColor = '#4CAF50';
+		} else if (winner === 'opponent') {
+			resultImage = 'board/lose.png';
+			resultText = 'ПОРАЖЕНИЕ В РАУНДЕ';
+			resultColor = '#f44336';
+			borderColor = '#f44336';
+		} else {
+			resultImage = 'board/draw.png';
+			resultText = 'НИЧЬЯ В РАУНДЕ';
+			resultColor = '#FFD700';
+			borderColor = '#FFD700';
+		}
+
+		resultOverlay.innerHTML = `
+			<div class="round-result-container" style="
+				text-align: center;
+				overflow: hidden;
+				margin-top: -100px;
+			">
+				
+				<img src="${resultImage}" alt="${resultText}" style="
+					width: 400px;
+					height: 300px;
+					margin-bottom: 20px;
+					filter: drop-shadow(0 0 10px ${resultColor}80);
+				" onerror="this.style.display='none'">
+				
+				<h2 style="
+					color: ${resultColor};
+					margin: 0 0 20px 0;
+					font-size: 35px;
+					text-transform: uppercase;
+					letter-spacing: 3px;
+					text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+					-webkit-text-stroke: 0.2px black;
+				">${resultText}</h2>
+				
+				<div class="rounds-progress" style="
+					display: flex;
+					justify-content: center;
+					gap: 8px;
+					margin: 20px 0;
+				">
+					${this.generateRoundsProgress()}
+				</div>
+				
+				<div class="round-info" style="
+					color: #888;
+					font-size: 14px;
+					margin: 10px 0;
+					text-transform: uppercase;
+					letter-spacing: 1px;
+				">
+					Раунд ${this.gameState.currentRound} завершен
+				</div>
+				
+				<div class="auto-close-notice" style="
+					color: #aaa;
+					font-size: 12px;
+					margin-top: 20px;
+					text-transform: uppercase;
+					letter-spacing: 1px;
+				">
+				</div>
+			</div>
+		`;
+
+		document.body.appendChild(resultOverlay);
+		this.animateResultAppear(resultOverlay);
+		
+		setTimeout(() => {
+			if (document.body.contains(resultOverlay)) {
+				this.animateResultDisappear(resultOverlay);
+			}
+		}, 2000);
+	},
+
+	generateRoundsProgress: function() {
+    let progressHTML = '';
+    const totalRounds = this.gameState.totalRounds;
+    
+    // Получаем историю результатов раундов (должен быть массив в gameState)
+    // Если нет истории, создаем на основе текущих данных
+    let roundResults = this.gameState.roundResults || [];
+    
+    // Если история пуста, заполняем на основе roundsWon
+    if (roundResults.length === 0) {
+        const playerWins = this.gameState.roundsWon.player || 0;
+        const opponentWins = this.gameState.roundsWon.opponent || 0;
+        
+        // Создаем временную историю (для обратной совместимости)
+        for (let i = 0; i < playerWins; i++) {
+            roundResults.push('player');
+        }
+        for (let i = 0; i < opponentWins; i++) {
+            roundResults.push('opponent');
+        }
+    }
+    
+    for (let i = 1; i <= totalRounds; i++) {
+        let roundClass, roundSymbol, roundColor, tooltip;
+        
+        // Получаем результат для текущего раунда (индекс i-1 в массиве)
+        const roundResult = roundResults[i - 1];
+        
+        if (!roundResult || i > roundResults.length) {
+            // Раунд еще не сыгран
+            roundClass = 'empty';
+            roundSymbol = i;
+            roundColor = '#666';
+            tooltip = 'Раунд не сыгран';
+        } else if (roundResult === 'draw') {
+            roundClass = 'draw';
+            roundSymbol = '＝';
+            roundColor = '#FFD700';
+            tooltip = 'Ничья';
+        } else if (roundResult === 'player') {
+            roundClass = 'player-win';
+            roundSymbol = '✓';
+            roundColor = '#4CAF50';
+            tooltip = 'Победа игрока';
+        } else if (roundResult === 'opponent') {
+            roundClass = 'opponent-win';
+            roundSymbol = '✗';
+            roundColor = '#f44336';
+            tooltip = 'Победа противника';
         }
         
-        const resultOverlay = document.createElement('div');
-        resultOverlay.className = 'round-result-overlay';
-        resultOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            font-family: 'Gwent', sans-serif;
-        `;
-
-        let resultImage, resultText, resultColor, borderColor;
-        
-        if (winner === 'player') {
-            resultImage = 'board/win.png';
-            resultText = 'ПОБЕДА В РАУНДЕ';
-            resultColor = '#4CAF50';
-            borderColor = '#4CAF50';
-        } else if (winner === 'opponent') {
-            resultImage = 'board/lose.png';
-            resultText = 'ПОРАЖЕНИЕ В РАУНДЕ';
-            resultColor = '#f44336';
-            borderColor = '#f44336';
-        } else {
-            resultImage = 'board/draw.png';
-            resultText = 'НИЧЬЯ В РАУНДЕ';
-            resultColor = '#FFD700';
-            borderColor = '#FFD700';
-        }
-
-        resultOverlay.innerHTML = `
-            <div class="round-result-container" style="
-                background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
-                border: 4px solid ${borderColor};
-                border-radius: 15px;
-                padding: 30px 40px;
-                text-align: center;
-                max-width: 500px;
-                width: 90%;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        progressHTML += `
+            <div class="round-indicator ${roundClass}" style="
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 14px;
+                background: ${roundClass === 'empty' ? 'transparent' : roundColor};
+                color: ${roundClass === 'empty' ? '#888' : 'white'};
+                border: 1px solid ${roundColor};
                 position: relative;
-                overflow: hidden;
-            ">
-                <div style="
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 4px;
-                    background: linear-gradient(90deg, transparent, ${borderColor}, transparent);
-                "></div>
-                
-                <div style="
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 4px;
-                    background: linear-gradient(90deg, transparent, ${borderColor}, transparent);
-                "></div>
-                
-                <img src="${resultImage}" alt="${resultText}" style="
-                    width: 120px;
-                    height: 120px;
-                    margin-bottom: 20px;
-                    filter: drop-shadow(0 0 10px ${resultColor}80);
-                " onerror="this.style.display='none'">
-                
-                <h2 style="
-                    color: ${resultColor};
-                    margin: 0 0 15px 0;
-                    font-size: 24px;
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
-                    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-                    font-weight: bold;
-                ">${resultText}</h2>
-                
-                <div class="score-display" style="
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 40px;
-                    margin: 25px 0;
-                    font-size: 22px;
-                    font-weight: bold;
-                    background: rgba(0,0,0,0.3);
-                    padding: 15px 25px;
-                    border-radius: 10px;
-                    border: 2px solid #333;
-                ">
-                    <div class="player-score" style="color: #4CAF50; text-align: center;">
-                        <div style="font-size: 14px; color: #888; margin-bottom: 5px; text-transform: uppercase;">Игрок</div>
-                        <div style="font-size: 28px;">${playerScore}</div>
-                    </div>
-                    
-                    <div style="color: #d4af37; font-size: 16px; font-weight: normal;">ПРОТИВ</div>
-                    
-                    <div class="opponent-score" style="color: #f44336; text-align: center;">
-                        <div style="font-size: 14px; color: #888; margin-bottom: 5px; text-transform: uppercase;">Противник</div>
-                        <div style="font-size: 28px;">${opponentScore}</div>
-                    </div>
-                </div>
-                
-                <div class="rounds-progress" style="
-                    display: flex;
-                    justify-content: center;
-                    gap: 8px;
-                    margin: 20px 0;
-                ">
-                    ${this.generateRoundsProgress()}
-                </div>
-                
-                <div class="round-info" style="
-                    color: #888;
-                    font-size: 14px;
-                    margin: 10px 0;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                ">
-                    Раунд ${this.gameState.currentRound} завершен
-                </div>
-                
-                <button class="continue-btn" style="
-                    background: linear-gradient(145deg, ${resultColor}, ${this.darkenColor(resultColor, 20)});
-                    color: white;
-                    border: none;
-                    padding: 12px 35px;
-                    border-radius: 8px;
-                    font-size: 16px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    margin-top: 15px;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    transition: all 0.3s ease;
-                    border: 2px solid ${this.darkenColor(resultColor, 30)};
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                ">ПРОДОЛЖИТЬ</button>
-            </div>
+            " title="${tooltip}">${roundSymbol}</div>
         `;
-
-        document.body.appendChild(resultOverlay);
-        this.animateResultAppear(resultOverlay);
-        
-        const continueBtn = resultOverlay.querySelector('.continue-btn');
-        continueBtn.addEventListener('click', () => {
-            audioManager.playSound('button');
-            this.animateResultDisappear(resultOverlay);
-        });
-        
-        continueBtn.addEventListener('mouseenter', () => {
-            audioManager.playSound('touch');
-            continueBtn.style.transform = 'scale(1.05)';
-            continueBtn.style.boxShadow = '0 6px 12px rgba(0,0,0,0.4)';
-        });
-        
-        continueBtn.addEventListener('mouseleave', () => {
-            continueBtn.style.transform = 'scale(1)';
-            continueBtn.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-        });
-        
-        setTimeout(() => {
-            if (document.body.contains(resultOverlay)) {
-                this.animateResultDisappear(resultOverlay);
-            }
-        }, 5000);
-    },
-
-    generateRoundsProgress: function() {
-        let progressHTML = '';
-        const totalRounds = this.gameState.totalRounds;
-        const playerWins = this.gameState.roundsWon.player;
-        const opponentWins = this.gameState.roundsWon.opponent;
-        const maxWins = Math.max(playerWins, opponentWins);
-        
-        for (let i = 1; i <= totalRounds; i++) {
-            let roundClass, roundSymbol, roundColor, tooltip;
-            
-            if (i <= playerWins && i <= opponentWins) {
-                roundClass = 'draw';
-                roundSymbol = '＝';
-                roundColor = '#FFD700';
-                tooltip = 'Ничья';
-            } else if (i <= playerWins) {
-                roundClass = 'player-win';
-                roundSymbol = '✓';
-                roundColor = '#4CAF50';
-                tooltip = 'Победа игрока';
-            } else if (i <= opponentWins) {
-                roundClass = 'opponent-win';
-                roundSymbol = '✗';
-                roundColor = '#f44336';
-                tooltip = 'Победа противника';
-            } else {
-                roundClass = 'empty';
-                roundSymbol = i;
-                roundColor = '#666';
-                tooltip = 'Раунд не сыгран';
-            }
-            
-            progressHTML += `
-                <div class="round-indicator ${roundClass}" style="
-                    width: 35px;
-                    height: 35px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-weight: bold;
-                    font-size: 14px;
-                    background: ${roundClass === 'empty' ? 'transparent' : roundColor};
-                    color: ${roundClass === 'empty' ? '#888' : 'white'};
-                    border: 2px solid ${roundColor};
-                    position: relative;
-                    cursor: help;
-                " title="${tooltip}">${roundSymbol}</div>
-            `;
-        }
-        
-        return progressHTML;
-    },
+    }
+    
+    return progressHTML;
+},
 
     addResultStyles: function() {
         if (document.getElementById('round-result-styles')) return;
@@ -3708,21 +3666,15 @@ const gameModule = {
                 audioManager.playSound('draw');
             }
         }
+		
         const resultOverlay = document.createElement('div');
         resultOverlay.className = 'game-result-overlay';
         resultOverlay.style.cssText = `
             position: fixed;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            background: url("ui/fon.jpg") center center / cover no-repeat;
             z-index: 10000;
-            font-family: 'Gwent', sans-serif;
         `;
 
         let resultImage, resultText, resultColor;
@@ -3730,106 +3682,88 @@ const gameModule = {
         
         if (winner === 'player') {
             resultImage = 'board/win.png';
-            resultText = 'ПОБЕДА В МАТЧЕ!';
+            resultText = 'ПОБЕДА';
             resultColor = '#4CAF50';
         } else if (winner === 'opponent') {
             resultImage = 'board/lose.png';
-            resultText = 'ПОРАЖЕНИЕ В МАТЧЕ';
+            resultText = 'ПОРАЖЕНИЕ';
             resultColor = '#f44336';
         } else {
             resultImage = 'board/draw.png';
-            resultText = 'НИЧЬЯ В МАТЧЕ!';
+            resultText = 'НИЧЬЯ';
             resultColor = '#FFD700';
         }
 
         resultOverlay.innerHTML = `
             <div class="game-result-container" style="
-                background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
-                border: 4px solid ${resultColor};
-                border-radius: 20px;
-                padding: 40px;
                 text-align: center;
-                max-width: 600px;
                 animation: resultAppear 0.5s ease-out;
             ">
                 <img src="${resultImage}" alt="${resultText}" style="
-                    width: 250px;
-                    height: 250px;
+                    width: 400px;
+                    height: 300px;
                     margin-bottom: 30px;
+					margin-top: 120px;
                 " onerror="this.style.display='none'">
                 
                 <h1 style="
                     color: ${resultColor};
                     margin: 0 0 20px 0;
-                    font-size: 36px;
+                    font-size: 35px;
                     text-transform: uppercase;
                     letter-spacing: 3px;
                     text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+					-webkit-text-stroke: 0.2px black;
                 ">${resultText}</h1>
                 
                 <div class="final-score" style="
-                    font-size: 28px;
-                    font-weight: bold;
-                    margin: 20px 0;
+                    font-size: 25px;
                     color: #fff;
+					-webkit-text-stroke: 0.2px black;
                 ">
                     ФИНАЛЬНЫЙ СЧЕТ: ${finalScore}
-                </div>
-                
-                <div class="match-stats" style="
-                    display: flex;
-                    justify-content: space-around;
-                    margin: 30px 0;
-                    color: #ccc;
-                    font-size: 16px;
-                    width: 100%;
-                ">
-                    <div style="text-align: center;">
-                        <div style="color: #4CAF50; margin-bottom: 5px;">ПОБЕДЫ ИГРОКА</div>
-                        <div style="font-size: 24px; color: #4CAF50;">${this.gameState.roundsWon.player}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #FFD700; margin-bottom: 5px;">НИЧЬИ</div>
-                        <div style="font-size: 24px; color: #FFD700;">${Math.min(this.gameState.roundsWon.player, this.gameState.roundsWon.opponent)}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #f44336; margin-bottom: 5px;">ПОБЕДЫ ПРОТИВНИКА</div>
-                        <div style="font-size: 24px; color: #f44336;">${this.gameState.roundsWon.opponent}</div>
-                    </div>
                 </div>
                 
                 <div class="action-buttons" style="
                     display: flex;
                     gap: 20px;
                     justify-content: center;
-                    margin-top: 30px;
+                    margin-top: 20px;
                 ">
                     <button class="restart-btn" style="
-                        background: #2196F3;
-                        color: white;
-                        border: none;
-                        padding: 15px 30px;
-                        border-radius: 8px;
-                        font-size: 18px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        transition: all 0.3s ease;
+						background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+						color: #d4af37;
+						border: 1px solid #d4af37; 
+						padding: 10px;
+						font-size: 21px;
+						font-family: 'Gwent', sans-serif;
+						text-transform: uppercase;
+						letter-spacing: 3px; 
+						cursor: url('ui/cursor_hover.png'), pointer;
+						transition: all 0.3s ease; 
+						border-radius: 5px; 
+						box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+						position: relative;
+						overflow: hidden;
+						width: 200px;
                     ">В ГЛАВНОЕ МЕНЮ</button>
                     
                     <button class="menu-btn" style="
-                        background: #666;
-                        color: white;
-                        border: none;
-                        padding: 15px 30px;
-                        border-radius: 8px;
-                        font-size: 18px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        transition: all 0.3s ease;
+						background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+						color: #d4af37;
+						border: 1px solid #d4af37; 
+						padding: 10px;
+						font-size: 21px;
+						font-family: 'Gwent', sans-serif;
+						text-transform: uppercase;
+						letter-spacing: 3px; 
+						cursor: url('ui/cursor_hover.png'), pointer;
+						transition: all 0.3s ease; 
+						border-radius: 5px; 
+						box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+						position: relative;
+						overflow: hidden;
+						width: 200px;
                     ">К СБОРУ КОЛОДЫ</button>
                 </div>
             </div>

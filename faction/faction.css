@@ -136,3 +136,17 @@
 .confirm-btn:hover::before {
     left: 100%;
 }
+
+.faction-description__ability {
+    padding-top: 6px;
+    border-top: 35px solid transparent;
+    border-image: url('../ui/long.png') 70 200;
+    font-size: 15px;
+    color: #f8c555;
+    letter-spacing: 1px;
+	font-style: italic;
+}
+
+.faction-description__ability strong {
+    color: #ccc;
+}

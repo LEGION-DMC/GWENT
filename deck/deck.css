@@ -209,28 +209,6 @@
 	z-index: 4;
 }
 
-.card__description {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	background: linear-gradient(transparent, rgba(0, 0, 0, 10));
-	color: white;
-	padding: 10px 5px 5px;
-	transform: translateY(100%);
-	opacity: 0;
-	transition: all 0.3s ease;
-	z-index: 5;
-	border-radius: 0 0 5px 5px;
-}
-
-.card__description-text {
-	font-size: 11px;
-	line-height: 1.1;
-	text-align: center;
-	-webkit-text-stroke: 0.1px black;
-}
-
 .deck-stats {
 	display: flex;
 	flex-direction: column;
@@ -243,6 +221,11 @@
 	width: 195px;
 	height: 277px;
 	cursor: url('../ui/cursor_hover.png'), pointer;
+}
+
+.leader-card:hover {
+	scale: 1.01;
+	filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.5));
 }
 
 .leader-card__media {
@@ -279,6 +262,15 @@
 	object-fit: contain;
 	z-index: 3;
 	pointer-events: none;
+}
+
+.card__type-icon_leader img {
+  width: 40px;
+  height: 40px;
+  top: -2px;
+  left: -7px;
+	position: absolute;
+	z-index: 4;
 }
 
 .card__type_leader {
@@ -519,8 +511,8 @@
 .card-modal__preview .card__type-icon img {
 	width: 60px;
 	height: 60px;
-	top: 8px;
-	left: -7px;
+	top: 7px;
+	left: -7.3px;
 }
 
 .card-modal__preview .card__type-leader img {
@@ -935,4 +927,31 @@
 .deck-control-btn img {
 	width: auto;
 	height: 21px;
+}
+
+.tags-container {
+    display: flex;
+    gap: 8px;
+}
+
+.card-tag {
+    color: #ccc;
+    font-size: 12px;
+	  font-style: italic;
+    padding: 5px 5px;
+    border-radius: 4px;
+    border: 1px solid #666;
+    white-space: nowrap;
+    text-align: center;
+    min-width: fit-content;
+    max-width: 100%;
+    word-break: break-word;
+    box-sizing: border-box;
+    display: inline-block;
+}
+
+.tags-container-3col {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
 }

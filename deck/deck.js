@@ -10,7 +10,7 @@ const localization = {
     },
     cardTypes: {
         unit: 'Отряд',
-        special: 'Специальная карта',
+        special: 'Спец. карта',
         artifact: 'Артефакт',
         tactic: 'Тактика',
         leader: 'Лидер',
@@ -364,9 +364,10 @@ function createDeckBuildingHTML() {
                     <img src="deck/bord_gold.png" alt="Рамка" class="leader__border">
                     <img src="faction/${faction.id}/banner_gold.png" alt="Баннер" class="leader__banner">
                     <div class="leader__name">${faction.leaderName.split(' ')[0]}</div>
-					<img src="deck/ability.png" alt="Лого" class="leader__logo" id="factionLogo">
+					<div class="card__type-icon_leader"><img class="card__type-icon_leader" src="deck/type_leader.png" alt="Лидер"></div>
+					<!--<img src="deck/ability.png" alt="Лого" class="leader__logo" id="factionLogo">-->
                 </div>
-				
+		<!--
 				<div class="faction-ability">
                     <div class="faction-ability__header">
                         <h3>СПОСОБНОСТЬ ЛИДЕРА</h3>
@@ -381,7 +382,7 @@ function createDeckBuildingHTML() {
                         </div>
                     </div>
                 </div>
-				
+		-->
                 <div class="stats-info">
                     <div class="stat-group">
                         <span class="stat-label">Карт в колоде</span>
@@ -645,7 +646,8 @@ function setupLeaderVideoControls() {
                 type: 'leader',
                 faction: faction.id,
                 image: `leader.mp4`,
-                descriptionfull: `${faction.description}`,
+                description: `${faction.description}`,
+                descriptionfull: `${faction.descriptionfull}`,
                 ability: `${faction.id}_ability`,
                 rarity: 'gold',
                 tags: ['leader'],
@@ -807,9 +809,6 @@ function createCardElement(card, context) {
             <div class="card__name">${card.name}</div>
             ${topRightElement}
             ${positionElement}
-            <div class="card__description">
-                <div class="card__description-text">${card.description}</div>
-            </div>
         </div>
     `;
     
@@ -821,12 +820,6 @@ function createCardElement(card, context) {
         event.preventDefault();
         handleCardClick(card, context, event);
     });
-    
-    if (context === 'collection') {
-        setupCardHoverEffects(cardElement);
-    } else if (context === 'deck') {
-        setupCardHoverEffects(cardElement);
-    }
     
     if (isVideo && cardDisplayMode === 'animated') {
         setupVideoControls(cardElement);
@@ -1040,11 +1033,11 @@ function createCardInfoHTML(card) {
         ${card.tags && card.tags.length > 0 ? `
 		<div class="card-modal__abilities">
 			<div class="card-modal__abilities-title">Теги</div>
-			${localizeTags(card.tags).map(tag => `
-				<div class="card-modal__ability">
-					<div class="card-modal__ability-description">${tag}</div>
-				</div>
-			`).join('')}
+			<div class="tags-container ${card.tags.length > 6 ? 'tags-container-3col' : 'tags-container-2col'}">
+				${localizeTags(card.tags).map(tag => `
+					<div class="card-tag">${tag}</div>
+				`).join('')}
+			</div>
 		</div>
 		` : ''}
     `;
@@ -1104,26 +1097,6 @@ function setupVideoControls(cardElement) {
     cardElement.addEventListener('contextmenu', () => {
         video.pause();
         video.currentTime = 0;
-    });
-}
-
-function setupCardHoverEffects(cardElement) {
-    const card = cardElement;
-    const description = card.querySelector('.card__description');
-    
-    card.addEventListener('mouseenter', () => {
-        description.style.transform = 'translateY(0)';
-        description.style.opacity = '1';
-    });
-    
-    card.addEventListener('mouseleave', () => {
-        description.style.transform = 'translateY(100%)';
-        description.style.opacity = '0';
-    });
-    
-    card.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-        audioManager.playSound('button');
     });
 }
 
@@ -1627,14 +1600,13 @@ function showMessage(text) {
     const messageBox = document.createElement('div');
     messageBox.className = 'message-box';
     messageBox.style.cssText = `
-        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-        border: 3px solid #d4af37;
-        border-radius: 15px;
-        padding: 30px;
+        background: url('ui/fon.jpg') no-repeat center center fixed;
+        border: 1px solid #d4af37;
+        border-radius: 10px;
+        padding: 20px;
         color: #fff;
         text-align: center;
-        max-width: 500px;
-        width: 80%;
+        max-width: 400px;
         box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
         position: relative;
     `;
@@ -1644,19 +1616,20 @@ function showMessage(text) {
     title.style.cssText = `
         color: #d4af37;
         margin: 0 0 15px 0;
-        font-size: 24px;
+        font-size: 25px;
         text-transform: uppercase;
         letter-spacing: 2px;
         text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        -webkit-text-stroke: 0.2px black;
     `;
     
     const messageText = document.createElement('div');
     messageText.innerHTML = text.replace(/\n\n/g, '<br><br>');
     messageText.style.cssText = `
-        font-size: 16px;
-        line-height: 1.5;
-        margin-bottom: 20px;
+        font-size: 15px;
+        margin-bottom: 15px;
         color: #ccc;
+        -webkit-text-stroke: 0.2px black;
     `;
     
     const closeButton = document.createElement('button');
@@ -1707,6 +1680,7 @@ function showMessage(text) {
     }, 10);
     
     audioManager.playSound('button');
+	audioManager.playSound('warning');
     
     setTimeout(() => {
         if (document.body.contains(overlay)) {
