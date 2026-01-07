@@ -285,19 +285,51 @@ const factionAbilitiesModule = {
 				return cardsToResurrect;
 			}
 		},
+		'syndicate': {
+            id: 'syndicate',
+            name: 'Синдикат',
+            effect: 'cancel_opponent_mulligan',
+            description: 'Отмене фазы Муллигана противника',
+            isActive: false,
+            applyEffect: function(gameState) {
+                return true;
+            },
+            cancelOpponentMulligan: function(gameState, affectedPlayer) {
+                if (affectedPlayer === 'player') {
+                    gameState.mulligan.player.available = 0;
+                    gameState.mulligan.player.used = 0;
+                } else if (affectedPlayer === 'opponent') {
+                    gameState.mulligan.opponent.available = 0;
+                    gameState.mulligan.opponent.used = 0;
+                }
+                
+                gameState.mulligan.canceledFor = affectedPlayer;
+                
+                return true;
+            }
+        },
     },
 
     init: function(gameState) {
         const playerFaction = gameState.player.faction;
+        const opponentFaction = gameState.opponent.faction;
+        
         if (playerFaction && this.abilities[playerFaction]) {
             this.abilities[playerFaction].isActive = true;
             this.abilities[playerFaction].applyEffect(gameState);
         }
         
-        const opponentFaction = gameState.opponent.faction;
         if (opponentFaction && this.abilities[opponentFaction]) {
             this.abilities[opponentFaction].isActive = true;
             this.abilities[opponentFaction].applyEffect(gameState);
+        }
+        
+        if (playerFaction === 'syndicate') {
+            this.abilities['syndicate'].cancelOpponentMulligan(gameState, 'opponent');
+        }
+        
+        if (opponentFaction === 'syndicate') {
+            this.abilities['syndicate'].cancelOpponentMulligan(gameState, 'player');
         }
     },
 

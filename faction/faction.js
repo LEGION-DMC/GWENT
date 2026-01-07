@@ -6,7 +6,7 @@ const factionsData = {
 		description: 'Княгиня Дол Блатанны',
         descriptionfull: 'Когда-то Большой землей владели Старшие расы: эльфы, краснолюды, гномы. Люди оттеснили их в захолустье, в горы, в густые леса — и ждут, пока те вымрут от голода и болезней. Но это вовсе не ослабляет их желания бунтовать, а лишь усиливает его. В конце концов им нечего терять.',
         ability: 'Право выбора первого хода',
-		logo: 'faction/scoiatael/faction.png',
+		logo: 'faction/scoiatael/logo_faction.png',
         background: 'faction/scoiatael/fon_faction.jpg',
     },
     realms: {
@@ -16,7 +16,7 @@ const factionsData = {
 		description: 'Король Темерии',
         descriptionfull: 'Ни при одном дворе, ни в одной библиотеке, ни в одной академии нет точной карты Королевств Севера. Ибо стоит картографу провести последнюю черту, как один из многочисленных королей, принцев или маркграфов уже атакует соседа и переносит границу. Без конца кто-то с кем-то воюет.',
         ability: 'Замена до 3 карт на этапе Муллиганы',
-		logo: 'faction/realms/faction.png',
+		logo: 'faction/realms/logo_faction.png',
         background: 'faction/realms/fon_faction.jpg',
     },
     nilfgaard: {
@@ -26,7 +26,7 @@ const factionsData = {
 		description: 'IV Император Нильфгаарда',
         descriptionfull: 'Вся Большая земля дрожит от чеканного шага тяжеловооруженных нильфгаардских пехотинцев. За ними следом движутся плюющие огнем боевые машины, златоустые эмиссары, наемные убийцы с окровавленными стилетами. Жители Севера с ужасом наблюдают за этим походом из-за полуприкрытых ставен и шепчут слова молитвы',
         ability: 'Победа в раунде при ничьей',
-		logo: 'faction/nilfgaard/faction.png',
+		logo: 'faction/nilfgaard/logo_faction.png',
         background: 'faction/nilfgaard/fon_faction.jpg',
     },
     monsters: {
@@ -36,7 +36,7 @@ const factionsData = {
 		description: 'Командир Дикой Охоты',
         descriptionfull: 'Людям нравится думать, что они хозяева Большой земли. Но достаточно сойти с привычного большака или навострить ухо во время полнолуния, как станет ясно, насколько далека эта мысль от истины. Посреди лесной чащи, в тенистых оврагах и сырых погребах покинутых домов сверкает множество глаз и мокрых от слюны клыков.',
         ability: 'Сохранение 1 размещённой карты, в конце раунда',
-		logo: 'faction/monsters/faction.png',
+		logo: 'faction/monsters/logo_faction.png',
         background: 'faction/monsters/fon_faction.jpg',
     },
     skellige: {
@@ -45,22 +45,20 @@ const factionsData = {
         leaderName: 'Бран Тиршах',
 		description: 'Король Скеллиге',
         descriptionfull: 'В сотнях миль от восточного побережья Большой земли лежат острова Скеллиге. В сравнении с Королевствами Севера или Нильфгаардской империей они нечтожно малы. Хотя многие пытались захватить Скеллиге. Останки их кораблей до сих пор торчат среди скал, а воины-островитяне пьют мед из их заржавленных шлемов.',
-        ability: 'Возврат 2 карт из Сброса, в 3 раунде',
-		logo: 'faction/skellige/faction.png',
+        ability: 'Возврат 2 карт из Сброса в 3 раунде',
+		logo: 'faction/skellige/logo_faction.png',
         background: 'faction/skellige/fon_faction.jpg',
     },
-	/*
 	syndicate: {
         id: 'syndicate',
         name: 'Синдикат',
         leaderName: 'Тесак',
 		description: 'Предводитель группировки «Златорубы»',
         descriptionfull: 'Одни сражаются за честь, а другие — за империю. Одни сражаются за короля, а другие — за свободу. Те, кто состоит в Синдикате «Большой четврки», не станут сражаться ни за что, кроме богатства. И если щедро им заплатить, они будут готовы для вас на любые деяния… Даже самые чудовищные.',
-        ability: 'Замена 1 карты в начале каждого раунда',
-		logo: 'faction/syndicate/faction.png',
+        ability: 'Отмена фазы Муллиганы противника',
+		logo: 'faction/syndicate/logo_faction.png',
         background: 'faction/syndicate/fon_faction.jpg',
     },
-	*/
 };
 
 let selectedFaction = null;  

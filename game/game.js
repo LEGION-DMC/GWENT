@@ -380,31 +380,35 @@ const gameModule = {
     },
 
     startMulliganPhase: function() {
-        this.hideTimerDisplay();
-		this.resetMulliganState();
-        const playerIsRealms = this.gameState.player.faction === 'realms';
-        const opponentIsRealms = this.gameState.opponent.faction === 'realms';
-        
-        if (playerIsRealms) {
-            this.gameState.mulligan.player.available = 3;
-        }
-        
-        if (opponentIsRealms) {
-            this.gameState.mulligan.opponent.available = 3;
-        }
-        
-        this.startPlayerMulligan();
-    },
+		this.hideTimerDisplay();
+		
+		this.gameState.mulligan.phase = 'waiting';
+		this.gameState.mulligan.player.used = 0;
+		this.gameState.mulligan.player.cards = [];
+		this.gameState.mulligan.opponent.used = 0;
+		this.gameState.mulligan.opponent.cards = [];
+		
+		const playerIsRealms = this.gameState.player.faction === 'realms';
+		const opponentIsRealms = this.gameState.opponent.faction === 'realms';
+		
+		if (playerIsRealms && this.gameState.mulligan.player.available > 0) {
+			this.gameState.mulligan.player.available = 3;
+		}
+		
+		if (opponentIsRealms && this.gameState.mulligan.opponent.available > 0) {
+			this.gameState.mulligan.opponent.available = 3;
+		}
+
+		this.startPlayerMulligan();
+	},
 
     resetMulliganState: function() {
-        this.gameState.mulligan.phase = 'waiting';
-        this.gameState.mulligan.player.available = 2;
-        this.gameState.mulligan.player.used = 0;
-        this.gameState.mulligan.player.cards = [];
-        this.gameState.mulligan.opponent.available = 2;
-        this.gameState.mulligan.opponent.used = 0;
-        this.gameState.mulligan.opponent.cards = [];
-    },
+		this.gameState.mulligan.phase = 'waiting';
+		this.gameState.mulligan.player.used = 0;
+		this.gameState.mulligan.player.cards = [];
+		this.gameState.mulligan.opponent.used = 0;
+		this.gameState.mulligan.opponent.cards = [];
+	},
 
     showMulliganIntro: function() {
         this.startPlayerMulligan();
@@ -651,13 +655,89 @@ const gameModule = {
     },
 
     displayPlayerHandForMulligan: function() {
-        const handContainer = document.getElementById('playerHand');
-        if (!handContainer) return;
+		const handContainer = document.getElementById('playerHand');
+		if (!handContainer) return;
 
-        const originalStyles = handContainer.style.cssText;
-        handContainer.innerHTML = '';
-        handContainer.classList.add('mulligan-active');
+		const originalStyles = handContainer.style.cssText;
+		handContainer.innerHTML = '';
+		handContainer.classList.add('mulligan-active');
+		
+		const playerMulliganCanceled = this.gameState.mulligan.player.available === 0;
+		
+		if (playerMulliganCanceled) {
+			const overlay = document.createElement('div');
+			overlay.id = 'mulligan-overlay';
+			overlay.style.cssText = `
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				background: rgba(0, 0, 0, 0.9);
+				backdrop-filter: blur(3px);
+				z-index: 9998;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			`;
+			
+			const messageContainer = document.createElement('div');
+			messageContainer.style.cssText = `
+				text-align: center;
+				margin-top: -100px;
+			`;
+			
+			const lockImage = document.createElement('img');
+			lockImage.src = 'board/lock.png';
+			lockImage.alt = 'Заблокировано';
+			lockImage.style.cssText = `
+				width: 150px;
+				height: 150px;
+				margin: 20px auto;
+				display: block;
+				filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+			`;
+			
+			const title = document.createElement('div');
+			title.textContent = 'МУЛЛИГАН ЗАБЛОКИРОВАН';
+			title.style.cssText = `
+				color: #f44336;
+				font-family: 'Gwent', sans-serif;
+				font-size: 28px;
+				-webkit-text-stroke: 0.2px black;
+				text-transform: uppercase;
+				letter-spacing: 3px;
+				margin-bottom: 20px;
+				text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+			`;
+			
+			const description = document.createElement('div');
+			description.textContent = 'Способность фракции Синдикат';
+			description.style.cssText = `
+				color: #aaa;
+				font-family: 'Gwent', sans-serif;
+				font-size: 18px;
+				margin-bottom: 30px;
+			`;
+			
+			messageContainer.appendChild(lockImage);
+			messageContainer.appendChild(title);
+			messageContainer.appendChild(description);
+			overlay.appendChild(messageContainer);
         
+			document.body.appendChild(overlay);
+			setTimeout(() => {
+				audioManager.playSound('button');
+				const existingOverlay = document.getElementById('mulligan-overlay');
+				if (existingOverlay) {
+					existingOverlay.remove();
+				}
+				this.completePlayerMulligan();
+			}, 2000);
+			
+			return;
+		}
+	
         const frameWrapper = document.createElement('div');
         frameWrapper.id = 'mulligan-frame-wrapper';
         frameWrapper.style.cssText = `
@@ -846,18 +926,18 @@ const gameModule = {
     },
 
     completePlayerMulligan: function() {
-        const mulliganState = this.gameState.mulligan.player;
-        
-        if (mulliganState.cards.length !== 0) {
-            this.replaceMulliganCards('player');
-        }
-        
-        this.removeMulliganInterface();
-        
-        setTimeout(() => {
-            this.startOpponentMulligan();
-        }, 1000);
-    },
+		const mulliganState = this.gameState.mulligan.player;
+		
+		if (mulliganState.available > 0 && mulliganState.cards.length !== 0) {
+			this.replaceMulliganCards('player');
+		}
+		
+		this.removeMulliganInterface();
+		
+		setTimeout(() => {
+			this.startOpponentMulligan();
+		}, 1000);
+	},
 
     replaceMulliganCards: function(player) {
         const mulliganState = this.gameState.mulligan[player];
@@ -910,35 +990,49 @@ const gameModule = {
     },
 
     startOpponentMulligan: function() {
-        this.gameState.mulligan.phase = 'opponent';
-        this.removeMulliganInterface();
-        
-        setTimeout(() => {
-            this.performOpponentMulligan();
-        }, 1500);
-    },
+		this.gameState.mulligan.phase = 'opponent';
+		this.removeMulliganInterface();
+		
+		const opponentHasMulligan = this.gameState.mulligan.opponent.available > 0;
+					
+			setTimeout(() => {
+				this.completeMulliganPhase();
+			}, 1500);
+			return;
+		}
+		
+		setTimeout(() => {
+			this.performOpponentMulligan();
+		}, 1500);
+	},
 
     performOpponentMulligan: function() {
-        const mulliganState = this.gameState.mulligan.opponent;
-        const hand = this.gameState.opponent.hand;
-        
-        const weakCards = hand
-            .filter(card => card.type === 'unit')
-            .sort((a, b) => (a.strength || 0) - (b.strength || 0))
-            .slice(0, Math.min(2, hand.length));
-        
-        if (weakCards.length === 0) {
-            weakCards.push(...hand.slice(0, Math.min(2, hand.length)));
-        }
-        
-        mulliganState.cards = weakCards.slice(0, mulliganState.available);
-        
-        if (mulliganState.cards.length > 0) {
-            this.replaceMulliganCards('opponent');
-        }
-        
-        this.completeMulliganPhase();
-    },
+		const mulliganState = this.gameState.mulligan.opponent;
+		
+		if (mulliganState.available === 0) {
+			this.completeMulliganPhase();
+			return;
+		}
+		
+		const hand = this.gameState.opponent.hand;
+		
+		const weakCards = hand
+			.filter(card => card.type === 'unit')
+			.sort((a, b) => (a.strength || 0) - (b.strength || 0))
+			.slice(0, Math.min(2, hand.length));
+		
+		if (weakCards.length === 0) {
+			weakCards.push(...hand.slice(0, Math.min(2, hand.length)));
+		}
+		
+		mulliganState.cards = weakCards.slice(0, mulliganState.available);
+		
+		if (mulliganState.cards.length > 0) {
+			this.replaceMulliganCards('opponent');
+		}
+		
+		this.completeMulliganPhase();
+	},
 
     removeMulliganInterface: function() {
         this.restoreGameBoardAfterMulligan();

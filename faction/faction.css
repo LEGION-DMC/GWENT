@@ -47,8 +47,8 @@
 }
 
 .faction-card__logo {
-    width: 70%;
-    height: 70%;
+    width: 75%;
+    height: 75%;
     object-fit: contain;
     position: absolute;
     top: 50%;
@@ -56,10 +56,6 @@
     transform: translate(-50%, -50%);
     transition: all 0.3s ease;
     cursor: url('../ui/cursor_hover.png'), pointer;
-}
-
-.faction-card:hover .faction-card__logo {
-    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
 }
 
 .faction-card--selected .faction-card__logo {

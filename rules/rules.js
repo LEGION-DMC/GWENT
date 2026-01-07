@@ -52,16 +52,16 @@ const rulesData = {
 						<p style="color: #6a66d3; font-style: italic;">Способность колоды состоит в том, что в третьем раунде две случайные карты из отбоя возвращаются в игру.</p>
 					</div>
                 </div>
-				<!--
+
 				<div class="bloc-rule">	
 					<img src="faction/syndicate/logo_faction.png" alt="Синдикат" class="rule-modal__image">	
 					<div class="faction">
 						<h3>Синдикат</h3>
-						<p>другие — за империю. Одни сражаются за короля, а другие — за свободу. Те, кто состоит в Синдикате, не станут сражаться ни за что, кроме богатства.</p>
-						<p style="color: #6a66d3; font-style: italic;">Способность колоды состоит в том, что ...</p>
+						<p>Одни сражаются за честь, а другие — за свободу. Те, кто состоит в Синдикате, не станут сражаться ни за что, кроме богатства.</p>
+						<p style="color: #6a66d3; font-style: italic;">Способность колоды состоит в том, что перед началом раунда отменяет фазу Муллиганы противника.</p>
 					</div>
                 </div> 
-				-->
+
 				<div class="bloc-rule">	
 					<img src="faction/neutral/logo_faction.png" alt="Нейтралитет" class="rule-modal__image">	
 					<div class="faction">
