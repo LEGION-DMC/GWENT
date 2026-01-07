@@ -665,6 +665,8 @@ const gameModule = {
 		const playerMulliganCanceled = this.gameState.mulligan.player.available === 0;
 		
 		if (playerMulliganCanceled) {
+			audioManager.playSound('lock');
+			
 			const overlay = document.createElement('div');
 			overlay.id = 'mulligan-overlay';
 			overlay.style.cssText = `
@@ -733,7 +735,7 @@ const gameModule = {
 					existingOverlay.remove();
 				}
 				this.completePlayerMulligan();
-			}, 2000);
+			}, 2500);
 			
 			return;
 		}
@@ -994,7 +996,8 @@ const gameModule = {
 		this.removeMulliganInterface();
 		
 		const opponentHasMulligan = this.gameState.mulligan.opponent.available > 0;
-					
+		
+		if (!opponentHasMulligan) {
 			setTimeout(() => {
 				this.completeMulliganPhase();
 			}, 1500);

@@ -22,7 +22,9 @@ const audioManager = {
         const soundFiles = {
             button: 'sfx/button.mp3',
             touch: 'sfx/touch.mp3',
+			
             warning: 'sfx/warning.mp3',
+            lock: 'sfx/lock.mp3',
 			
             cardAdd: 'sfx/card_add.mp3',
             cardRemove: 'sfx/card_remove.mp3',
