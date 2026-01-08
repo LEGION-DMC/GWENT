@@ -3833,7 +3833,7 @@ const gameModule = {
 						width: 200px;
                     ">В ГЛАВНОЕ МЕНЮ</button>
                     
-                    <button class="menu-btn" style="
+                    <button class="redeck-btn" style="
 						background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 						color: #d4af37;
 						border: 1px solid #d4af37; 
@@ -3857,32 +3857,181 @@ const gameModule = {
         document.body.appendChild(resultOverlay);
         
         const restartBtn = resultOverlay.querySelector('.restart-btn');
-        const menuBtn = resultOverlay.querySelector('.menu-btn');
+        const redeckBtn = resultOverlay.querySelector('.redeck-btn');
         
         restartBtn.addEventListener('click', () => {
             audioManager.playSound('button');
             document.body.removeChild(resultOverlay);
-            this.restartGame();
-        });
-        
-        menuBtn.addEventListener('click', () => {
-            audioManager.playSound('button');
-            document.body.removeChild(resultOverlay);
             this.returnToMainMenu();
         });
-    },
-
-    restartGame: function() {
-        window.location.reload();
+        
+        redeckBtn.addEventListener('click', () => {
+            audioManager.playSound('button');
+            document.body.removeChild(resultOverlay);
+            this.redeckGame();
+        });
     },
 
     returnToMainMenu: function() {
-        const gameBoard = document.querySelector('.game-board');
-        const startPage = document.querySelector('.start-page');
-        
-        if (gameBoard) gameBoard.style.display = 'none';
-        if (startPage) startPage.style.display = 'block';
+        window.location.reload();
     },
+
+    redeckGame: function() {
+    // Сохраняем текущую фракцию игрока перед сбросом
+    const currentPlayerFaction = this.gameState.player.faction;
+    
+    // Останавливаем все таймеры
+    this.stopTurnTimer();
+    
+    // Сбрасываем состояние игры
+    this.resetGameState();
+    
+    // Удаляем игровое поле
+    const gameBoard = document.querySelector('.game-board');
+    if (gameBoard) {
+        gameBoard.remove();
+    }
+    
+    // Удаляем оверлей результатов игры, если он есть
+    const gameResultOverlay = document.querySelector('.game-result-overlay');
+    if (gameResultOverlay) {
+        gameResultOverlay.remove();
+    }
+    
+    // Удаляем модальные окна, если есть
+    const modals = document.querySelectorAll('.card-modal-overlay, .deck-modal-overlay, .round-result-overlay');
+    modals.forEach(modal => modal.remove());
+    
+    // Также удаляем декбилдинг если он уже есть на странице
+    const deckBuilding = document.querySelector('.deck-building');
+    if (deckBuilding) {
+        deckBuilding.remove();
+    }
+    
+    // Возвращаем к сбору колоды для той же фракции
+    if (window.factionModule && currentPlayerFaction) {
+        // Получаем данные фракции
+        const factionData = window.factionModule.factionsData[currentPlayerFaction];
+        if (factionData) {
+            // Инициализируем сбор колоды для этой фракции
+            if (window.deckModule && window.deckModule.initDeckBuilding) {
+                window.deckModule.initDeckBuilding(factionData);
+            }
+        } else {
+            // Если не нашли данные фракции, перезагружаем страницу
+            window.location.reload();
+        }
+    } else {
+        // Если модуль фракций не загружен, перезагружаем страницу
+        window.location.reload();
+    }
+},
+
+	resetGameState: function() {
+		const playerFaction = this.gameState.player.faction;
+		const playerAbility = this.gameState.player.ability;
+		
+		this.gameState = {
+			player: {
+				deck: [],
+				hand: [],
+				discard: [],
+				leader: null,
+				faction: playerFaction, 
+				ability: playerAbility,
+				rows: {
+					'close': { cards: [], strength: 0, tactic: null },
+					'ranged': { cards: [], strength: 0, tactic: null },
+					'siege': { cards: [], strength: 0, tactic: null }
+				},
+				passed: false,
+				score: 0
+			},
+			opponent: {
+				deck: [],
+				hand: [],
+				discard: [],
+				leader: null,
+				faction: null,
+				ability: null,
+				rows: {
+					'close': { cards: [], strength: 0, tactic: null },
+					'ranged': { cards: [], strength: 0, tactic: null },
+					'siege': { cards: [], strength: 0, tactic: null }
+				},
+				passed: false,
+				score: 0
+			},
+			weather: {
+				cards: [],
+				maxWeatherCards: 3,
+				effects: {
+					'close': null,
+					'ranged': null, 
+					'siege': null
+				}
+			},
+			currentRound: 1,
+			totalRounds: 3,
+			roundsWon: {
+				player: 0,
+				opponent: 0
+			},
+			currentPlayer: 'player',
+			gamePhase: 'setup',
+			selectedCard: null,
+			selectingRow: false,
+			cardsPlayedThisTurn: 0, 
+			maxCardsPerTurn: 1, 
+			gameSettings: {
+				mode: 'cdpred',
+				initialHandSize: 10,
+				cardsPerRound: 1,
+				totalRounds: 3
+			},
+			mulligan: {
+				enabled: true,
+				phase: 'waiting',
+				player: {
+					available: 2,
+					used: 0,    
+					cards: []    
+				},
+				opponent: {
+					available: 2, 
+					used: 0,    
+					cards: []    
+				}
+			},
+			turnTimer: {
+				active: false,
+				timeLeft: 60,
+				maxTime: 60,
+				intervalId: null,
+				timeouts: 0,
+				maxTimeouts: 2, 
+				penaltyApplied: false 
+			},
+			roundLossDueToTimeout: null,
+			roundResults: [],
+			roundsWon: {
+				player: 0,
+				opponent: 0
+			},
+		};
+		
+		if (window.aiModule && window.aiModule.reset) {
+			window.aiModule.reset();
+		}
+		
+		if (window.playerModule) {
+			window.playerModule.gameState = this.gameState;
+		}
+		
+		if (window.aiModule) {
+			window.aiModule.gameState = this.gameState;
+		}
+	},
 
     getTypeIconPath: function(cardType) {
         const typeIcons = {

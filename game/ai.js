@@ -7,6 +7,11 @@ const aiModule = {
         this.usedCardIds.clear();
     },
     
+	reset: function() {
+		this.usedCardIds.clear();
+		this.gameState = null;
+	},
+
     makeMove: function() {
         if (this.gameState.opponent.passed) {
             this.endAITurn();
@@ -222,7 +227,7 @@ const aiModule = {
         }
         
         return availableRows.filter(row => 
-            this.gameState.opponent.rows[row].cards.length < 9
+            this.gameState.opponent.rows[row].cards.length < 8
         );
     },
     
@@ -358,7 +363,7 @@ const aiModule = {
         let score = 0;
         
         const cardCount = this.gameState.opponent.rows[row].cards.length;
-        score += (9 - cardCount) * 2;
+        score += (8 - cardCount) * 2;
         
         if (this.gameState.weather.effects[row]) {
             score -= 50;
@@ -518,11 +523,7 @@ const aiModule = {
             }
         }
     },
-    
-    reset: function() {
-        this.usedCardIds.clear();
-    },
-
+   
     isWeatherCard: function(card) {
         return (card.tags && card.tags.includes('weather')) || 
                (card.type === 'special' && this.isWeatherCardByName(card.name));

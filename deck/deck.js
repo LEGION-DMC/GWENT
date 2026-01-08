@@ -279,9 +279,47 @@ let displayedCollectionCards = [];
 
 function initDeckBuilding(faction) {
     window.selectedFaction = faction;
-    currentDeck.faction = faction.id;
-    currentDeck.ability = defaultAbilities[faction.id];
-    currentDeck.cards = [];
+    
+    const savedDeck = localStorage.getItem(`gwent_deck_${faction.id}`);
+    
+    if (savedDeck) {
+        try {
+            const deckData = JSON.parse(savedDeck);
+            if (deckData.faction === faction.id) {
+                currentDeck.faction = deckData.faction;
+                currentDeck.ability = deckData.ability || defaultAbilities[faction.id];
+                currentDeck.cards = [];
+                
+                const factionCards = window.cardsModule.getFactionCards(faction.id);
+                const allCards = [
+                    ...factionCards.units,
+                    ...factionCards.specials,
+                    ...factionCards.artifacts,
+                    ...factionCards.tactics
+                ];
+                
+                deckData.cards.forEach(cardId => {
+                    const card = allCards.find(c => c.id === cardId);
+                    if (card) {
+                        currentDeck.cards.push(card);
+                    }
+                });
+            } else {
+                currentDeck.faction = faction.id;
+                currentDeck.ability = defaultAbilities[faction.id];
+                currentDeck.cards = [];
+            }
+        } catch (e) {
+            currentDeck.faction = faction.id;
+            currentDeck.ability = defaultAbilities[faction.id];
+            currentDeck.cards = [];
+        }
+    } else {
+        currentDeck.faction = faction.id;
+        currentDeck.ability = defaultAbilities[faction.id];
+        currentDeck.cards = [];
+    }
+    
     hideFactionSelection();
     createDeckBuildingHTML();
     loadFactionCards(faction);
@@ -736,7 +774,6 @@ function backToFactionSelection() {
         }, 800);
     }
 }
-
 
 function displayCollectionCards() {
     const collectionGrid = document.getElementById('collectionGrid');

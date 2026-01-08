@@ -311,7 +311,7 @@ const playerModule = {
     },
     
     placeUnitCard: function(card, row) {
-        if (this.gameState.player.rows[row].cards.length >= 9) {
+        if (this.gameState.player.rows[row].cards.length >= 8) {
             this.showMessage('В этом ряду уже максимальное количество карт!');
             return;
         }
