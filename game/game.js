@@ -126,19 +126,20 @@ const gameModule = {
     },
 
     createTimerDisplay: function() {
-        if (document.getElementById('turnTimerDisplay')) return;
-        
-        const timerDisplay = document.createElement('div');
-        timerDisplay.id = 'turnTimerDisplay';
-        timerDisplay.className = 'turn-timer-display';
-        timerDisplay.style.display = 'none';
-        
-        timerDisplay.innerHTML = `
-            <div class="timer-time" id="timerTime">60</div>
-            <div class="timer-label">сек.</div>
-        `;
-        document.body.appendChild(timerDisplay);
-    },
+		if (document.getElementById('turnTimerDisplay')) return;
+		
+		const timerDisplay = document.createElement('div');
+		timerDisplay.id = 'turnTimerDisplay';
+		timerDisplay.className = 'turn-timer-display';
+		timerDisplay.style.display = 'none';
+		
+		timerDisplay.innerHTML = `
+			<img src="board/timer.png" alt="Песочные часы" class="timer-icon">
+			<div class="timer-time" id="timerTime">60</div>
+			<div class="timer-label">сек.</div>
+		`;
+		document.body.appendChild(timerDisplay);
+	},
 
     updateTimerDisplay: function() {
         const timerTime = document.getElementById('timerTime');
@@ -333,13 +334,13 @@ const gameModule = {
         style.textContent = `
             .turn-timer-display {
                 position: fixed !important;
-                top: 65% !important;
+                top: 62% !important;
                 right: 2.5% !important;
                 transform: translateX(-50%) !important;
                 background: rgba(0, 0, 0, 0.8) !important;
-                border: 2px solid #d4af37 !important;
+                border: 1px solid #d4af37 !important;
                 border-radius: 10px !important;
-                padding: 5px 20px !important;
+                padding: 3px 10px !important;
                 color: white !important;
                 font-family: 'Gwent', sans-serif !important;
                 font-size: 15px !important;
@@ -355,9 +356,9 @@ const gameModule = {
             }
             
             @keyframes timerPulse {
-                0% { box-shadow: 0 0 5px rgba(255, 68, 68, 0.5); }
-                50% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.8); }
-                100% { box-shadow: 0 0 5px rgba(255, 68, 68, 0.5); }
+                0% { box-shadow: 0 0 5px rgba(244, 0, 0, 0.5); }
+                50% { box-shadow: 0 0 20px rgba(244, 0, 0, 0.8); }
+                100% { box-shadow: 0 0 5px rgba(244, 0, 0, 0.5); }
             }
             
             @keyframes pulse {
@@ -387,18 +388,6 @@ const gameModule = {
 		this.gameState.mulligan.player.cards = [];
 		this.gameState.mulligan.opponent.used = 0;
 		this.gameState.mulligan.opponent.cards = [];
-		
-		const playerIsRealms = this.gameState.player.faction === 'realms';
-		const opponentIsRealms = this.gameState.opponent.faction === 'realms';
-		
-		if (playerIsRealms && this.gameState.mulligan.player.available > 0) {
-			this.gameState.mulligan.player.available = 3;
-		}
-		
-		if (opponentIsRealms && this.gameState.mulligan.opponent.available > 0) {
-			this.gameState.mulligan.opponent.available = 3;
-		}
-
 		this.startPlayerMulligan();
 	},
 
@@ -1159,8 +1148,7 @@ const gameModule = {
                 font-weight: bold;
                 text-transform: uppercase;
                 letter-spacing: 3px;
-                text-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
-                animation: titlePulse 2s infinite;
+                text-shadow: 0 2px 10px rgba(212, 175, 55, 0.2);
             }
             
             @keyframes titlePulse {

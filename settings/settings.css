@@ -43,13 +43,11 @@
     margin-bottom: 10px;
     text-transform: uppercase;
     text-align: center;
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 }
 
 .settings-title {
     color: #d4af37;                
     font-size: 18px;
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 }
 
 .settings-controls {

@@ -17,13 +17,13 @@
 }
 
 .rules-title {
-    font-size: 40px;            
+    font-size: 35px;            
     margin-bottom: 30px;        
     margin-top: 45px;         
     text-transform: uppercase;
     letter-spacing: 3px;          
     color: #d4af37;     
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
 }
 
 .rules-grid {

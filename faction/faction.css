@@ -20,7 +20,7 @@
     text-transform: uppercase;
     letter-spacing: 3px;
     color: #d4af37;        
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
 }
 
 .faction-selection__container {
@@ -79,7 +79,7 @@
     text-transform: uppercase;
     letter-spacing: 3px;
     color: #d4af37;        
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
 }
 
 .faction-description__text {
@@ -90,18 +90,17 @@
 }
 
 .confirm-btn {
-    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    background: none;
     color: #d4af37;
     border: 1px solid #d4af37;
     padding: 10px 30px;
-    font-size: 20px;
+    font-size: 21px;
     font-family: 'Gwent', sans-serif;
     text-transform: uppercase;
     letter-spacing: 2px;
     cursor: url('../ui/cursor_hover.png'), pointer;
     transition: all 0.3s ease;
     border-radius: 5px; 
-    box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
     opacity: 0;
     transform: translateY(30px);
     pointer-events: none;
@@ -110,12 +109,12 @@
 }
 
 .confirm-btn:hover {
-    scale: 1.05;
-    box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
+    scale: 1.03;
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.3);
 }
 
 .confirm-btn:active {
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
 }
 
 .confirm-btn::before {

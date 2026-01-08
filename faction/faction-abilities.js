@@ -7,8 +7,6 @@ const factionAbilitiesModule = {
             description: 'Доступно 3 муллиганы вместо 2',
             isActive: false,
             applyEffect: function(gameState) {
-                gameState.mulligan.player.available = 3;
-                gameState.mulligan.opponent.available = 3;
                 return true;
             }
         },
@@ -311,27 +309,32 @@ const factionAbilitiesModule = {
     },
 
     init: function(gameState) {
-        const playerFaction = gameState.player.faction;
-        const opponentFaction = gameState.opponent.faction;
-        
-        if (playerFaction && this.abilities[playerFaction]) {
-            this.abilities[playerFaction].isActive = true;
-            this.abilities[playerFaction].applyEffect(gameState);
-        }
-        
-        if (opponentFaction && this.abilities[opponentFaction]) {
-            this.abilities[opponentFaction].isActive = true;
-            this.abilities[opponentFaction].applyEffect(gameState);
-        }
-        
-        if (playerFaction === 'syndicate') {
-            this.abilities['syndicate'].cancelOpponentMulligan(gameState, 'opponent');
-        }
-        
-        if (opponentFaction === 'syndicate') {
-            this.abilities['syndicate'].cancelOpponentMulligan(gameState, 'player');
-        }
-    },
+		const playerFaction = gameState.player.faction;
+		const opponentFaction = gameState.opponent.faction;
+		
+		if (playerFaction && this.abilities[playerFaction]) {
+			this.abilities[playerFaction].isActive = true;
+			if (playerFaction === 'realms') {
+				gameState.mulligan.player.available = 3;
+			}
+			this.abilities[playerFaction].applyEffect(gameState);
+		}
+		
+		if (opponentFaction && this.abilities[opponentFaction]) {
+			this.abilities[opponentFaction].isActive = true;
+			if (opponentFaction === 'realms') {
+				gameState.mulligan.opponent.available = 3;
+			}
+			this.abilities[opponentFaction].applyEffect(gameState);
+		}
+		
+		if (playerFaction === 'syndicate') {
+			this.abilities['syndicate'].cancelOpponentMulligan(gameState, 'opponent');
+		}
+		if (opponentFaction === 'syndicate') {
+			this.abilities['syndicate'].cancelOpponentMulligan(gameState, 'player');
+		}
+	},
 
     checkRoundWinner: function(gameState, playerScore, opponentScore) {
         if (playerScore > opponentScore) return 'player';

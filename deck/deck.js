@@ -1614,13 +1614,12 @@ function showMessage(text) {
     const title = document.createElement('h3');
     title.textContent = 'ВНИМАНИЕ';
     title.style.cssText = `
-        color: #d4af37;
+        color: #e53935;
         margin: 0 0 15px 0;
         font-size: 25px;
         text-transform: uppercase;
         letter-spacing: 2px;
-        text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
-        -webkit-text-stroke: 0.2px black;
+        text-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
     `;
     
     const messageText = document.createElement('div');
@@ -1632,44 +1631,8 @@ function showMessage(text) {
         -webkit-text-stroke: 0.2px black;
     `;
     
-    const closeButton = document.createElement('button');
-    closeButton.textContent = 'ОК';
-    closeButton.style.cssText = `
-        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-        color: #d4af37;
-        border: 2px solid #d4af37;
-        border-radius: 5px;
-        padding: 10px 20px;
-        cursor: url('ui/cursor_hover.png'), pointer;
-        font-family: 'Gwent', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        transition: all 0.3s ease;
-    `;
-    
-    closeButton.addEventListener('mouseenter', () => {
-        closeButton.style.transform = 'translateY(-2px)';
-        closeButton.style.boxShadow = '0 5px 15px rgba(212, 175, 55, 0.3)';
-        closeButton.style.background = 'linear-gradient(145deg, #3a3a3a, #2a2a2a)';
-        closeButton.style.color = '#ffd700';
-        audioManager.playSound('touch');
-    });
-    
-    closeButton.addEventListener('mouseleave', () => {
-        closeButton.style.transform = 'translateY(0)';
-        closeButton.style.boxShadow = 'none';
-        closeButton.style.background = 'linear-gradient(145deg, #2a2a2a, #1a1a1a)';
-        closeButton.style.color = '#d4af37';
-    });
-    
-    closeButton.addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        audioManager.playSound('button');
-    });
-    
     messageBox.appendChild(title);
     messageBox.appendChild(messageText);
-    messageBox.appendChild(closeButton);
     overlay.appendChild(messageBox);
     
     document.body.appendChild(overlay);
@@ -1686,7 +1649,7 @@ function showMessage(text) {
         if (document.body.contains(overlay)) {
             document.body.removeChild(overlay);
         }
-    }, 5000);
+    }, 4500);
 }
 
 function sortCollection(type) {

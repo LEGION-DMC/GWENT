@@ -50,18 +50,17 @@ body {
 }
 
 .menu-btn {
-    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    background: none;
     color: #d4af37;
     border: 1px solid #d4af37; 
     padding: 10px;
-    font-size: 21px;
+    font-size: 25px;
     font-family: 'Gwent', sans-serif;
     text-transform: uppercase;
     letter-spacing: 3px; 
     cursor: url('ui/cursor_hover.png'), pointer;
     transition: all 0.3s ease; 
     border-radius: 5px; 
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
     position: relative;
     overflow: hidden;
     width: 200px;

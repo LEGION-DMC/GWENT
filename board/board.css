@@ -475,3 +475,8 @@
 .mulligan-selected {
     animation: cardSelectPulse 2s infinite;
 }
+
+.timer-icon {
+    width: 30px;
+    height: 30px;
+}
