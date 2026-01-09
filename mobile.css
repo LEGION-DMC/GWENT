@@ -211,3 +211,65 @@
     .player-rows-area .battle-row #playerCloseTactics { margin-top: 27.3%; }
     .player-rows-area .battle-row #playerCloseRow { margin-top: 27.3%; margin-left: -7%; }
 }
+
+@media (max-width: 762px) {
+    .board-background { width: 762px; height: 100%; }
+  
+    .leader-card-on-board { width: 45px; height: 67px; } 
+    .opponent-leader-area { top: 5.5%; left: 7%; }
+    .player-leader-area { bottom: 8.5%; left: 7%; }
+  
+    
+    .deck-slot { width: 76px; }
+    .deck-stack { width: 45px; height: 67px; }
+    .discard-stack { width: 45px; height: 67px; }
+    .opponent-decks-area { top: 5.5%; right: 0%; gap: 0px; }
+    .player-decks-area { bottom: -10.5%; right: 0%; gap: 0px; }
+  
+    .round-counter-area { top: 30%; right: 9.3%; }
+    .round-counter-area img { width: 45px; height: 100%}
+    
+    .opponent-total-score { top: -12%; left: -3.5%; width: 50px; height: 20px; display: flex; }
+    .player-total-score { bottom: -2%; left: -3.5%; width: 50px; height: 20px; display: flex; }
+    
+    .game-controls { bottom: 26.5%; right: 0%; }
+    .control-btn { font-size: 10px; padding: 5px }
+  
+    .hand-card { width: 30px; height: 42px; }
+    .player-hand-area { bottom: -1%; left: -8%;}
+    
+    .turn-timer-display { height: 30px; }
+    
+    .hand-card-strength { top: -1px; left: -0.5px; font-size: 13px; }
+    .board-card-strength { top: -2px;  left: 0px; font-size: 13px; } 
+  
+    .weather-card { width: 35px; height: 45px; }
+    .weather-card-container { top: -95%; left: -80px; } 
+  
+    .board-card { width: 35px; height: 45px; top: 0px;} 
+    
+    .board-card.tactic { width: 35px; height: 45px; top: 4px;} 
+    .tactics-slot { width: 50px; height: 50px; transform: translateX(-50px); }
+  
+    .opponent-rows-area { bottom: 59.8%; width: 376px; }
+    .opponent-rows-area .battle-row #opponentSiegeStrength { margin-top: 105.5%; margin-left: 5.5%; }
+    .opponent-rows-area .battle-row #opponentSiegeTactics { margin-top: 104%; }
+    .opponent-rows-area .battle-row #opponentSiegeRow { margin-top: 104%; margin-left: -17.5%; height: 50px; }
+    .opponent-rows-area .battle-row #opponentRangedStrength { margin-top: 58.5%; margin-left: 5.5%; }
+    .opponent-rows-area .battle-row #opponentRangedTactics { margin-top: 58%; }
+    .opponent-rows-area .battle-row #opponentRangedRow { margin-top: 58%; margin-left: -17.5%; height: 50px; }
+    .opponent-rows-area .battle-row #opponentCloseStrength { margin-top: 13.5%; margin-left: 5.5%; }
+    .opponent-rows-area .battle-row #opponentCloseTactics { margin-top: 12%; }
+    .opponent-rows-area .battle-row #opponentCloseRow { margin-top: 12%; margin-left: -17.5%; height: 50px; }
+  
+    .player-rows-area { bottom: 23.2%; width: 376px; } 
+    .player-rows-area .battle-row #playerSiegeStrength { margin-top: 19%; margin-left: 5.5%; }
+    .player-rows-area .battle-row #playerSiegeTactics { margin-top: 15%; }
+    .player-rows-area .battle-row #playerSiegeRow { margin-top: 18%; margin-left: -17.5%; height: 50px; }
+    .player-rows-area .battle-row #playerRangedStrength { margin-top: 62%; margin-left: 5.5%; }
+    .player-rows-area .battle-row #playerRangedTactics { margin-top: 60%; }
+    .player-rows-area .battle-row #playerRangedRow { margin-top: 61%; margin-left: -17.5%; height: 50px; }
+    .player-rows-area .battle-row #playerCloseStrength { margin-top: 106%; margin-left: 5.5%; }
+    .player-rows-area .battle-row #playerCloseTactics { margin-top: 105%; }
+    .player-rows-area .battle-row #playerCloseRow { margin-top: 105%; margin-left: -17.5%; height: 50px; }
+}
