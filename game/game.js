@@ -2152,16 +2152,38 @@ const gameModule = {
         });
     },
 
-    displayCardOnRow: function(row, card, player = 'player') {
-        const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
-        if (!rowElement) return;
+    redrawRow: function(row, player) {
+		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		rowElement.innerHTML = '';
+		
+		const cards = this.gameState[player].rows[row].cards;
+		cards.forEach(card => {
+			const cardElement = player === 'player' ? 
+				this.createBoardCardElement(card, 'unit') : 
+				this.createOpponentBoardCardElement(card);
+			rowElement.appendChild(cardElement);
+		});
+		
+		this.updateRowStrength(row, player);
+	},
 
-        const cardElement = player === 'player' ? 
-            this.createBoardCardElement(card, 'unit') : 
-            this.createOpponentBoardCardElement(card);
-            
-        rowElement.appendChild(cardElement);
-    },
+	displayCardOnRow: function(row, card, player = 'player', insertIndex = -1) {
+		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+
+		const cardElement = player === 'player' ? 
+			this.createBoardCardElement(card, 'unit') : 
+			this.createOpponentBoardCardElement(card);
+		
+		if (insertIndex >= 0 && insertIndex < rowElement.children.length) {
+			const referenceElement = rowElement.children[insertIndex];
+			rowElement.insertBefore(cardElement, referenceElement);
+		} else {
+			rowElement.appendChild(cardElement);
+		}
+	},
 
     displayTacticCard: function(row, card, player = 'player') {
         const tacticSlot = document.getElementById(`${player}${this.capitalizeFirst(row)}Tactics`);
@@ -2264,6 +2286,11 @@ const gameModule = {
         cardElement.className = `board-card ${cardType} ${card.rarity}`;
         cardElement.dataset.cardId = card.id;
         
+		cardElement.style.animation = 'cardAppear 0.5s ease-out';
+		cardElement.addEventListener('animationend', function() {
+			this.style.animation = '';
+		});
+	
         const { mediaPath, isVideo } = this.getCardMediaPath(card);
 
         let mediaElement = '';

@@ -241,7 +241,17 @@
 .player-rows-area { bottom: 23.9%; left: 29.6%; width: 980px; } 
 .opponent-rows-area { bottom: 62.5%; left: 29.6%; width: 980px; }
 
-.cards-row { display: flex; gap: 4px; flex: 1; height: 120px; align-items: center; padding: 5px 5px 5px 0; flex-wrap: wrap; justify-content: flex-start; margin-left: -36px; min-width: 0; /* Разрешаем сжатие */ overflow-x: visible; /* Разрешаем выход за границы если нужно */ }
+.cards-row { 
+	display: flex; 
+	gap: 4px; 
+	flex: 1; 
+	height: 120px; 
+	align-items: center; 
+	padding: 5px 5px 5px 0; 
+	flex-wrap: wrap; 
+	justify-content: center; 
+	margin-left: -36px; min-width: 0;
+}
 
 .board-card {  position: relative;  width: 85px; /* Уменьшили на 6px */ height: 125px; /* Уменьшили на 10px */ bottom: 8px; transition: all 0.3s ease; flex-shrink: 0; /* Запрещаем сжатие карт */ cursor: url('../ui/cursor_hover.png'), pointer; } 
 .tactics-slot { display: flex; align-items: center; justify-content: center; width: 130px; height: 120px; transform: translateX(-50px); }
@@ -255,7 +265,7 @@
 .opponent-total-score { top: 3.9%; left: 8%; }
 .player-total-score { bottom: 5.6%; left: 8%; }
 
-.board-card:last-child,
+.board-card,
 .weather-card:last-child { animation: cardAppear 0.5s ease-out; }
 
 .weather-area { position: absolute; top: 41.5%; left: 7.4%; transform: translateY(-50%) translateX(-50px); width: 275px; height: 140px; } 

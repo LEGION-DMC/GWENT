@@ -268,29 +268,30 @@ const playerModule = {
     },
     
     setupRowSelectionHandler: function(rowElement, row) {
-        const clickHandler = () => {
-            if (this.gameState.selectingRow && this.gameState.selectedCard) {
-                this.placeCardOnRow(this.gameState.selectedCard, row);
-                rowElement.removeEventListener('click', clickHandler);
-            }
-        };
-        
-        rowElement.addEventListener('click', clickHandler);
-        
-        if (!this.gameState.rowSelectionHandlers) {
-            this.gameState.rowSelectionHandlers = [];
+    const clickHandler = (event) => {
+        if (this.gameState.selectingRow && this.gameState.selectedCard) {
+            // Передаем координату X клика
+            this.placeCardOnRow(this.gameState.selectedCard, row, event.clientX);
+            rowElement.removeEventListener('click', clickHandler);
         }
-        this.gameState.rowSelectionHandlers.push({ element: rowElement, handler: clickHandler });
-    },
+    };
     
-    placeCardOnRow: function(card, row) {
-        if (this.gameState.placementType === 'tactic') {
-            this.placeTacticCard(card, row);
-        } else {
-            this.placeUnitCard(card, row);
-        }
-    },
+    rowElement.addEventListener('click', clickHandler);
     
+    if (!this.gameState.rowSelectionHandlers) {
+        this.gameState.rowSelectionHandlers = [];
+    }
+    this.gameState.rowSelectionHandlers.push({ element: rowElement, handler: clickHandler });
+},
+
+    placeCardOnRow: function(card, row, clickX) {
+			if (this.gameState.placementType === 'tactic') {
+				this.placeTacticCard(card, row);
+			} else {
+				this.placeUnitCard(card, row, clickX);
+			}
+		},
+
     placeTacticCard: function(card, row) {
         if (this.gameState.player.rows[row].tactic) {
             this.showMessage('В этом ряду уже есть карта тактики!');
@@ -310,39 +311,79 @@ const playerModule = {
         }
     },
     
-    placeUnitCard: function(card, row) {
-        if (this.gameState.player.rows[row].cards.length >= 8) {
-            this.showMessage('В этом ряду уже максимальное количество карт!');
-            return;
-        }
+    placeUnitCard: function(card, row, clickX) {
+		const rowState = this.gameState.player.rows[row];
+		
+		if (rowState.cards.length >= 8) {
+			this.showMessage('В этом ряду уже максимальное количество карт!');
+			return;
+		}
 
-        if (window.audioManager && window.audioManager.playSound) {
-            if (card.type === 'artifact' || card.type === 'special' || card.type === 'tactic') {
-                audioManager.playSound('artefact');
-            } else {
-                switch(row) {
-                    case 'close':
-                        audioManager.playSound('card_close');
-                        break;
-                    case 'ranged':
-                        audioManager.playSound('card_range');
-                        break;
-                    case 'siege':
-                        audioManager.playSound('card_siege');
-                }
-            }
-        }
+		const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		let insertIndex = rowState.cards.length;
+		
+		if (clickX !== undefined && rowState.cards.length > 0) {
+			const cardsInRow = Array.from(rowElement.querySelectorAll('.board-card'));
+			if (cardsInRow.length > 0) {
+				let closestCard = null;
+				let minDistance = Infinity;
+				const clickRect = rowElement.getBoundingClientRect();
+				const relativeX = clickX - clickRect.left;
+				
+				cardsInRow.forEach((cardElement, index) => {
+					const cardRect = cardElement.getBoundingClientRect();
+					const cardCenterX = (cardRect.left + cardRect.right) / 2 - clickRect.left;
+					const distance = Math.abs(relativeX - cardCenterX);
+					
+					if (distance < minDistance) {
+						minDistance = distance;
+						closestCard = { element: cardElement, index: index };
+					}
+				});
+				
+				if (closestCard) {
+					const cardRect = closestCard.element.getBoundingClientRect();
+					const cardCenterX = (cardRect.left + cardRect.right) / 2;
+					
+					if (clickX < cardCenterX) {
+						insertIndex = closestCard.index;
+					} else {
+						insertIndex = closestCard.index + 1;
+					}
+				}
+			}
+		}
 
-        this.gameState.player.rows[row].cards.push(card);
-        this.removeCardFromHand(card);
-        
-        if (window.gameModule) {
-            window.gameModule.displayCardOnRow(row, card);
-            window.gameModule.updateRowStrength(row);
-            window.gameModule.completeCardPlay();
-        }
-    },
-    
+		rowState.cards.splice(insertIndex, 0, card);
+		
+		this.removeCardFromHand(card);
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			if (card.type === 'artifact' || card.type === 'special' || card.type === 'tactic') {
+				audioManager.playSound('artefact');
+			} else {
+				switch(row) {
+					case 'close':
+						audioManager.playSound('card_close');
+						break;
+					case 'ranged':
+						audioManager.playSound('card_range');
+						break;
+					case 'siege':
+						audioManager.playSound('card_siege');
+				}
+			}
+		}
+		
+		if (window.gameModule) {
+			window.gameModule.displayCardOnRow(row, card, 'player', insertIndex);
+			window.gameModule.updateRowStrength(row);
+			window.gameModule.completeCardPlay();
+		}
+	},
+
     removeCardFromHand: function(card) {
         if (window.gameModule && window.gameModule.removeCardFromHand) {
             window.gameModule.removeCardFromHand(card, 'player');

@@ -491,39 +491,139 @@ const aiModule = {
     },
     
     playUnitCard: function(card) {
-        const bestRow = this.findBestRowForUnit(card);
-        if (bestRow) {
-            this.gameState.opponent.rows[bestRow].cards.push(card);
-            if (window.audioManager && window.audioManager.playSound) {
-                if (card.type === 'artifact' || card.type === 'special' || card.type === 'tactic') {
-                    audioManager.playSound('artefact');
-                } else {
-                    switch(bestRow) {
-                        case 'close':
-                            audioManager.playSound('card_close');
-                            break;
-                        case 'ranged':
-                            audioManager.playSound('card_range');
-                            break;
-                        case 'siege':
-                            audioManager.playSound('card_siege');
-                            break;
-                        default:
-                            audioManager.playSound('card_close');
-                    }
-                }
-            }
-            if (window.gameModule) {
-                if (window.gameModule.displayCardOnRow) {
-                    window.gameModule.displayCardOnRow(bestRow, card, 'opponent');
-                }
-                if (window.gameModule.updateRowStrength) {
-                    window.gameModule.updateRowStrength(bestRow, 'opponent');
-                }
-            }
-        }
-    },
-   
+		const bestRow = this.findBestRowForUnit(card);
+		if (bestRow) {
+			const rowState = this.gameState.opponent.rows[bestRow];
+			let insertIndex = rowState.cards.length;
+			
+			if (rowState.cards.length > 0) {
+				const synergyResult = this.findBestCardForSynergy(card, rowState.cards);
+				
+				if (synergyResult.score > 0) {
+					const placeLeft = Math.random() < 0.5;
+					if (placeLeft) {
+						insertIndex = synergyResult.index;
+					} else {
+						insertIndex = synergyResult.index + 1;
+					}
+				} else {
+					const cardStrength = card.strength || 0;
+					if (cardStrength >= 8) {
+						// Сильные карты - в центр
+						insertIndex = Math.floor(rowState.cards.length / 2);
+					} else if (cardStrength <= 3) {
+						// Слабые карты - по краям
+						const placeAtStart = Math.random() < 0.5;
+						insertIndex = placeAtStart ? 0 : rowState.cards.length;
+					}
+				}
+				
+				if (card.tags && card.tags.length > 0) {
+					const similarCardsIndices = [];
+					rowState.cards.forEach((existingCard, index) => {
+						if (existingCard.tags) {
+							const commonTags = card.tags.filter(tag => 
+								existingCard.tags.includes(tag)
+							);
+							if (commonTags.length > 0) {
+								similarCardsIndices.push({ index, commonTagsCount: commonTags.length });
+							}
+						}
+					});
+					
+					if (similarCardsIndices.length > 0) {
+						similarCardsIndices.sort((a, b) => b.commonTagsCount - a.commonTagsCount);
+						const bestSimilarIndex = similarCardsIndices[0].index;
+						insertIndex = bestSimilarIndex + 1;
+					}
+				}
+				
+				if (insertIndex === rowState.cards.length) {
+					const strongestCardIndex = this.findStrongestCardIndex(rowState.cards);
+					if (strongestCardIndex !== -1) {
+						insertIndex = strongestCardIndex + 1;
+					}
+				}
+			}
+			
+			rowState.cards.splice(insertIndex, 0, card);
+			
+			this.removeCardFromHand(card);
+			
+			if (window.audioManager && window.audioManager.playSound) {
+				if (card.type === 'artifact' || card.type === 'special' || card.type === 'tactic') {
+					audioManager.playSound('artefact');
+				} else {
+					switch(bestRow) {
+						case 'close':
+							audioManager.playSound('card_close');
+							break;
+						case 'ranged':
+							audioManager.playSound('card_range');
+							break;
+						case 'siege':
+							audioManager.playSound('card_siege');
+							break;
+						default:
+							audioManager.playSound('card_close');
+					}
+				}
+			}
+			
+			if (window.gameModule) {
+				window.gameModule.displayCardOnRow(bestRow, card, 'opponent', insertIndex);
+				if (window.gameModule.updateRowStrength) {
+					window.gameModule.updateRowStrength(bestRow, 'opponent');
+				}
+			}
+		}
+	},
+
+	findStrongestCardIndex: function(cards) {
+		let strongestIndex = -1;
+		let maxStrength = -1;
+		
+		cards.forEach((card, index) => {
+			const strength = card.strength || 0;
+			if (strength > maxStrength) {
+				maxStrength = strength;
+				strongestIndex = index;
+			}
+		});
+		
+		return strongestIndex;
+	},
+
+	findBestCardForSynergy: function(card, rowCards) {
+		let bestIndex = -1;
+		let bestScore = -1;
+		
+		rowCards.forEach((existingCard, index) => {
+			let score = 0;
+			
+			if (card.tags && existingCard.tags) {
+				const commonTags = card.tags.filter(tag => 
+					existingCard.tags.includes(tag)
+				);
+				score += commonTags.length * 3;
+			}
+			
+			const cardStrength = card.strength || 0;
+			const existingStrength = existingCard.strength || 0;
+			const strengthDiff = Math.abs(cardStrength - existingStrength);
+			if (strengthDiff <= 3) {
+				score += 2;
+			}
+			
+			if (score > bestScore) {
+				bestScore = score;
+				bestIndex = index;
+			}
+		});
+		
+		return { index: bestIndex, score: bestScore };
+	},
+
     isWeatherCard: function(card) {
         return (card.tags && card.tags.includes('weather')) || 
                (card.type === 'special' && this.isWeatherCardByName(card.name));
