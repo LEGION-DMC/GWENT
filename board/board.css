@@ -188,7 +188,7 @@
 .hand-card-border { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
 .hand-card-banner { position: absolute; top: -22px; left: -15px; width: calc(100% + 8px); height: calc(100% + 8px); object-fit: contain; z-index: 3; pointer-events: none; }
 .hand-card-name { position: absolute; top: 6px; left: 0; right: 0; text-align: center; color: #d4af37; -webkit-text-stroke: 0.3px black; font-size: 12px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 2; padding: 0 3px; }
-.hand-card-strength { position: absolute; top: 3px; left: 2px; color: white; font-size: 16px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 3; }
+.hand-card-strength { position: absolute; top: 3px; left: 5px; transform: translateX(-40%); color: white; font-size: 16px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 3; text-align: center; }
 .hand-card-type-icon { position: absolute; top: 2px; left: -1px; z-index: 3; }
 .hand-card-type-icon img { width: 20px; height: 20px; }
 .hand-card-position { position: absolute; bottom: -1px; right: 0px; width: 30px; height: 30px; z-index: 3; }
@@ -279,7 +279,7 @@
 .deck-modal__title { color: #d4af37; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; } 
 .deck-modal__count { position: absolute; color: #ffd700; font-size: 18px; right: 20px; } 
 .deck-modal__close { display: none; } 
-.deck-modal__content { overflow-x: hidden; flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; align-content: flex-start; }
+.deck-modal__content { overflow-x: hidden; flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 25px; align-content: flex-start; }
 
 .deck-card {
 	position: relative;
@@ -344,8 +344,8 @@
 
 .deck-card__strength {
 	position: absolute;
-	top: 3px;
-	left: 2px;
+	top: 7px;
+	left: 6px;
 	color: white;
 	font-size: 14px;
 	font-weight: bold;
@@ -489,4 +489,74 @@
 .timer-icon {
     width: 30px;
     height: 30px;
+}
+
+
+.crown-indicator {
+    position: absolute;
+    pointer-events: none;
+    z-index: 101;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+}
+
+.crown1-player {
+    position: absolute;
+    top: 40%;
+    height: 40px;
+    left: 112%;
+}
+
+.crown2-player {
+    position: absolute;
+    top: 40%;
+    height: 40px;
+    left: 112%;
+}
+
+.crown1-opponent {
+    position: absolute;
+    top: 38%;
+    height: 40px;
+    left: 112%;
+}
+
+.crown2-opponent {
+    position: absolute;
+    top: 38%;
+    height: 40px;
+    left: 112%;
+}
+
+@keyframes crownAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0) rotate(-90deg);
+    }
+    70% {
+        opacity: 1;
+        transform: scale(1.1) rotate(10deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.crown-visible {
+    animation: crownAppear 0.5s ease-out;
+    display: block !important;
+}
+
+.crown-hidden {
+    display: none;
+}
+
+.redeck-btn:hover {
+    scale: 1.03;
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
+}
+
+.restart-btn:hover {
+    scale: 1.03;
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
 }

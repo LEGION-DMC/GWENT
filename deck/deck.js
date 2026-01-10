@@ -1589,23 +1589,23 @@ function validateDeckAndStartGame() {
     const errors = [];
     
     if (totalCards < 15) {
-        errors.push(`Минимальный размер колоды - 15 карт`);
+        errors.push(`Минимальный размер колоды: 15 карт`);
     }
     
     if (totalCards > 25) {
-        errors.push(`Максимальный размер колоды - 25 карт`);
+        errors.push(`Максимальный размер колоды: 25 карт`);
     }
     
     if (unitCardsCount < 10) {
-        errors.push(`Минимальное количество карт отрядов - 10`);
+        errors.push(`Минимальное количество карт отрядов: 10`);
     }
     
     if (specialCardsCount < 3) {
-        errors.push(`Обязательное количество специальных карт - 3`);
+        errors.push(`Обязательное количество специальных карт: 3`);
     }
     
     if (specialCardsCount > 5) {
-        errors.push(`Максимальное количество специальных карт - 5`);
+        errors.push(`Максимальное количество специальных карт: 5`);
     }
     
     if (errors.length > 0) {
@@ -1620,73 +1620,39 @@ function validateDeckAndStartGame() {
 function showMessage(text) {
     const overlay = document.createElement('div');
     overlay.className = 'message-overlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        backdrop-filter: blur(2px);
-    `;
     
     const messageBox = document.createElement('div');
     messageBox.className = 'message-box';
-    messageBox.style.cssText = `
-        background: url('ui/fon.jpg') no-repeat center center fixed;
-        border: 1px solid #d4af37;
-        border-radius: 10px;
-        padding: 20px;
-        color: #fff;
-        text-align: center;
-        max-width: 400px;
-        box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
-        position: relative;
-    `;
     
     const title = document.createElement('h3');
     title.textContent = 'ВНИМАНИЕ';
-    title.style.cssText = `
-        color: #e53935;
-        margin: 0 0 15px 0;
-        font-size: 25px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        text-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
-    `;
     
     const messageText = document.createElement('div');
+    messageText.className = 'message-text';
     messageText.innerHTML = text.replace(/\n\n/g, '<br><br>');
-    messageText.style.cssText = `
-        font-size: 15px;
-        margin-bottom: 15px;
-        color: #ccc;
-        -webkit-text-stroke: 0.2px black;
-    `;
     
     messageBox.appendChild(title);
     messageBox.appendChild(messageText);
     overlay.appendChild(messageBox);
-    
     document.body.appendChild(overlay);
     
     setTimeout(() => {
-        messageBox.style.transform = 'scale(1)';
-        messageBox.style.opacity = '1';
+        messageBox.classList.add('active');
     }, 10);
     
     audioManager.playSound('button');
-	audioManager.playSound('warning');
+    audioManager.playSound('warning');
     
     setTimeout(() => {
         if (document.body.contains(overlay)) {
-            document.body.removeChild(overlay);
+            messageBox.classList.remove('active');
+            setTimeout(() => {
+                if (document.body.contains(overlay)) {
+                    document.body.removeChild(overlay);
+                }
+            }, 100);
         }
-    }, 4500);
+    }, 3000);
 }
 
 function sortCollection(type) {

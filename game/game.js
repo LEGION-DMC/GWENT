@@ -99,6 +99,7 @@ const gameModule = {
         this.addTimerStyles();
         this.createTotalScoreDisplays();
         this.createTimerDisplay();
+		this.createCrownIndicators();
         this.loadPlayerDeck();
         this.loadOpponentDeck();
         this.setupPlayerLeader();
@@ -1468,6 +1469,110 @@ const gameModule = {
         }
     },
 
+	createCrownIndicators: function() {
+        const playerLeaderArea = document.querySelector('.player-leader-area');
+        if (playerLeaderArea) {
+            const crown1Player = document.createElement('img');
+            crown1Player.id = 'crown1Player';
+            crown1Player.className = 'crown-indicator crown1-player crown-hidden';
+            crown1Player.src = 'board/crown1.png';
+            crown1Player.alt = 'Первая победа';
+            
+            const crown2Player = document.createElement('img');
+            crown2Player.id = 'crown2Player';
+            crown2Player.className = 'crown-indicator crown2-player crown-hidden';
+            crown2Player.src = 'board/crown2.png';
+            crown2Player.alt = 'Вторая победа';
+            
+            playerLeaderArea.appendChild(crown1Player);
+            playerLeaderArea.appendChild(crown2Player);
+        }
+        
+        const opponentLeaderArea = document.querySelector('.opponent-leader-area');
+        if (opponentLeaderArea) {
+            const crown1Opponent = document.createElement('img');
+            crown1Opponent.id = 'crown1Opponent';
+            crown1Opponent.className = 'crown-indicator crown1-opponent crown-hidden';
+            crown1Opponent.src = 'board/crown1.png';
+            crown1Opponent.alt = 'Первая победа противника';
+            
+            const crown2Opponent = document.createElement('img');
+            crown2Opponent.id = 'crown2Opponent';
+            crown2Opponent.className = 'crown-indicator crown2-opponent crown-hidden';
+            crown2Opponent.src = 'board/crown2.png';
+            crown2Opponent.alt = 'Вторая победа противника';
+            
+            opponentLeaderArea.appendChild(crown1Opponent);
+            opponentLeaderArea.appendChild(crown2Opponent);
+        }
+    },
+
+    updateCrownIndicators: function() {
+        const playerWins = this.gameState.roundsWon.player;
+        const opponentWins = this.gameState.roundsWon.opponent;
+        
+        const crown1Player = document.getElementById('crown1Player');
+        const crown2Player = document.getElementById('crown2Player');
+        
+        if (crown1Player) {
+            if (playerWins >= 1) {
+                crown1Player.classList.remove('crown-hidden');
+                crown1Player.classList.add('crown-visible');
+            } else {
+                crown1Player.classList.add('crown-hidden');
+                crown1Player.classList.remove('crown-visible');
+            }
+        }
+        
+        if (crown2Player) {
+            if (playerWins >= 2) {
+                crown2Player.classList.remove('crown-hidden');
+                crown2Player.classList.add('crown-visible');
+            } else {
+                crown2Player.classList.add('crown-hidden');
+                crown2Player.classList.remove('crown-visible');
+            }
+        }
+        
+        const crown1Opponent = document.getElementById('crown1Opponent');
+        const crown2Opponent = document.getElementById('crown2Opponent');
+        
+        if (crown1Opponent) {
+            if (opponentWins >= 1) {
+                crown1Opponent.classList.remove('crown-hidden');
+                crown1Opponent.classList.add('crown-visible');
+            } else {
+                crown1Opponent.classList.add('crown-hidden');
+                crown1Opponent.classList.remove('crown-visible');
+            }
+        }
+        
+        if (crown2Opponent) {
+            if (opponentWins >= 2) {
+                crown2Opponent.classList.remove('crown-hidden');
+                crown2Opponent.classList.add('crown-visible');
+            } else {
+                crown2Opponent.classList.add('crown-hidden');
+                crown2Opponent.classList.remove('crown-visible');
+            }
+        }
+    },
+
+    resetCrownIndicators: function() {
+        const crowns = [
+            'crown1Player', 'crown2Player',
+            'crown1Opponent', 'crown2Opponent'
+        ];
+        
+        crowns.forEach(crownId => {
+            const crown = document.getElementById(crownId);
+            if (crown) {
+                crown.classList.add('crown-hidden');
+                crown.classList.remove('crown-visible');
+            }
+        });
+    },
+	
     endRound: function() {
         this.hideTimerDisplay();
 		const playerScore = this.calculateTotalScore('player');
@@ -1571,6 +1676,7 @@ const gameModule = {
 		const mode = this.gameState.gameSettings.mode;
 		this.showGameMessage(`Раунд ${this.gameState.currentRound}`, 'info');
 		this.updateRoundCounter();
+		this.updateCrownIndicators();
 		this.resetRoundState();
 		this.dealAdditionalCards();
 		this.startPlayerTurn();
@@ -3627,6 +3733,8 @@ const gameModule = {
 				</div>
 			</div>
 		`;
+		
+		this.updateCrownIndicators();
 
 		document.body.appendChild(resultOverlay);
 		this.animateResultAppear(resultOverlay);
@@ -3833,7 +3941,7 @@ const gameModule = {
                     color: #fff;
 					-webkit-text-stroke: 0.2px black;
                 ">
-                    ФИНАЛЬНЫЙ СЧЕТ: ${finalScore}
+                    ${finalScore}
                 </div>
                 
                 <div class="action-buttons" style="
@@ -3904,40 +4012,31 @@ const gameModule = {
     },
 
     redeckGame: function() {
-    // Сохраняем текущую фракцию игрока перед сбросом
     const currentPlayerFaction = this.gameState.player.faction;
     
-    // Останавливаем все таймеры
     this.stopTurnTimer();
     
-    // Сбрасываем состояние игры
     this.resetGameState();
     
-    // Удаляем игровое поле
     const gameBoard = document.querySelector('.game-board');
     if (gameBoard) {
         gameBoard.remove();
     }
     
-    // Удаляем оверлей результатов игры, если он есть
     const gameResultOverlay = document.querySelector('.game-result-overlay');
     if (gameResultOverlay) {
         gameResultOverlay.remove();
     }
     
-    // Удаляем модальные окна, если есть
     const modals = document.querySelectorAll('.card-modal-overlay, .deck-modal-overlay, .round-result-overlay');
     modals.forEach(modal => modal.remove());
     
-    // Также удаляем декбилдинг если он уже есть на странице
     const deckBuilding = document.querySelector('.deck-building');
     if (deckBuilding) {
         deckBuilding.remove();
     }
     
-    // Возвращаем к сбору колоды для той же фракции
     if (window.factionModule && currentPlayerFaction) {
-        // Получаем данные фракции
         const factionData = window.factionModule.factionsData[currentPlayerFaction];
         if (factionData) {
             // Инициализируем сбор колоды для этой фракции
@@ -3949,9 +4048,9 @@ const gameModule = {
             window.location.reload();
         }
     } else {
-        // Если модуль фракций не загружен, перезагружаем страницу
         window.location.reload();
     }
+	this.resetCrownIndicators();
 },
 
 	resetGameState: function() {
@@ -4058,6 +4157,8 @@ const gameModule = {
 		if (window.aiModule) {
 			window.aiModule.gameState = this.gameState;
 		}
+		
+		this.resetCrownIndicators();
 	},
 
     getTypeIconPath: function(cardType) {
@@ -4130,6 +4231,7 @@ const gameModule = {
                 position: fixed;
                 top: 20px;
                 left: 50%;
+				color: white;
                 transform: translateX(-50%);
                 z-index: 10000;
                 display: flex;

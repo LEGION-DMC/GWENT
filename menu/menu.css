@@ -1,28 +1,21 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 @font-face {
     font-family: 'Gwent';
-    src: url('ui/font.ttf') format('truetype');
+    src: url('../ui/font.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
 
+* {
+    scrollbar-width: none;
+}
+
 body {
-    background: url('ui/fon.jpg') no-repeat center center fixed;
+    background: url('../ui/fon.jpg') no-repeat center center fixed;
+    font-family: 'Gwent', sans-serif;
     background-size: cover; 
     height: 100vh;
     overflow: hidden;
-    font-family: 'Gwent', sans-serif; 
-    color: #fff; 
-    cursor: url('ui/cursor.png'), auto; 
-}
-
-* {
-    scrollbar-width: none;
+    cursor: url('../ui/cursor.png'), auto; 
 }
 	
 .start-page {
@@ -30,7 +23,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding-top: 7vh;
+    padding-top: 10vh;
     position: relative;
 }
 
@@ -58,7 +51,7 @@ body {
     font-family: 'Gwent', sans-serif;
     text-transform: uppercase;
     letter-spacing: 3px; 
-    cursor: url('ui/cursor_hover.png'), pointer;
+    cursor: url('../ui/cursor_hover.png'), pointer;
     transition: all 0.3s ease; 
     border-radius: 5px; 
     position: relative;

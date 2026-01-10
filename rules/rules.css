@@ -17,13 +17,19 @@
 }
 
 .rules-title {
-    font-size: 35px;            
-    margin-bottom: 30px;        
-    margin-top: 45px;         
+    font-size: 35px;
+    margin-bottom: 30px;
+    margin-top: 45px;
+    width: 80%;
     text-transform: uppercase;
-    letter-spacing: 3px;          
-    color: #d4af37;     
+    text-align: center;
+    letter-spacing: 3px;
+    color: #d4af37;
     text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+    padding-bottom: 5px;
+    border-bottom: 60px solid transparent;
+    border-image: url('../ui/long.png') 80 0;
+    box-sizing: border-box;
 }
 
 .rules-grid {
@@ -130,7 +136,7 @@
 .bloc-rule {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: left;
     gap: 15px;                      
     padding-bottom: 15px;           
 }

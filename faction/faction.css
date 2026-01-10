@@ -63,7 +63,7 @@
 }
 
 .faction-description {
-    width: 720px;
+    width: 760px;
     min-height: 120px;
     padding: 20px;
     margin-bottom: 10px;
@@ -83,7 +83,7 @@
 }
 
 .faction-description__text {
-    font-size: 17px;
+    font-size: 16px;
     color: #ccc;
     line-height: 1.4;
 	font-style: italic;
@@ -134,7 +134,7 @@
 
 .faction-description__ability {
     padding-top: 6px;
-    border-top: 35px solid transparent;
+    border-top: 40px solid transparent;
     border-image: url('../ui/long.png') 70 200;
     font-size: 15px;
     color: #f8c555;
