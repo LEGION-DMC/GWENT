@@ -1174,7 +1174,7 @@ const gameModule = {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                left: -11%;
+                left: 0%;
             }
             
             .coin-front, .coin-back {
@@ -1183,36 +1183,36 @@ const gameModule = {
             }
             
             .coin-front {
-                transform: rotateY(0deg);
+                transform: rotateX(0deg);
             }
             
             .coin-back {
-                transform: rotateY(180deg);
+                transform: rotateX(180deg);
             }
             
             @keyframes coinTossUp {
                 0% {
-                    transform: translateY(0) rotateY(0deg);
+                    transform: translateY(0) rotateX(0deg);
                     animation-timing-function: ease-out;
                 }
                 20% {
-                    transform: translateY(-200px) rotateY(360deg);
+                    transform: translateY(-200px) rotateX(360deg);
                     animation-timing-function: ease-in;
                 }
                 40% {
-                    transform: translateY(-50px) rotateY(720deg);
+                    transform: translateY(-50px) rotateX(720deg);
                     animation-timing-function: ease-out;
                 }
                 60% {
-                    transform: translateY(-150px) rotateY(1080deg);
+                    transform: translateY(-150px) rotateX(1080deg);
                     animation-timing-function: ease-in;
                 }
                 80% {
-                    transform: translateY(-30px) rotateY(1440deg);
+                    transform: translateY(-30px) rotateX(1440deg);
                     animation-timing-function: ease-out;
                 }
                 100% {
-                    transform: translateY(0) rotateY(1800deg);
+                    transform: translateY(0) rotateX(1800deg);
                 }
             }
             
@@ -1244,35 +1244,87 @@ const gameModule = {
 		if (!coinElement || !coinResult) {
 			return;
 		}
+		
+		const randomValue = Math.random();
+		const goesFirst = randomValue < 0.5 ? 'player' : 'opponent';
+		
+		const finalSide = goesFirst === 'player' ? 0 : 180;
+		const totalRotations = 5;
+		const targetRotation = (totalRotations * 360) + finalSide;
+		const animationDuration = 2500;
+		
+		const styleId = 'coin-toss-dynamic-animation';
+		let style = document.getElementById(styleId);
+		if (!style) {
+			style = document.createElement('style');
+			style.id = styleId;
+			document.head.appendChild(style);
+		}
+		
+		style.textContent = `
+			@keyframes smoothCoinToss {
+				0% {
+					transform: translateY(0) rotateX(0deg);
+					animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000); /* ease-out-cubic */
+				}
+				25% {
+					transform: translateY(-200px) rotateX(450deg);
+					animation-timing-function: cubic-bezier(0.550, 0.055, 0.675, 0.190); /* ease-in-cubic */
+				}
+				50% {
+					transform: translateY(-50px) rotateX(900deg);
+					animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+				}
+				75% {
+					transform: translateY(-150px) rotateX(1350deg);
+					animation-timing-function: cubic-bezier(0.550, 0.055, 0.675, 0.190);
+				}
+				100% {
+					transform: translateY(0) rotateX(${targetRotation}deg);
+					animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+				}
+			}
+			
+			.smooth-coin-toss {
+				animation: smoothCoinToss ${animationDuration}ms forwards !important; /* Здесь меняем длительность */
+				transform-origin: center center;
+			}
+		`;
+		
 		setTimeout(() => {
-			coinElement.classList.add('coin-tossing');
+			const animations = coinElement.getAnimations();
+			animations.forEach(anim => anim.cancel());
+			coinElement.style.transform = 'translateY(0) rotateX(0deg)';
+			coinElement.classList.remove('coin-tossing', 'smooth-coin-toss');
+			void coinElement.offsetWidth;
+			coinElement.classList.add('smooth-coin-toss');
 			if (audioManager && audioManager.playSound) {
 				audioManager.playSound('coinToss');
 			}
 		}, 500);
+		
+		const resultDelay = 500 + animationDuration;
+		
 		setTimeout(() => {
-			coinElement.classList.remove('coin-tossing');
-			const randomValue = Math.random();
-			const goesFirst = randomValue < 0.5 ? 'player' : 'opponent';
-			
-			coinElement.style.transition = 'none';
+			coinElement.style.transform = `rotateX(${finalSide}deg)`;
+			coinElement.classList.remove('smooth-coin-toss');
 			
 			if (goesFirst === 'player') {
-				coinElement.style.transform = 'rotateY(0deg)';
 				coinResult.textContent = 'ИГРОК ХОДИТ ПЕРВЫМ';
 				coinResult.style.color = '#4CAF50';
 			} else {
-				coinElement.style.transform = 'rotateY(180deg)';
 				coinResult.textContent = 'ПРОТИВНИК ХОДИТ ПЕРВЫМ';
 				coinResult.style.color = '#f44336';
 			}
 			coinResult.classList.add('show');
 			this.gameState.currentPlayer = goesFirst;
 			
+			const gameStartDelay = 2000; 
+			
 			setTimeout(() => {
 				this.startGameAfterCoinToss(goesFirst);
-			}, 2000);
-		}, 3500);
+			}, gameStartDelay);
+		}, resultDelay);
 	},
 
     startGameAfterCoinToss: function(firstPlayer) {
@@ -2791,6 +2843,7 @@ const gameModule = {
             image: `leader.mp4`, 
             imageStatic: `leader.jpg`,
             description: factionData.description,
+            descriptionfull: factionData.descriptionfull,
             ability: `${faction}_ability`,
             rarity: 'gold',
             tags: ['leader'],
@@ -2819,6 +2872,7 @@ const gameModule = {
             image: `leader.mp4`,
             imageStatic: `leader.jpg`,
             description: factionData.description,
+            descriptionfull: factionData.descriptionfull,
             ability: `${faction}_ability`,
             rarity: 'gold',
             tags: ['leader'],

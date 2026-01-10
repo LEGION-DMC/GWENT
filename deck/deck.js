@@ -1408,7 +1408,9 @@ function backToFactionSelection() {
 function autoBuildDeck() {
     const faction = window.selectedFaction;
     if (!faction) return;
+    
     clearDeckSilent();
+    
     const factionCards = window.cardsModule.getFactionCards(faction.id);
     const allCards = [
         ...factionCards.units,
@@ -1416,32 +1418,70 @@ function autoBuildDeck() {
         ...factionCards.artifacts,
         ...factionCards.tactics
     ];
+    
     const uniqueCards = allCards.filter((card, index, self) => 
         index === self.findIndex(c => c.id === card.id)
     );
+    
     const sortedCards = uniqueCards.sort((a, b) => {
         if (a.rarity === 'gold' && b.rarity !== 'gold') return -1;
         if (a.rarity !== 'gold' && b.rarity === 'gold') return 1;
-        return (b.strength || 0) - (a.strength || 0);
+        
+        if (a.type === 'unit' && b.type === 'unit') {
+            return (b.strength || 0) - (a.strength || 0);
+        }
+        
+        if (a.type === 'unit' && b.type !== 'unit') return -1;
+        if (a.type !== 'unit' && b.type === 'unit') return 1;
+        
+        const typeOrder = { 'special': 1, 'tactic': 2, 'artifact': 3 };
+        const typeA = typeOrder[a.type] || 4;
+        const typeB = typeOrder[b.type] || 4;
+        return typeA - typeB;
     });
+    
     let unitsCount = 0;
-    let specialsCount = 0;  
+    let specialsCount = 0;
     const cardsToAdd = [];
+    
+    const targetTotalCards = 25;
+    const targetUnitCards = 22;
+    const targetSpecialCards = 5; 
+    
     for (const card of sortedCards) {
-        if (cardsToAdd.length >= 40) break;
+        if (cardsToAdd.length >= targetTotalCards) break;
+        
+        if (card.rarity === 'gold') {
+            if (card.type === 'unit') {
+                if (unitsCount >= targetUnitCards) continue;
+                unitsCount++;
+            } else {
+                if (specialsCount >= targetSpecialCards) continue;
+                specialsCount++;
+            }
+            cardsToAdd.push(card);
+        }
+    }
+    
+    for (const card of sortedCards) {
+        if (cardsToAdd.length >= targetTotalCards) break;
+        if (cardsToAdd.some(c => c.id === card.id)) continue;
+        
         if (card.type === 'unit') {
-            if (unitsCount >= 32) continue;
+            if (unitsCount >= targetUnitCards) continue;
             unitsCount++;
         } else {
-            if (specialsCount >= 10) continue;
+            if (specialsCount >= targetSpecialCards) continue;
             specialsCount++;
         }
         cardsToAdd.push(card);
     }
+    
     cardsToAdd.forEach(card => {
         currentDeck.cards.push(card);
         removeCardFromCollection(card.id);
     });
+    
     sortDeckCards();
     updateDeckStats();
     updateDeckDisplay();

@@ -227,7 +227,7 @@ const aiModule = {
         }
         
         return availableRows.filter(row => 
-            this.gameState.opponent.rows[row].cards.length < 8
+            this.gameState.opponent.rows[row].cards.length < 9
         );
     },
     
@@ -363,7 +363,7 @@ const aiModule = {
         let score = 0;
         
         const cardCount = this.gameState.opponent.rows[row].cards.length;
-        score += (8 - cardCount) * 2;
+        score += (9 - cardCount) * 2;
         
         if (this.gameState.weather.effects[row]) {
             score -= 50;
