@@ -101,36 +101,46 @@ const aiModule = {
     },
 
     getPlayableCards: function() {
-        const uniqueCards = [];
-        const seenIds = new Set();
+    const uniqueCards = [];
+    const seenIds = new Set();
+    
+    this.gameState.opponent.hand.forEach(card => {
+        if (this.usedCardIds.has(card.id)) {
+            return;
+        }
         
-        this.gameState.opponent.hand.forEach(card => {
-            if (this.usedCardIds.has(card.id)) {
-                return;
-            }
-            
-            if (seenIds.has(card.id)) {
-                return;
-            }
-            seenIds.add(card.id);
-            
-            if (this.isWeatherCard(card)) {
-                if (this.canPlayWeatherCard(card)) {
-                    uniqueCards.push(card);
-                }
-            } else if (card.type === 'tactic') {
-                if (this.canPlayTacticCard(card)) {
-                    uniqueCards.push(card);
-                }
-            } else {
-                if (this.canPlayUnitCard(card)) {
-                    uniqueCards.push(card);
-                }
-            }
-        });
+        if (seenIds.has(card.id)) {
+            return;
+        }
+        seenIds.add(card.id);
         
-        return uniqueCards;
-    },
+        if (this.isWeatherCard(card)) {
+            if (this.canPlayWeatherCard(card)) {
+                uniqueCards.push(card);
+            }
+        } else if (card.type === 'tactic') {
+            if (this.canPlayTacticCard(card)) {
+                uniqueCards.push(card);
+            }
+        } else if (card.ability === 'decoy') {
+            // Проверяем, есть ли карты для замены
+            if (this.getWeakCardsOnBoard().length > 0) {
+                uniqueCards.push(card);
+            }
+        } else if (card.ability === 'destroy') {
+            // Проверяем, есть ли карты для уничтожения
+            if (this.findStrongestPlayerCard()) {
+                uniqueCards.push(card);
+            }
+        } else {
+            if (this.canPlayUnitCard(card)) {
+                uniqueCards.push(card);
+            }
+        }
+    });
+    
+    return uniqueCards;
+},
     
     canPlayWeatherCard: function(card) {
 		const isClearWeather = this.isClearWeatherCard(card);
@@ -245,28 +255,98 @@ const aiModule = {
     },
     
     evaluateCardScore: function(card) {
-        let baseScore = 0;
-        
-        if (this.isWeatherCard(card)) {
-            baseScore = this.evaluateWeatherCard(card);
-        } else if (card.type === 'tactic') {
-            baseScore = this.evaluateTacticCard(card);
-        } else if (card.type === 'unit') {
-            baseScore = this.evaluateUnitCard(card);
-        } else {
-            baseScore = 5;
-        }
-        
-        if (card.rarity === 'gold') {
-            baseScore += 3;
-        }
-        
-        const situationBonus = this.getSituationBonus(card);
-        baseScore += situationBonus;
-        
-        return Math.max(0, baseScore);
-    },
+    let baseScore = 0;
     
+    if (this.isWeatherCard(card)) {
+        baseScore = this.evaluateWeatherCard(card);
+    } else if (card.type === 'tactic') {
+        baseScore = this.evaluateTacticCard(card);
+    } else if (card.type === 'unit') {
+        baseScore = this.evaluateUnitCard(card);
+    } else if (card.ability === 'decoy') {
+        baseScore = this.evaluateDecoyCard(card);
+    } else if (card.ability === 'destroy') {
+    baseScore = this.evaluateDestroyCard(card);
+}
+ else {
+        baseScore = 5;
+    }
+    
+    if (card.rarity === 'gold') {
+        baseScore += 3;
+    }
+    
+    const situationBonus = this.getSituationBonus(card);
+    baseScore += situationBonus;
+    
+    return Math.max(0, baseScore);
+},
+    
+	evaluateDestroyCard: function(card) {
+    let score = 20;
+    
+    // Находим самую сильную карту игрока
+    const strongestPlayerCard = this.findStrongestPlayerCard();
+    
+    if (strongestPlayerCard) {
+        const cardStrength = strongestPlayerCard.card.strength || 0;
+        
+        // Чем сильнее карта, тем ценнее ее уничтожение
+        score += cardStrength * 2;
+        
+        // Бонус за уничтожение золотых/особых карт
+        if (strongestPlayerCard.card.rarity === 'gold') {
+            score += 10;
+        }
+        
+        // Бонус за уничтожение карт с тегами (особые способности)
+        if (strongestPlayerCard.card.tags && strongestPlayerCard.card.tags.length > 0) {
+            score += strongestPlayerCard.card.tags.length * 3;
+        }
+        
+        // Учитываем ситуацию на поле
+        const playerTotalScore = this.calculateTotalScore('player');
+        const opponentTotalScore = this.calculateTotalScore('opponent');
+        
+        if (playerTotalScore > opponentTotalScore + 5) {
+            // Если игрок лидирует, уничтожение его сильной карты особенно важно
+            score += 15;
+        }
+        
+        if (cardStrength >= 8) {
+            score += 10;
+        }
+    } else {
+        // Если у игрока нет карт для уничтожения, не играем эту карту
+        score = 0;
+    }
+    
+    return score;
+},
+
+findStrongestPlayerCard: function() {
+    const rows = ['close', 'ranged', 'siege'];
+    let strongestCard = null;
+    let maxStrength = -1;
+    let cardRow = null;
+    
+    rows.forEach(row => {
+        const rowCards = this.gameState.player.rows[row].cards;
+        rowCards.forEach(card => {
+            if (card.type === 'unit') {
+                const strength = card.strength || 0;
+                if (strength > maxStrength) {
+                    maxStrength = strength;
+                    strongestCard = card;
+                    cardRow = row;
+                }
+            }
+        });
+    });
+    
+    return strongestCard ? { card: strongestCard, row: cardRow } : null;
+},
+
     evaluateWeatherCard: function(card) {
         let score = 10;
         
@@ -413,18 +493,228 @@ const aiModule = {
         return bonus;
     },
     
+	evaluateDecoyCard: function(card) {
+    let score = 15;
+    
+    // Ищем слабые карты на своем поле, которые можно вернуть в руку
+    const weakCards = this.getWeakCardsOnBoard();
+    if (weakCards.length > 0) {
+        score += weakCards.length * 5;
+    }
+    
+    // Учитываем наличие сильных карт в руке, которые можно сыграть повторно
+    const strongCardsInHand = this.gameState.opponent.hand.filter(c => 
+        c.strength > 8 && c.type === 'unit'
+    );
+    if (strongCardsInHand.length > 0) {
+        score += 10;
+    }
+    
+    return score;
+},
+
+getWeakCardsOnBoard: function() {
+    const weakCards = [];
+    const rows = ['close', 'ranged', 'siege'];
+    
+    rows.forEach(row => {
+        this.gameState.opponent.rows[row].cards.forEach(card => {
+            if (card.type === 'unit' && card.strength < 4) {
+                weakCards.push({
+                    card: card,
+                    row: row,
+                    score: 10 - card.strength // Чем слабее карта, тем выше приоритет
+                });
+            }
+        });
+    });
+    
+    return weakCards.sort((a, b) => b.score - a.score);
+},
+
     playCard: function(card) {
-        this.usedCardIds.add(card.id);
-        this.removeCardFromHand(card);
+		this.usedCardIds.add(card.id);
+		this.removeCardFromHand(card);
+		
+		if (this.isWeatherCard(card)) {
+			this.playWeatherCard(card);
+		} else if (card.type === 'tactic') {
+			this.playTacticCard(card);
+		} else if (card.ability === 'decoy') {
+			this.playDecoyCard(card);
+		} else if (card.ability === 'destroy') {
+    this.playDestroyCard(card);
+} else {
+			this.playUnitCard(card);
+		}
+	},
+	
+	playDestroyCard: function(card) {
+    // Находим самую сильную карту игрока
+    const strongestPlayerCard = this.findStrongestPlayerCard();
+    
+    if (!strongestPlayerCard) {
+        // Если нет целей, не играем эту карту
+        this.usedCardIds.delete(card.id);
+        return;
+    }
+    
+    // Выполняем уничтожение
+    this.executeDestroyCard(card, strongestPlayerCard);
+},
+
+executeDestroyCard: function(destroyCard, targetData) {
+    const { card: targetCard, row: targetRow } = targetData;
+    
+    // Удаляем Казнь из руки
+    this.removeCardFromHand(destroyCard);
+    
+    // Добавляем Казнь в сброс противника
+    const destroyCardCopy = { ...destroyCard };
+    this.gameState.opponent.discard.push(destroyCardCopy);
+    
+    // Удаляем карту игрока из ряда
+    const rowState = this.gameState.player.rows[targetRow];
+    const cardIndex = rowState.cards.findIndex(c => c.id === targetCard.id);
+    
+    if (cardIndex !== -1) {
+        // Создаем копию для сброса
+        const destroyedCard = { ...rowState.cards[cardIndex] };
         
-        if (this.isWeatherCard(card)) {
-            this.playWeatherCard(card);
-        } else if (card.type === 'tactic') {
-            this.playTacticCard(card);
-        } else {
-            this.playUnitCard(card);
+        // Удаляем из ряда
+        rowState.cards.splice(cardIndex, 1);
+        
+        // Добавляем в сброс игрока
+        this.gameState.player.discard.push(destroyedCard);
+        
+        // Обновляем отображение
+        if (window.gameModule) {
+            // Создаем визуальный эффект
+            this.createDestroyVisualEffect(targetCard, targetRow);
+            
+            // Удаляем карту с поля через задержку
+            setTimeout(() => {
+                window.gameModule.removeCardFromBoardVisual(targetCard, targetRow, 'player');
+            }, 500);
+            
+            // Обновляем силу ряда
+            window.gameModule.updateRowStrength(targetRow, 'player');
+            
+            // Обновляем сбросы
+            if (window.gameModule.displayPlayerDiscard) {
+                window.gameModule.displayPlayerDiscard();
+            }
+            if (window.gameModule.displayOpponentDiscard) {
+                window.gameModule.displayOpponentDiscard();
+            }
+            
+            // Завершаем ход
+            if (window.gameModule.completeCardPlay) {
+                setTimeout(() => {
+                    window.gameModule.completeCardPlay();
+                }, 1000);
+            }
         }
-    },
+        
+        // Воспроизводим звук
+        if (window.audioManager && window.audioManager.playSound) {
+            audioManager.playSound('artefact');
+            setTimeout(() => {
+                audioManager.playSound('card_destroy');
+            }, 300);
+        }
+    }
+},
+
+createDestroyVisualEffect: function(card, row) {
+    const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+    if (!rowElement) return;
+    
+    const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+    if (!cardElement) return;
+    
+    // Создаем эффект уничтожения
+    const destroyOverlay = document.createElement('div');
+    destroyOverlay.className = 'card-destroy-overlay';
+    destroyOverlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('card/destroy_card.png') center/cover no-repeat;
+        z-index: 100;
+        border-radius: 5px;
+        pointer-events: none;
+        animation: destroyCardAnimation 1s ease-out forwards;
+    `;
+    
+    cardElement.appendChild(destroyOverlay);
+},
+
+	playDecoyCard: function(card) {
+    const weakCards = this.getWeakCardsOnBoard();
+    
+    if (weakCards.length > 0) {
+        const bestTarget = weakCards[0];
+        this.performDecoySwap(card, bestTarget.card, bestTarget.row);
+        
+        // Увеличиваем счетчик сыгранных карт
+        this.gameState.cardsPlayedThisTurn++;
+    } else {
+        // Если нет слабых карт, пропускаем эту карту
+        this.usedCardIds.delete(card.id); // Убираем из использованных
+        return; // Не увеличиваем счетчик и не удаляем карту
+    }
+},
+
+performDecoySwap: function(decoyCard, targetCard, row) {
+    const rowState = this.gameState.opponent.rows[row];
+    const targetIndex = rowState.cards.findIndex(c => c.id === targetCard.id);
+    
+    if (targetIndex === -1) return;
+    
+    // Создаем копию для возврата в руку
+    const cardCopy = { ...targetCard };
+    cardCopy.playedThisRound = false;
+    
+    // Восстанавливаем оригинальную силу, если карта была под погодой
+    if (cardCopy.originalStrength !== undefined) {
+        cardCopy.strength = cardCopy.originalStrength;
+        delete cardCopy.originalStrength;
+    }
+    
+    // Удаляем Чучело из руки
+    this.removeCardFromHand(decoyCard);
+    
+    // Добавляем карту обратно в руку
+    this.gameState.opponent.hand.push(cardCopy);
+    
+    // Заменяем на поле
+    const placedDecoy = { ...decoyCard };
+    placedDecoy.owner = 'opponent';
+    placedDecoy.row = row;
+    placedDecoy.currentStrength = 1;
+    
+    rowState.cards[targetIndex] = placedDecoy;
+    
+    // Обновляем отображение
+    if (window.gameModule) {
+        window.gameModule.displayCardOnRow(row, placedDecoy, 'opponent', targetIndex);
+        window.gameModule.updateRowStrength(row, 'opponent');
+        
+        // Завершаем ход через небольшую задержку
+        setTimeout(() => {
+            if (window.gameModule.completeCardPlay) {
+                window.gameModule.completeCardPlay();
+            }
+        }, 1000);
+    }
+    
+    if (window.audioManager && window.audioManager.playSound) {
+        audioManager.playSound('artefact');
+    }
+},
 
     endAITurn: function() {
         if (window.gameModule) {

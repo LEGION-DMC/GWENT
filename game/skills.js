@@ -175,17 +175,26 @@ const skillSystem = {
                 condition: 'ally'
             }
         },
-        
-        'scorch': {
-            name: 'Выжженная земля',
-            type: 'combat',
-            description: 'Уничтожить самые сильные карты на поле',
-            effect: {
-                type: 'destroy',
-                target: 'strongest',
-                condition: 'all'
-            }
-        }
+        'destroy': {
+    name: 'Казнь',
+    type: 'special',
+    description: 'Уничтожить самую сильную карту отряда противника',
+    effect: {
+        type: 'destroy_strongest_enemy',
+        target: 'unit',
+        condition: 'enemy'
+    }
+},
+		'decoy': {
+			name: 'Чучело',
+			type: 'special',
+			description: 'Заменить карту на поле на Чучело, вернув исходную карту в руку',
+			effect: {
+				type: 'swap_with_hand',
+				target: 'unit',
+				condition: 'ally'
+			}
+		}
     },
 
     activateAbility: function(abilityId, context) {
@@ -231,17 +240,219 @@ const skillSystem = {
                     return this.applyWeatherEffect(effect, context);
                 case 'clear_weather':
                     return this.applyClearWeatherEffect(context);
-                case 'destroy':
-                    return this.applyDestroyEffect(effect, context);
+                case 'destroy_strongest_enemy':
+    return this.applyDestroyStrongestEnemyEffect(effect, context);
                 case 'reveal':
                     return this.applyRevealEffect(effect, context);
-                default:
+                case 'swap_with_hand':
+					return this.applySwapEffect(effect, context);
+				default:
                     return { success: false, message: 'Неизвестный тип эффекта' };
             }
         } catch (error) {
             return { success: false, message: 'Ошибка применения способности' };
         }
     },
+
+applyDestroyStrongestEnemyEffect: function(effect, context) {
+    // Находим самые сильные карты противника
+    const strongestCards = this.findStrongestEnemyCards(context);
+    
+    if (strongestCards.length === 0) {
+        return { success: false, message: 'Нет подходящих целей у противника' };
+    }
+    
+    // Уничтожаем самую сильную карту (первую в массиве, так как они отсортированы)
+    const targetCard = strongestCards[0];
+    
+    // Создаем визуальный эффект уничтожения
+    this.createDestroyVisualEffect(targetCard);
+    
+    // Уничтожаем карту
+    this.destroyEnemyCard(targetCard, context);
+    
+    return { 
+        success: true, 
+        message: `Уничтожена карта ${targetCard.name} (сила: ${targetCard.currentStrength || targetCard.strength})`,
+        destroyedCard: targetCard
+    };
+},
+
+findStrongestEnemyCards: function(context) {
+    if (!context.gameBoard || !context.gameState) return [];
+    
+    const enemyCards = [];
+    const rows = ['close', 'ranged', 'siege'];
+    
+    rows.forEach(row => {
+        if (context.gameState.opponent && context.gameState.opponent.rows) {
+            const rowCards = context.gameState.opponent.rows[row].cards || [];
+            rowCards.forEach(card => {
+                if (card.type === 'unit') {
+                    enemyCards.push({
+                        card: card,
+                        row: row,
+                        strength: card.currentStrength || card.strength || 0
+                    });
+                }
+            });
+        }
+    });
+    
+    if (enemyCards.length === 0) return [];
+    
+    // Сортируем по силе (по убыванию)
+    enemyCards.sort((a, b) => b.strength - a.strength);
+    
+    const maxStrength = enemyCards[0].strength;
+    
+    // Возвращаем все карты с максимальной силой (на случай ничьей)
+    return enemyCards.filter(card => card.strength === maxStrength);
+},
+
+destroyEnemyCard: function(targetCardData, context) {
+    const { card, row } = targetCardData;
+    
+    if (!context.gameState || !context.gameState.opponent) return;
+    
+    const rowState = context.gameState.opponent.rows[row];
+    if (!rowState) return;
+    
+    // Удаляем карту из ряда
+    const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
+    if (cardIndex !== -1) {
+        // Создаем копию для сброса
+        const destroyedCard = { ...rowState.cards[cardIndex] };
+        
+        // Удаляем из ряда
+        rowState.cards.splice(cardIndex, 1);
+        
+        // Добавляем в сброс противника
+        context.gameState.opponent.discard.push(destroyedCard);
+        
+        // Обновляем отображение через gameModule
+        if (window.gameModule) {
+            // Визуально удаляем карту с поля
+            window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
+            
+            // Обновляем силу ряда
+            window.gameModule.updateRowStrength(row, 'opponent');
+            
+            // Обновляем сброс противника
+            if (window.gameModule.displayOpponentDiscard) {
+                window.gameModule.displayOpponentDiscard();
+            }
+        }
+    }
+},
+
+createDestroyVisualEffect: function(targetCardData) {
+    if (!window.gameModule) return;
+    
+    const { card, row } = targetCardData;
+    
+    // Находим элемент карты на поле
+    const rowElement = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Row`);
+    if (!rowElement) return;
+    
+    const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+    if (!cardElement) return;
+    
+    // Создаем эффект уничтожения
+    const destroyEffect = document.createElement('div');
+    destroyEffect.className = 'destroy-effect';
+    destroyEffect.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('card/destroy_card.jpg') center/cover no-repeat;
+        z-index: 100;
+        animation: destroyAnimation 1s ease-out forwards;
+    `;
+    
+    cardElement.appendChild(destroyEffect);
+    
+    // Воспроизводим звук
+    if (window.audioManager && window.audioManager.playSound) {
+        audioManager.playSound('card_destroy');
+    }
+    
+    // Удаляем эффект через секунду
+    setTimeout(() => {
+        if (destroyEffect.parentNode) {
+            destroyEffect.remove();
+        }
+    }, 1000);
+},
+
+	applySwapEffect: function(effect, context) {
+    // Проверяем, есть ли активный выбор для Чучела
+    if (context.decoyState && context.decoyState.awaitingSelection) {
+        // Если карта выбрана с поля
+        if (context.decoyState.selectedCard && context.decoyState.selectedCard.type === 'unit') {
+            const cardToSwap = context.decoyState.selectedCard;
+            
+            // Находим Чучело в руке
+            const decoyCard = context.playerHand.find(card => 
+                card.ability === 'decoy' || card.id === 'neutral_special_5'
+            );
+            
+            if (!decoyCard) {
+                return { success: false, message: 'Чучело не найдено в руке' };
+            }
+            
+            // Удаляем Чучело из руки
+            const decoyIndex = context.playerHand.indexOf(decoyCard);
+            if (decoyIndex !== -1) {
+                context.playerHand.splice(decoyIndex, 1);
+            }
+            
+            // Удаляем карту с поля
+            if (window.gameModule && window.gameModule.removeCardFromBoard) {
+                window.gameModule.removeCardFromBoard(cardToSwap);
+            }
+            
+            // Добавляем карту с поля обратно в руку
+            const cardCopy = { ...cardToSwap };
+            cardCopy.playedThisRound = false;
+            context.playerHand.push(cardCopy);
+            
+            // Размещаем Чучело на поле
+            decoyCard.owner = 'player';
+            decoyCard.row = cardToSwap.row;
+            decoyCard.positionInRow = cardToSwap.positionInRow;
+            
+            if (window.gameModule && window.gameModule.placeCardOnBoard) {
+                window.gameModule.placeCardOnBoard(decoyCard, decoyCard.row, decoyCard.positionInRow);
+            }
+            
+            // Обновляем отображение
+            if (window.gameModule) {
+                window.gameModule.displayPlayerHand();
+                window.gameModule.updateRowStrength(cardToSwap.row);
+            }
+            
+            // Сбрасываем состояние
+            context.decoyState = null;
+            
+            return { 
+                success: true, 
+                message: `Карта ${cardToSwap.name} заменена на Чучело`,
+                swappedCard: cardToSwap
+            };
+        }
+    }
+    
+    // Если только начинаем применение способности
+    return { 
+        success: true, 
+        message: 'Выберите карту на поле для замены на Чучело',
+        requiresSelection: true,
+        selectionType: 'unit_on_board'
+    };
+},
 
     applyBoostEffect: function(effect, context) {
         const targets = this.findTargets(effect, context);

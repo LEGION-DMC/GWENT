@@ -560,3 +560,59 @@
     scale: 1.03;
     box-shadow: 0 0 25px rgba(212, 175, 55, 0.5);
 }
+
+.decoy-target {
+    border: 3px solid gold !important;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.7) !important;
+    transform: scale(1.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.decoy-target:hover {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.9) !important;
+    transform: scale(1.08);
+}
+
+@keyframes cardDestroy {
+    0% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8) rotate(10deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(20deg);
+        display: none;
+    }
+}
+
+@keyframes destroyCardAnimation {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    20% {
+        opacity: 1;
+        transform: scale(1.1);
+        filter: brightness(1.5);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+        filter: brightness(1.2);
+    }
+    80% {
+        opacity: 0.8;
+        transform: scale(0.9);
+        filter: brightness(0.8);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.7);
+        filter: brightness(0.5);
+    }
+}
