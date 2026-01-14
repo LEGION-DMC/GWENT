@@ -32,6 +32,8 @@ const localization = {
         monster: 'Чудовище',
         weather: 'Погода',
         tactic: 'Тактика',
+        spell: 'Заклятие',
+        hazard: 'Бедствие',
     }
 };
 

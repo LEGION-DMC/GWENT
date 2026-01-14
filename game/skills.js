@@ -176,19 +176,29 @@ const skillSystem = {
             }
         },
         'destroy': {
-    name: 'Казнь',
-    type: 'special',
-    description: 'Уничтожить самую сильную карту отряда противника',
-    effect: {
-        type: 'destroy_strongest_enemy',
-        target: 'unit',
-        condition: 'enemy'
-    }
-},
+			name: 'Казнь',
+			type: 'special',
+			description: 'Уничтожает самую сильную карту отряда противника',
+			effect: {
+				type: 'destroy_strongest_enemy',
+				target: 'unit',
+				condition: 'enemy'
+			}
+		},
+		'destroy_artf': {
+			name: 'Коратская жара',
+			type: 'special',
+			description: 'Уничтожает карту артефакта противника',
+			effect: {
+				type: 'destroy_artifact',
+				target: 'artifact',
+				condition: 'enemy'
+			}
+		},
 		'decoy': {
 			name: 'Чучело',
 			type: 'special',
-			description: 'Заменить карту на поле на Чучело, вернув исходную карту в руку',
+			description: 'Замещает карту на поле на Чучело, возвращая исходную карту в руку',
 			effect: {
 				type: 'swap_with_hand',
 				target: 'unit',
@@ -241,7 +251,9 @@ const skillSystem = {
                 case 'clear_weather':
                     return this.applyClearWeatherEffect(context);
                 case 'destroy_strongest_enemy':
-    return this.applyDestroyStrongestEnemyEffect(effect, context);
+					return this.applyDestroyStrongestEnemyEffect(effect, context);
+				case 'destroy_artifact':
+					return this.applyDestroyArtifactEffect(effect, context);
                 case 'reveal':
                     return this.applyRevealEffect(effect, context);
                 case 'swap_with_hand':
@@ -253,6 +265,162 @@ const skillSystem = {
             return { success: false, message: 'Ошибка применения способности' };
         }
     },
+
+applyDestroyArtifactEffect: function(effect, context) {
+    // Находим артефакты противника на поле
+    const enemyArtifacts = this.findEnemyArtifacts(context);
+    
+    if (enemyArtifacts.length === 0) {
+        return { 
+            success: false, 
+            message: 'У противника нет артефактов для уничтожения',
+            requiresSelection: true,
+            selectionType: 'artifact_on_board'
+        };
+    }
+    
+    // Проверяем, есть ли активный выбор
+    if (context.destroyArtifactState && context.destroyArtifactState.awaitingSelection) {
+        const selectedArtifact = context.destroyArtifactState.selectedCard;
+        if (selectedArtifact && (selectedArtifact.type === 'artifact' || selectedArtifact.type === 'tactic')) {
+            return this.executeArtifactDestroy(selectedArtifact, context);
+        }
+    }
+    
+    // Если только начинаем применение способности
+    return { 
+        success: true, 
+        message: 'Выберите артефакт противника для уничтожения',
+        requiresSelection: true,
+        selectionType: 'artifact_on_board'
+    };
+},
+
+findEnemyArtifacts: function(context) {
+    if (!context.gameState || !context.gameState.opponent) return [];
+    
+    const artifacts = [];
+    const rows = ['close', 'ranged', 'siege'];
+    
+    rows.forEach(row => {
+        // Проверяем тактические карты в ряду
+        if (context.gameState.opponent.rows[row].tactic) {
+            artifacts.push({
+                card: context.gameState.opponent.rows[row].tactic,
+                row: row,
+                type: 'tactic',
+                location: 'tactic_slot'
+            });
+        }
+        
+        // Проверяем артефакты в ряду
+        const rowCards = context.gameState.opponent.rows[row].cards || [];
+        rowCards.forEach(card => {
+            if (card.type === 'artifact') {
+                artifacts.push({
+                    card: card,
+                    row: row,
+                    type: 'artifact',
+                    location: 'row',
+                    position: rowCards.indexOf(card)
+                });
+            }
+        });
+    });
+    
+    return artifacts;
+},
+
+executeArtifactDestroy: function(artifactData, context) {
+    const { card, row, type, location } = artifactData;
+    
+    // Создаем визуальный эффект уничтожения
+    this.createDestroyArtifactVisualEffect(card, row, type);
+    
+    // Удаляем артефакт с поля
+    if (type === 'tactic' && location === 'tactic_slot') {
+        // Удаляем тактическую карту
+        delete context.gameState.opponent.rows[row].tactic;
+        
+        if (window.gameModule) {
+            const tacticSlot = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Tactics`);
+            if (tacticSlot) {
+                tacticSlot.innerHTML = '';
+            }
+        }
+    } else if (type === 'artifact' && location === 'row') {
+        // Удаляем артефакт из ряда
+        const rowState = context.gameState.opponent.rows[row];
+        const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
+        if (cardIndex !== -1) {
+            rowState.cards.splice(cardIndex, 1);
+            
+            if (window.gameModule) {
+                window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
+                window.gameModule.updateRowStrength(row, 'opponent');
+            }
+        }
+    }
+    
+    // Добавляем уничтоженный артефакт в сброс противника
+    const destroyedCardCopy = { ...card };
+    context.gameState.opponent.discard.push(destroyedCardCopy);
+    
+    return { 
+        success: true, 
+        message: `Уничтожен артефакт: ${card.name}`,
+        destroyedCard: card
+    };
+},
+
+createDestroyArtifactVisualEffect: function(card, row, type) {
+    if (!window.gameModule) return;
+    
+    let targetElement;
+    
+    if (type === 'tactic') {
+        const tacticSlot = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Tactics`);
+        if (tacticSlot) {
+            targetElement = tacticSlot.querySelector(`[data-card-id="${card.id}"]`);
+        }
+    } else {
+        const rowElement = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Row`);
+        if (rowElement) {
+            targetElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+        }
+    }
+    
+    if (!targetElement) return;
+    
+    // Создаем эффект уничтожения артефакта
+    const destroyEffect = document.createElement('div');
+    destroyEffect.className = 'destroy-artifact-effect';
+    destroyEffect.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('card/destroy_card.jpg') center/cover no-repeat;
+        z-index: 100;
+        animation: destroyArtifactAnimation 1s ease-out forwards;
+        border-radius: 5px;
+    `;
+    
+    targetElement.appendChild(destroyEffect);
+    
+    // Воспроизводим звук
+    if (window.audioManager && window.audioManager.playSound) {
+        audioManager.playSound('artefact_destroy');
+    }
+    
+    // Удаляем эффект через секунду
+    setTimeout(() => {
+        if (destroyEffect.parentNode) {
+            destroyEffect.remove();
+        }
+    }, 1000);
+},
 
 applyDestroyStrongestEnemyEffect: function(effect, context) {
     // Находим самые сильные карты противника
@@ -373,11 +541,6 @@ createDestroyVisualEffect: function(targetCardData) {
     `;
     
     cardElement.appendChild(destroyEffect);
-    
-    // Воспроизводим звук
-    if (window.audioManager && window.audioManager.playSound) {
-        audioManager.playSound('card_destroy');
-    }
     
     // Удаляем эффект через секунду
     setTimeout(() => {

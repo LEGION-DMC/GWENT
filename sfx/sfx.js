@@ -40,7 +40,7 @@ const audioManager = {
             lose: 'sfx/lose.mp3',
             draw: 'sfx/draw.mp3',
 			
-            draw: 'sfx/scorch.mp3',
+            scorch: 'sfx/scorch.mp3',
 			
             card_close: 'sfx/card_close.wav',
             card_range: 'sfx/card_range.wav',

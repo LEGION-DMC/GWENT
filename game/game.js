@@ -1975,29 +1975,31 @@ removeCardFromBoardVisual: function(card, row, player) {
 },
 
     applyWeatherEffect: function(card) {
-        const weatherEffect = this.getWeatherEffectForCard(card);
-        if (!weatherEffect) return;
+    const weatherEffect = this.getWeatherEffectForCard(card);
+    if (!weatherEffect) return;
+    
+    const { rows, images, sounds } = weatherEffect;
+    
+    rows.forEach(row => {
+        this.gameState.weather.effects[row] = {
+            card: card,
+            image: images[row],
+            sound: sounds[row]
+        };
         
-        const { rows, images, sounds } = weatherEffect;
+        this.applyVisualWeatherEffect(row, images[row]);
         
-        rows.forEach(row => {
-            this.gameState.weather.effects[row] = {
-                card: card,
-                image: images[row],
-                sound: sounds[row]
-            };
-            
-            this.applyVisualWeatherEffect(row, images[row]);
-            this.reduceRowStrengthTo1(row, 'player');
-            this.reduceRowStrengthTo1(row, 'opponent');
-            
-            if (sounds[row]) {
-                this.playWeatherSound(sounds[row]);
-            }
-        });
+        // Создаем копии карт для игрока и противника отдельно
+        this.reduceRowStrengthTo1(row, 'player');
+        this.reduceRowStrengthTo1(row, 'opponent');
         
-        this.updateTotalScoreDisplays();
-    },
+        if (sounds[row]) {
+            this.playWeatherSound(sounds[row]);
+        }
+    });
+    
+    this.updateTotalScoreDisplays();
+},
 
     clearAllWeatherEffects: function() {
         const rows = ['close', 'ranged', 'siege'];
@@ -2009,33 +2011,37 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     restoreAllRowStrengths: function() {
-        const rows = ['close', 'ranged', 'siege'];
-        const players = ['player', 'opponent'];
-        
-        rows.forEach(row => {
-            players.forEach(player => {
-                this.gameState[player].rows[row].cards.forEach(card => {
-                    if (card.originalStrength !== undefined) {
-                        card.strength = card.originalStrength;
-                        this.updateCardStrengthDisplay(card, row, player);
-                        delete card.originalStrength;
-                    }
-                });
-                this.updateRowStrength(row, player);
-            });
-        });
-        
-        this.updateTotalScoreDisplays();
-    },
+    const rows = ['close', 'ranged', 'siege'];
+    const players = ['player', 'opponent'];
     
+    rows.forEach(row => {
+        players.forEach(player => {
+            this.gameState[player].rows[row].cards.forEach(card => {
+                // Восстанавливаем оригинальную силу и убираем временные свойства
+                if (card._originalStrength !== undefined) {
+                    // card.strength = card._originalStrength; // Не меняем оригинальный объект!
+                    delete card._displayStrength;
+                    delete card._originalStrength;
+                    this.updateCardStrengthDisplay(card, row, player);
+                }
+            });
+            this.updateRowStrength(row, player);
+        });
+    });
+    
+    this.updateTotalScoreDisplays();
+},
+
     reduceRowStrengthTo1: function(row, player) {
     this.gameState[player].rows[row].cards.forEach(card => {
         if (card.strength > 1) {
-            // Сохраняем оригинальную силу только если еще не сохранена
-            if (card.originalStrength === undefined) {
-                card.originalStrength = card.strength;
+            // Используем локальную копию силы, не затрагивая оригинальный объект
+            if (card._originalStrength === undefined) {
+                // Сохраняем оригинальную силу как локальное свойство
+                card._originalStrength = card.strength;
             }
-            card.strength = 1;
+            // Меняем только отображаемую силу
+            card._displayStrength = 1;
             this.updateCardStrengthDisplay(card, row, player);
         }
     });
@@ -2404,19 +2410,40 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     updateRowStrength: function(row, player = 'player') {
-        const rowState = this.gameState[player].rows[row];
-        const totalStrength = rowState.cards.reduce((sum, card) => sum + (card.strength || 0), 0);
-        rowState.strength = totalStrength;
-        
-        const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
-        if (strengthElement) {
-            strengthElement.textContent = totalStrength;
-            strengthElement.classList.add('strength-update');
-            setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
-        }
-        
-        this.updateTotalScoreDisplays();
-    },
+    const rowState = this.gameState[player].rows[row];
+    
+    // Используем displayStrength если есть, иначе обычную силу
+    const totalStrength = rowState.cards.reduce((sum, card) => {
+        const displayStrength = card._displayStrength !== undefined ? 
+            card._displayStrength : card.strength;
+        return sum + (displayStrength || 0);
+    }, 0);
+    
+    rowState.strength = totalStrength;
+    
+    const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
+    if (strengthElement) {
+        strengthElement.textContent = totalStrength;
+        strengthElement.classList.add('strength-update');
+        setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
+    }
+    
+    this.updateTotalScoreDisplays();
+},
+
+createCardCopy: function(card) {
+    // Создаем глубокую копию карты
+    const copy = JSON.parse(JSON.stringify(card));
+    
+    // Добавляем уникальный ID для отслеживания
+    copy.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Сохраняем оригинальную силу в локальном свойстве
+    copy._originalStrength = card.strength;
+    copy._displayStrength = card.strength;
+    
+    return copy;
+},
 
     getCardMediaPath: function(card) {
         const cardDisplayMode = window.settingsModule ? window.settingsModule.getCardDisplayMode() : 'animated';
@@ -3750,18 +3777,13 @@ removeCardFromBoardVisual: function(card, row, player) {
     if (cardElement) {
         const strengthElement = cardElement.querySelector('.board-card-strength');
         if (strengthElement) {
-            strengthElement.textContent = card.strength;
+            // Используем displayStrength если есть, иначе обычную силу
+            const displayStrength = card._displayStrength !== undefined ? 
+                card._displayStrength : card.strength;
+            strengthElement.textContent = displayStrength;
             
-            // Показываем оригинальную силу в подсказке
-            if (card.originalStrength !== undefined && card.originalStrength > 1) {
-                strengthElement.title = `Оригинальная сила: ${card.originalStrength}`;
-                cardElement.title = `Оригинальная сила: ${card.originalStrength}`;
-            } else {
-                strengthElement.title = '';
-                cardElement.title = '';
-            }
-            
-            if (card.strength === 1 && card.originalStrength > 1) {
+            // Визуальное выделение, если сила уменьшена
+            if (card._displayStrength === 1 && card._originalStrength > 1) {
                 cardElement.dataset.strengthReduced = 'true';
                 strengthElement.style.color = '#ff4444';
                 strengthElement.style.animation = 'strengthReduced 2s infinite';
@@ -3950,20 +3972,21 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     showCardModal: function(card) {
-        if (window.deckModule && typeof window.showCardModal === 'function') {
-            const cardForModal = { ...card };
-            
-            if (card.originalStrength !== undefined) {
-                cardForModal.strength = card.originalStrength;
-                cardForModal.showOriginalStrength = true;
-            }
-            
-            window.showCardModal(cardForModal);
-        } else {
-            this.showBasicCardModal(card);
+    if (window.deckModule && typeof window.showCardModal === 'function') {
+        const cardForModal = { ...card };
+        
+        // Показываем оригинальную силу, а не измененную погодой
+        if (card._originalStrength !== undefined) {
+            cardForModal.strength = card._originalStrength;
+            cardForModal.showOriginalStrength = true;
         }
-        audioManager.playSound('button');
-    },
+        
+        window.showCardModal(cardForModal);
+    } else {
+        this.showBasicCardModal(card);
+    }
+    audioManager.playSound('button');
+},
 
     showRoundResult: function(winner, playerScore, opponentScore) {
 		if (window.audioManager && window.audioManager.playSound) {

@@ -123,13 +123,15 @@ const aiModule = {
                 uniqueCards.push(card);
             }
         } else if (card.ability === 'decoy') {
-            // Проверяем, есть ли карты для замены
             if (this.getWeakCardsOnBoard().length > 0) {
                 uniqueCards.push(card);
             }
         } else if (card.ability === 'destroy') {
-            // Проверяем, есть ли карты для уничтожения
             if (this.findStrongestPlayerCard()) {
+                uniqueCards.push(card);
+            }
+        } else if (card.ability === 'destroy_artf') {
+            if (this.findPlayerArtifacts().length > 0) {
                 uniqueCards.push(card);
             }
         } else {
@@ -217,9 +219,14 @@ const aiModule = {
     },
     
     canPlayUnitCard: function(card) {
-        const availableRows = this.getAvailableRowsForCard(card);
-        return availableRows.length > 0;
-    },
+    // Для карт с особыми способностями проверка не нужна
+    if (card.ability === 'decoy' || card.ability === 'destroy' || card.ability === 'destroy_artf') {
+        return true;
+    }
+    
+    const availableRows = this.getAvailableRowsForCard(card);
+    return availableRows.length > 0;
+},
     
     getAvailableRowsForCard: function(card) {
         let availableRows = [];
@@ -266,9 +273,10 @@ const aiModule = {
     } else if (card.ability === 'decoy') {
         baseScore = this.evaluateDecoyCard(card);
     } else if (card.ability === 'destroy') {
-    baseScore = this.evaluateDestroyCard(card);
-}
- else {
+		baseScore = this.evaluateDestroyCard(card);
+	} else if (card.ability === 'destroy_artf') {
+		baseScore = this.evaluateDestroyArtifactCard(card);
+	} else {
         baseScore = 5;
     }
     
@@ -345,6 +353,88 @@ findStrongestPlayerCard: function() {
     });
     
     return strongestCard ? { card: strongestCard, row: cardRow } : null;
+},
+
+evaluateDestroyArtifactCard: function(card) {
+    let score = 18;
+    
+    // Находим артефакты игрока
+    const playerArtifacts = this.findPlayerArtifacts();
+    
+    if (playerArtifacts.length > 0) {
+        // Учитываем количество артефактов
+        score += playerArtifacts.length * 5;
+        
+        // Бонус за тактические карты
+        const tacticCount = playerArtifacts.filter(a => a.type === 'tactic').length;
+        if (tacticCount > 0) {
+            score += tacticCount * 8;
+        }
+        
+        // Бонус за сильные/редкие артефакты
+        playerArtifacts.forEach(artifact => {
+            if (artifact.card.rarity === 'gold') {
+                score += 12;
+            } else if (artifact.card.rarity === 'silver') {
+                score += 6;
+            }
+            
+            // Бонус за артефакты с тегами (особые способности)
+            if (artifact.card.tags && artifact.card.tags.length > 0) {
+                score += artifact.card.tags.length * 4;
+            }
+        });
+        
+        // Учитываем ситуацию на поле
+        const playerTotalScore = this.calculateTotalScore('player');
+        const opponentTotalScore = this.calculateTotalScore('opponent');
+        
+        if (playerTotalScore > opponentTotalScore + 10) {
+            // Если игрок сильно лидирует, уничтожение его артефактов менее важно
+            score -= 5;
+        } else if (playerTotalScore < opponentTotalScore) {
+            // Если мы проигрываем, уничтожение артефактов может помочь
+            score += 10;
+        }
+    } else {
+        // Если у игрока нет артефактов, не играем эту карту
+        score = 0;
+    }
+    
+    return score;
+},
+
+findPlayerArtifacts: function() {
+    const artifacts = [];
+    const rows = ['close', 'ranged', 'siege'];
+    
+    rows.forEach(row => {
+        // Проверяем тактические карты
+        if (this.gameState.player.rows[row].tactic) {
+            artifacts.push({
+                card: this.gameState.player.rows[row].tactic,
+                row: row,
+                type: 'tactic',
+                location: 'tactic_slot'
+            });
+        }
+        
+        // Проверяем артефакты в ряду
+        const rowCards = this.gameState.player.rows[row].cards || [];
+        rowCards.forEach(card => {
+            if (card.type === 'artifact') {
+                artifacts.push({
+                    card: card,
+                    row: row,
+                    type: 'artifact',
+                    location: 'row',
+                    position: rowCards.indexOf(card)
+                });
+            }
+        });
+    });
+    
+    return artifacts;
 },
 
     evaluateWeatherCard: function(card) {
@@ -543,12 +633,150 @@ getWeakCardsOnBoard: function() {
 		} else if (card.ability === 'decoy') {
 			this.playDecoyCard(card);
 		} else if (card.ability === 'destroy') {
-    this.playDestroyCard(card);
-} else {
+			this.playDestroyCard(card);
+		} else if (card.ability === 'destroy_artf') {
+			this.playDestroyArtifactCard(card);
+		} else {
 			this.playUnitCard(card);
 		}
 	},
 	
+	playDestroyArtifactCard: function(card) {
+    // Находим артефакты игрока
+    const playerArtifacts = this.findPlayerArtifacts();
+    
+    if (playerArtifacts.length === 0) {
+        // Если нет целей, не играем эту карту
+        this.usedCardIds.delete(card.id);
+        return;
+    }
+    
+    // Выбираем лучший артефакт для уничтожения
+    const bestArtifact = this.selectBestArtifactToDestroy(playerArtifacts);
+    
+    if (bestArtifact) {
+        // Выполняем уничтожение
+        this.executeArtifactDestroy(card, bestArtifact);
+    }
+},
+
+selectBestArtifactToDestroy: function(artifacts) {
+    if (artifacts.length === 0) return null;
+    
+    const scoredArtifacts = artifacts.map(artifact => ({
+        artifact: artifact,
+        score: this.evaluateArtifactForDestruction(artifact)
+    }));
+    
+    // Сортируем по убыванию оценки
+    scoredArtifacts.sort((a, b) => b.score - a.score);
+    
+    return scoredArtifacts[0].artifact;
+},
+
+evaluateArtifactForDestruction: function(artifact) {
+    let score = 0;
+    
+    // Тактические карты приоритетнее
+    if (artifact.type === 'tactic') {
+        score += 20;
+    }
+    
+    // Редкие карты приоритетнее
+    if (artifact.card.rarity === 'gold') {
+        score += 15;
+    } else if (artifact.card.rarity === 'silver') {
+        score += 10;
+    }
+    
+    // Артефакты с тегами (особые способности)
+    if (artifact.card.tags && artifact.card.tags.length > 0) {
+        score += artifact.card.tags.length * 5;
+    }
+    
+    // Учитываем силу (если есть)
+    if (artifact.card.strength) {
+        score += artifact.card.strength * 2;
+    }
+    
+    // Учитываем положение на поле (центральные ряды важнее)
+    if (artifact.row === 'ranged') {
+        score += 3;
+    }
+    
+    return score;
+},
+
+executeArtifactDestroy: function(destroyCard, artifactData) {
+    const { card: targetCard, row: targetRow, type: targetType } = artifactData;
+    
+    // Удаляем Коратскую жару из руки
+    this.removeCardFromHand(destroyCard);
+    
+    // Добавляем Коратскую жару в сброс противника
+    const destroyCardCopy = { ...destroyCard };
+    this.gameState.opponent.discard.push(destroyCardCopy);
+    
+    // Удаляем артефакт игрока
+    if (targetType === 'tactic') {
+        // Удаляем тактическую карту
+        delete this.gameState.player.rows[targetRow].tactic;
+        
+        // Обновляем отображение
+        if (window.gameModule) {
+            const tacticSlot = document.getElementById(`player${this.capitalizeFirst(targetRow)}Tactics`);
+            if (tacticSlot) {
+                tacticSlot.innerHTML = '';
+            }
+        }
+    } else if (targetType === 'artifact') {
+        // Удаляем артефакт из ряда
+        const rowState = this.gameState.player.rows[targetRow];
+        const cardIndex = rowState.cards.findIndex(c => c.id === targetCard.id);
+        if (cardIndex !== -1) {
+            // Создаем копию для сброса
+            const destroyedCard = { ...rowState.cards[cardIndex] };
+            
+            // Удаляем из ряда
+            rowState.cards.splice(cardIndex, 1);
+            
+            // Добавляем в сброс игрока
+            this.gameState.player.discard.push(destroyedCard);
+            
+            // Обновляем отображение
+            if (window.gameModule) {
+                window.gameModule.removeCardFromBoardVisual(targetCard, targetRow, 'player');
+                window.gameModule.updateRowStrength(targetRow, 'player');
+            }
+        }
+    }
+    
+    // Добавляем уничтоженный артефакт в сброс игрока
+    const destroyedCardCopy = { ...targetCard };
+    this.gameState.player.discard.push(destroyedCardCopy);
+    
+    // Воспроизводим звук
+    if (window.audioManager && window.audioManager.playSound) {
+        audioManager.playSound('artefact');
+        setTimeout(() => {
+            audioManager.playSound('card_destroy');
+        }, 300);
+    }
+    
+    // Обновляем сбросы
+    if (window.gameModule) {
+        window.gameModule.displayPlayerDiscard();
+        window.gameModule.displayOpponentDiscard();
+        
+        // Завершаем ход
+        if (window.gameModule.completeCardPlay) {
+            setTimeout(() => {
+                window.gameModule.completeCardPlay();
+            }, 1000);
+        }
+    }
+},
+
 	playDestroyCard: function(card) {
     // Находим самую сильную карту игрока
     const strongestPlayerCard = this.findStrongestPlayerCard();
@@ -620,7 +848,7 @@ executeDestroyCard: function(destroyCard, targetData) {
         if (window.audioManager && window.audioManager.playSound) {
             audioManager.playSound('artefact');
             setTimeout(() => {
-                audioManager.playSound('card_destroy');
+                audioManager.playSound('scorch');
             }, 300);
         }
     }
@@ -642,7 +870,7 @@ createDestroyVisualEffect: function(card, row) {
         left: 0;
         width: 100%;
         height: 100%;
-        background: url('card/destroy_card.png') center/cover no-repeat;
+        background: url('card/neutral/scorch.jpg') center/cover no-repeat;
         z-index: 100;
         border-radius: 5px;
         pointer-events: none;
