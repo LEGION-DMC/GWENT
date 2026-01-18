@@ -516,7 +516,7 @@ function createDeckBuildingHTML() {
     document.body.appendChild(deckBuildingSection);
     setTimeout(() => {
         deckBuildingSection.style.opacity = '1';
-    }, 50);
+    }, 1000);
     
     setupLeaderVideoControls();
     setupDeckBuildingEventListeners();
@@ -743,7 +743,7 @@ function loadFactionCards(faction) {
     }
     setTimeout(() => {
         displayCollectionCards();
-    }, 100);
+    }, 10);
 }
 
 function backToFactionSelection() {
@@ -1010,7 +1010,7 @@ function showCardModal(card) {
     setTimeout(() => {
         modalOverlay.classList.add('active');
         setupModalVideoControls(modalOverlay);
-    }, 10);
+    }, 100);
     
     audioManager.playSound('button');
 }
@@ -1386,25 +1386,6 @@ function setupDeckBuildingEventListeners() {
             audioManager.playSound('touch');
         });
     });
-}
-
-function backToFactionSelection() {
-    const deckBuildingSection = document.querySelector('.deck-building');
-    if (deckBuildingSection) {
-        deckBuildingSection.style.opacity = '0';
-        deckBuildingSection.style.transform = 'translateY(50px)';
-        
-        setTimeout(() => {
-            deckBuildingSection.remove();
-            
-            document.body.style.background = "url('ui/fon.jpg') no-repeat center center fixed";
-            document.body.style.backgroundSize = 'cover';
-            
-            if (window.factionModule && window.factionModule.initFactionSelection) {
-                window.factionModule.initFactionSelection();
-            }
-        }, 800);
-    }
 }
 
 function autoBuildDeck() {

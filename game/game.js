@@ -95,8 +95,6 @@ const gameModule = {
     init: function() {
         this.loadSettings();
         this.updateGameSettings();
-        this.addMessageStyles();
-        this.addTimerStyles();
         this.createTotalScoreDisplays();
         this.createTimerDisplay();
 		this.createCrownIndicators();
@@ -325,60 +323,6 @@ const gameModule = {
     resetTimeoutCounter: function() {
         this.gameState.turnTimer.timeouts = 0;
         this.gameState.turnTimer.penaltyApplied = false;
-    },
-
-    addTimerStyles: function() {
-        if (document.getElementById('turn-timer-styles')) return;
-        
-        const style = document.createElement('style');
-        style.id = 'turn-timer-styles';
-        style.textContent = `
-            .turn-timer-display {
-                position: fixed !important;
-                top: 62% !important;
-                right: 2.5% !important;
-                transform: translateX(-50%) !important;
-                background: rgba(0, 0, 0, 0.8) !important;
-                border: 1px solid #d4af37 !important;
-                border-radius: 10px !important;
-                padding: 3px 10px !important;
-                color: white !important;
-                font-family: 'Gwent', sans-serif !important;
-                font-size: 15px !important;
-                font-weight: bold !important;
-                z-index: 9999 !important;
-                text-align: center !important;
-                min-width: 150px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 10px !important;
-                transition: all 0.3s ease !important;
-            }
-            
-            @keyframes timerPulse {
-                0% { box-shadow: 0 0 5px rgba(244, 0, 0, 0.5); }
-                50% { box-shadow: 0 0 20px rgba(244, 0, 0, 0.8); }
-                100% { box-shadow: 0 0 5px rgba(244, 0, 0, 0.5); }
-            }
-            
-            @keyframes pulse {
-                0% { opacity: 0.7; }
-                50% { opacity: 1; }
-                100% { opacity: 0.7; }
-            }
-            
-            .timer-time {
-                font-size: 18px;
-                font-weight: bold;
-            }
-            
-            .timer-label {
-                font-size: 13px;
-                opacity: 0.8;
-            }
-        `;
-        document.head.appendChild(style);
     },
 
     startMulliganPhase: function() {
@@ -880,23 +824,23 @@ const gameModule = {
         this.updateMulliganInfo();
     },
 
-removeCardFromBoardVisual: function(card, row, player) {
-    const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
-    if (!rowElement) return;
-    
-    const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
-    if (cardElement) {
-        // Добавляем анимацию исчезновения
-        cardElement.style.animation = 'cardDestroy 0.5s ease-out forwards';
-        
-        // Удаляем через 0.5 секунды
-        setTimeout(() => {
-            if (cardElement.parentNode === rowElement) {
-                rowElement.removeChild(cardElement);
-            }
-        }, 500);
-    }
-},
+	removeCardFromBoardVisual: function(card, row, player) {
+		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+		if (cardElement) {
+			// Добавляем анимацию исчезновения
+			cardElement.style.animation = 'cardDestroy 0.5s ease-out forwards';
+			
+			// Удаляем через 0.5 секунды
+			setTimeout(() => {
+				if (cardElement.parentNode === rowElement) {
+					rowElement.removeChild(cardElement);
+				}
+			}, 500);
+		}
+	},
 
     updateMulliganInfo: function() {
         const infoText = document.getElementById('mulliganInfoText');
@@ -1140,120 +1084,10 @@ removeCardFromBoardVisual: function(card, row, player) {
         `;
 
         document.body.appendChild(coinOverlay);
-        this.addCoinTossStyles();
         
         setTimeout(() => {
             this.animateCoinToss();
         }, 1500);
-    },
-
-    addCoinTossStyles: function() {
-        if (document.getElementById('coin-toss-styles')) return;
-        
-        const style = document.createElement('style');
-        style.id = 'coin-toss-styles';
-        style.textContent = `
-            .coin-toss-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                max-width: 600px;
-            }
-            
-            .coin-toss-title {
-                color: #d4af37;
-                font-size: 30px;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 3px;
-                text-shadow: 0 2px 10px rgba(212, 175, 55, 0.2);
-            }
-            
-            @keyframes titlePulse {
-                0% { opacity: 0.8; }
-                50% { opacity: 1; }
-                100% { opacity: 0.8; }
-            }
-            
-            .coin-wrapper {
-                width: 300px;
-                height: 300px;
-                position: relative;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .coin {
-                position: relative;
-                transform-style: preserve-3d;
-                transition: transform 0.1s linear;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                left: 0%;
-            }
-            
-            .coin-front, .coin-back {
-                position: absolute;
-                backface-visibility: hidden;
-            }
-            
-            .coin-front {
-                transform: rotateX(0deg);
-            }
-            
-            .coin-back {
-                transform: rotateX(180deg);
-            }
-            
-            @keyframes coinTossUp {
-                0% {
-                    transform: translateY(0) rotateX(0deg);
-                    animation-timing-function: ease-out;
-                }
-                20% {
-                    transform: translateY(-200px) rotateX(360deg);
-                    animation-timing-function: ease-in;
-                }
-                40% {
-                    transform: translateY(-50px) rotateX(720deg);
-                    animation-timing-function: ease-out;
-                }
-                60% {
-                    transform: translateY(-150px) rotateX(1080deg);
-                    animation-timing-function: ease-in;
-                }
-                80% {
-                    transform: translateY(-30px) rotateX(1440deg);
-                    animation-timing-function: ease-out;
-                }
-                100% {
-                    transform: translateY(0) rotateX(1800deg);
-                }
-            }
-            
-            .coin-tossing {
-                animation: coinTossUp 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            }
-            
-            .coin-result {
-                color: #fff;
-                font-size: 25px;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 2px;
-                min-height: 40px;
-                opacity: 0;
-                transition: opacity 0.5s ease;
-            }
-            
-            .coin-result.show {
-                opacity: 1;
-            }
-        `;
-        document.head.appendChild(style);
     },
 
     animateCoinToss: function() {
@@ -1271,51 +1105,19 @@ removeCardFromBoardVisual: function(card, row, player) {
 		const targetRotation = (totalRotations * 360) + finalSide;
 		const animationDuration = 2500;
 		
-		const styleId = 'coin-toss-dynamic-animation';
-		let style = document.getElementById(styleId);
-		if (!style) {
-			style = document.createElement('style');
-			style.id = styleId;
-			document.head.appendChild(style);
-		}
-		
-		style.textContent = `
-			@keyframes smoothCoinToss {
-				0% {
-					transform: translateY(0) rotateX(0deg);
-					animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000); /* ease-out-cubic */
-				}
-				25% {
-					transform: translateY(-200px) rotateX(450deg);
-					animation-timing-function: cubic-bezier(0.550, 0.055, 0.675, 0.190); /* ease-in-cubic */
-				}
-				50% {
-					transform: translateY(-50px) rotateX(900deg);
-					animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-				}
-				75% {
-					transform: translateY(-150px) rotateX(1350deg);
-					animation-timing-function: cubic-bezier(0.550, 0.055, 0.675, 0.190);
-				}
-				100% {
-					transform: translateY(0) rotateX(${targetRotation}deg);
-					animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-				}
-			}
-			
-			.smooth-coin-toss {
-				animation: smoothCoinToss ${animationDuration}ms forwards !important; /* Здесь меняем длительность */
-				transform-origin: center center;
-			}
-		`;
+		coinElement.style.setProperty('--final-rotation', `${targetRotation}deg`);
+		coinElement.style.setProperty('--animation-duration', `${animationDuration}ms`);
 		
 		setTimeout(() => {
 			const animations = coinElement.getAnimations();
 			animations.forEach(anim => anim.cancel());
 			coinElement.style.transform = 'translateY(0) rotateX(0deg)';
 			coinElement.classList.remove('coin-tossing', 'smooth-coin-toss');
+			
 			void coinElement.offsetWidth;
+			
 			coinElement.classList.add('smooth-coin-toss');
+			
 			if (audioManager && audioManager.playSound) {
 				audioManager.playSound('coinToss');
 			}
@@ -1829,20 +1631,33 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     restoreAllCardStrengths: function() {
-        const rows = ['close', 'ranged', 'siege'];
-        const players = ['player', 'opponent'];
-        
-        rows.forEach(row => {
-            players.forEach(player => {
-                this.gameState[player].rows[row].cards.forEach(card => {
-                    if (card.originalStrength !== undefined) {
-                        card.strength = card.originalStrength;
-                        delete card.originalStrength;
-                    }
-                });
-            });
-        });
-    },
+		const rows = ['close', 'ranged', 'siege'];
+		const players = ['player', 'opponent'];
+		
+		rows.forEach(row => {
+			players.forEach(player => {
+				this.gameState[player].rows[row].cards.forEach(card => {
+					// Восстанавливаем от урона
+					if (card._displayStrength !== undefined) {
+						// Если была сохранена оригинальная сила, восстанавливаем ее
+						if (card.originalStrength !== undefined) {
+							delete card._displayStrength;
+						} else {
+							// Иначе оставляем текущую силу
+							card.strength = card._displayStrength;
+							delete card._displayStrength;
+						}
+					}
+					
+					// Восстанавливаем от погоды
+					if (card.originalStrength !== undefined) {
+						card.strength = card.originalStrength;
+						delete card.originalStrength;
+					}
+				});
+			});
+		});
+	},
 
     invalidateScoreCache: function(player) {
         if (this.gameState[player]) {
@@ -1892,6 +1707,14 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     handleRegularWeather: function(card) {
+		const isClearWeather = this.isClearWeatherCard(card);
+		
+		if (isClearWeather) {
+			// Если это "Чистое небо", обрабатываем отдельно
+			this.handleClearWeather(card);
+			return;
+		}
+		
 		const clearWeatherIndex = this.gameState.weather.cards.findIndex(
 			weatherCard => this.isClearWeatherCard(weatherCard)
 		);
@@ -1929,77 +1752,87 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     handleClearWeather: function(card) {
-    this.playWeatherSound('clear');
-    
-    // Сначала сохраняем карты, которые будут сброшены
-    const weatherCardsToDiscard = [...this.gameState.weather.cards];
-    
-    // Очищаем погодные эффекты
-    this.gameState.weather.cards = [];
-    this.gameState.weather.cards.push(card);
-    
-    // Восстанавливаем силу карт на всех рядах
-    const rows = ['close', 'ranged', 'siege'];
-    const players = ['player', 'opponent'];
-    
-    rows.forEach(row => {
-        players.forEach(player => {
-            this.gameState[player].rows[row].cards.forEach(card => {
-                if (card.originalStrength !== undefined) {
-                    card.strength = card.originalStrength;
-                    this.updateCardStrengthDisplay(card, row, player);
-                    delete card.originalStrength;
-                }
-            });
-            this.updateRowStrength(row, player);
-        });
-    });
-    
-    // Сбрасываем погодные карты
-    weatherCardsToDiscard.forEach(weatherCard => {
-        const cardOwner = this.getWeatherCardOwner(weatherCard);
-        const isAlreadyInDiscard = this.gameState[cardOwner].discard.some(
-            discardedCard => discardedCard.id === weatherCard.id
-        );
-        if (!isAlreadyInDiscard) {
-            this.addCardToDiscard(weatherCard, cardOwner);
-        }
-    });
-    
-    // Очищаем визуальные эффекты
-    this.clearAllWeatherEffects();
-    
-    // Обновляем отображение
-    this.displayWeatherCards();
-    this.updateTotalScoreDisplays();
-},
+		this.playWeatherSound('clear');
+		
+		// Сначала сохраняем карты, которые будут сброшены
+		const weatherCardsToDiscard = [...this.gameState.weather.cards];
+		
+		// Очищаем погодные эффекты
+		this.gameState.weather.cards = [];
+		this.gameState.weather.cards.push(card);
+		
+		// Восстанавливаем силу карт на всех рядах
+		const rows = ['close', 'ranged', 'siege'];
+		const players = ['player', 'opponent'];
+		
+		rows.forEach(row => {
+			players.forEach(player => {
+				this.gameState[player].rows[row].cards.forEach(card => {
+					if (card.originalStrength !== undefined) {
+						// Восстанавливаем оригинальную силу
+						card.strength = card.originalStrength;
+						// Удаляем временные свойства погоды
+						delete card.originalStrength;
+						delete card._displayStrength; // Важно: удаляем displayStrength
+						this.updateCardStrengthDisplay(card, row, player);
+					} else if (card._displayStrength !== undefined) {
+						// Если есть только displayStrength (от урона)
+						card.strength = card._displayStrength;
+						delete card._displayStrength;
+						this.updateCardStrengthDisplay(card, row, player);
+					}
+				});
+				this.updateRowStrength(row, player);
+			});
+		});
+		
+		// Сбрасываем погодные карты
+		weatherCardsToDiscard.forEach(weatherCard => {
+			const cardOwner = this.getWeatherCardOwner(weatherCard);
+			const isAlreadyInDiscard = this.gameState[cardOwner].discard.some(
+				discardedCard => discardedCard.id === weatherCard.id
+			);
+			if (!isAlreadyInDiscard) {
+				this.addCardToDiscard(weatherCard, cardOwner);
+			}
+		});
+		
+		// Очищаем визуальные эффекты
+		this.clearAllWeatherEffects();
+		
+		// Обновляем отображение
+		this.displayWeatherCards();
+		this.updateTotalScoreDisplays();
+	},
 
     applyWeatherEffect: function(card) {
-    const weatherEffect = this.getWeatherEffectForCard(card);
-    if (!weatherEffect) return;
-    
-    const { rows, images, sounds } = weatherEffect;
-    
-    rows.forEach(row => {
-        this.gameState.weather.effects[row] = {
-            card: card,
-            image: images[row],
-            sound: sounds[row]
-        };
-        
-        this.applyVisualWeatherEffect(row, images[row]);
-        
-        // Создаем копии карт для игрока и противника отдельно
-        this.reduceRowStrengthTo1(row, 'player');
-        this.reduceRowStrengthTo1(row, 'opponent');
-        
-        if (sounds[row]) {
-            this.playWeatherSound(sounds[row]);
-        }
-    });
-    
-    this.updateTotalScoreDisplays();
-},
+		const weatherEffect = this.getWeatherEffectForCard(card);
+		if (!weatherEffect) return;
+		
+		const { rows, images, sounds } = weatherEffect;
+		
+		rows.forEach(row => {
+			this.gameState.weather.effects[row] = {
+				card: card,
+				image: images[row],
+				sound: sounds[row]
+			};
+			
+			this.applyVisualWeatherEffect(row, images[row]);
+			
+			// Важно: применяем эффект только если это не "Чистое небо"
+			if (card.name !== 'Чистое небо') {
+				this.reduceRowStrengthTo1(row, 'player');
+				this.reduceRowStrengthTo1(row, 'opponent');
+			}
+			
+			if (sounds[row]) {
+				this.playWeatherSound(sounds[row]);
+			}
+		});
+		
+		this.updateTotalScoreDisplays();
+	},
 
     clearAllWeatherEffects: function() {
         const rows = ['close', 'ranged', 'siege'];
@@ -2011,42 +1844,48 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     restoreAllRowStrengths: function() {
-    const rows = ['close', 'ranged', 'siege'];
-    const players = ['player', 'opponent'];
-    
-    rows.forEach(row => {
-        players.forEach(player => {
-            this.gameState[player].rows[row].cards.forEach(card => {
-                // Восстанавливаем оригинальную силу и убираем временные свойства
-                if (card._originalStrength !== undefined) {
-                    // card.strength = card._originalStrength; // Не меняем оригинальный объект!
-                    delete card._displayStrength;
-                    delete card._originalStrength;
-                    this.updateCardStrengthDisplay(card, row, player);
-                }
-            });
-            this.updateRowStrength(row, player);
-        });
-    });
-    
-    this.updateTotalScoreDisplays();
-},
+		const rows = ['close', 'ranged', 'siege'];
+		const players = ['player', 'opponent'];
+		
+		rows.forEach(row => {
+			players.forEach(player => {
+				this.gameState[player].rows[row].cards.forEach(card => {
+					// Восстанавливаем оригинальную силу и убираем временные свойства
+					if (card.originalStrength !== undefined) {
+						card.strength = card.originalStrength;
+						delete card._displayStrength; // Удаляем displayStrength
+						delete card.originalStrength;
+						this.updateCardStrengthDisplay(card, row, player);
+					}
+					// Также проверяем наличие displayStrength без originalStrength (урон)
+					else if (card._displayStrength !== undefined) {
+						card.strength = card._displayStrength;
+						delete card._displayStrength;
+						this.updateCardStrengthDisplay(card, row, player);
+					}
+				});
+				this.updateRowStrength(row, player);
+			});
+		});
+		
+		this.updateTotalScoreDisplays();
+	},
 
     reduceRowStrengthTo1: function(row, player) {
-    this.gameState[player].rows[row].cards.forEach(card => {
-        if (card.strength > 1) {
-            // Используем локальную копию силы, не затрагивая оригинальный объект
-            if (card._originalStrength === undefined) {
-                // Сохраняем оригинальную силу как локальное свойство
-                card._originalStrength = card.strength;
-            }
-            // Меняем только отображаемую силу
-            card._displayStrength = 1;
-            this.updateCardStrengthDisplay(card, row, player);
-        }
-    });
-    this.updateRowStrength(row, player);
-},
+		this.gameState[player].rows[row].cards.forEach(card => {
+			if (card.strength > 1) {
+				// Используем локальную копию силы, не затрагивая оригинальный объект
+				if (card.originalStrength === undefined) {
+					// Сохраняем оригинальную силу как локальное свойство
+					card.originalStrength = card.strength;
+				}
+				// Меняем только отображаемую силу
+				card._displayStrength = 1;
+				this.updateCardStrengthDisplay(card, row, player);
+			}
+		});
+		this.updateRowStrength(row, player);
+	},
 
     updateControlButtons: function() {
         const passBtn = document.getElementById('passBtn');
@@ -2410,40 +2249,59 @@ removeCardFromBoardVisual: function(card, row, player) {
     },
 
     updateRowStrength: function(row, player = 'player') {
-    const rowState = this.gameState[player].rows[row];
-    
-    // Используем displayStrength если есть, иначе обычную силу
-    const totalStrength = rowState.cards.reduce((sum, card) => {
-        const displayStrength = card._displayStrength !== undefined ? 
-            card._displayStrength : card.strength;
-        return sum + (displayStrength || 0);
-    }, 0);
-    
-    rowState.strength = totalStrength;
-    
-    const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
-    if (strengthElement) {
-        strengthElement.textContent = totalStrength;
-        strengthElement.classList.add('strength-update');
-        setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
-    }
-    
-    this.updateTotalScoreDisplays();
-},
+		const rowState = this.gameState[player].rows[row];
+		
+		// Используем displayStrength если есть, иначе оригинальную силу
+		const totalStrength = rowState.cards.reduce((sum, card) => {
+			let cardStrength;
+			
+			// Если есть displayStrength (для поврежденных карт)
+			if (card._displayStrength !== undefined) {
+				cardStrength = card._displayStrength;
+			}
+			// Если карта под погодой
+			else if (this.isCardUnderWeather(card, row) && card.originalStrength !== undefined) {
+				cardStrength = 1;
+			}
+			// Иначе оригинальную силу
+			else {
+				cardStrength = card.strength || 0;
+			}
+			
+			return sum + cardStrength;
+		}, 0);
+		
+		rowState.strength = totalStrength;
+		
+		const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
+		if (strengthElement) {
+			strengthElement.textContent = totalStrength;
+			strengthElement.classList.add('strength-update');
+			setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
+		}
+		
+		this.updateTotalScoreDisplays();
+	},
 
-createCardCopy: function(card) {
-    // Создаем глубокую копию карты
-    const copy = JSON.parse(JSON.stringify(card));
-    
-    // Добавляем уникальный ID для отслеживания
-    copy.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Сохраняем оригинальную силу в локальном свойстве
-    copy._originalStrength = card.strength;
-    copy._displayStrength = card.strength;
-    
-    return copy;
-},
+	isCardDamaged: function(card) {
+		return card._displayStrength !== undefined && 
+			   card.originalStrength !== undefined && 
+			   card._displayStrength < card.originalStrength;
+	},
+
+	createCardCopy: function(card) {
+		// Создаем глубокую копию карты
+		const copy = JSON.parse(JSON.stringify(card));
+		
+		// Добавляем уникальный ID для отслеживания
+		copy.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		
+		// Сохраняем оригинальную силу в локальном свойстве
+		copy.originalStrength = card.strength;
+		copy._displayStrength = card.strength;
+		
+		return copy;
+	},
 
     getCardMediaPath: function(card) {
         const cardDisplayMode = window.settingsModule ? window.settingsModule.getCardDisplayMode() : 'animated';
@@ -2458,6 +2316,20 @@ createCardCopy: function(card) {
         
         return { mediaPath, isVideo };
     },
+
+	isCardUnderWeather: function(card, row) {
+		if (!this.gameState || !this.gameState.weather) return false;
+		
+		// Проверяем эффекты погоды на ряду
+		const rowWeather = this.gameState.weather.effects[row];
+		if (!rowWeather) return false;
+		
+		// Проверяем, что погода влияет на этот ряд
+		const weatherEffect = this.getWeatherEffectForCard(rowWeather.card);
+		if (!weatherEffect || !weatherEffect.rows) return false;
+		
+		return weatherEffect.rows.includes(row);
+	},
 
     createHandCardElement: function(card, index) {
         const cardElement = document.createElement('div');
@@ -3770,31 +3642,45 @@ createCardCopy: function(card) {
     },
 
     updateCardStrengthDisplay: function(card, row, player) {
-    const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
-    if (!rowElement) return;
-    
-    const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
-    if (cardElement) {
-        const strengthElement = cardElement.querySelector('.board-card-strength');
-        if (strengthElement) {
-            // Используем displayStrength если есть, иначе обычную силу
-            const displayStrength = card._displayStrength !== undefined ? 
-                card._displayStrength : card.strength;
-            strengthElement.textContent = displayStrength;
-            
-            // Визуальное выделение, если сила уменьшена
-            if (card._displayStrength === 1 && card._originalStrength > 1) {
-                cardElement.dataset.strengthReduced = 'true';
-                strengthElement.style.color = '#ff4444';
-                strengthElement.style.animation = 'strengthReduced 2s infinite';
-            } else {
-                cardElement.dataset.strengthReduced = 'false';
-                strengthElement.style.color = 'white';
-                strengthElement.style.animation = 'none';
-            }
-        }
-    }
-},
+		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+		if (cardElement) {
+			const strengthElement = cardElement.querySelector('.board-card-strength');
+			if (strengthElement) {
+				// Определяем какое значение силы показывать
+				let displayValue;
+				let isDamaged = false;
+				
+				// Если есть displayStrength (урон)
+				if (card._displayStrength !== undefined) {
+					displayValue = card._displayStrength;
+					// Проверяем, была ли карта повреждена
+					if (card.originalStrength !== undefined && card._displayStrength < card.originalStrength) {
+						isDamaged = true;
+					}
+				}
+				// Иначе оригинальную силу
+				else {
+					displayValue = card.strength || 0;
+				}
+				
+				strengthElement.textContent = displayValue;
+				
+				// Визуальное выделение для поврежденных карт
+				if (isDamaged) {
+					cardElement.dataset.strengthReduced = 'true';
+					strengthElement.style.color = '#ff4444';
+					strengthElement.style.animation = 'strengthReduced 2s infinite';
+				} else {
+					cardElement.dataset.strengthReduced = 'false';
+					strengthElement.style.color = 'white';
+					strengthElement.style.animation = 'none';
+				}
+			}
+		}
+	},
 
     updateWeatherCounter: function() {
         const weatherCount = this.gameState.weather.cards.length;
@@ -3972,21 +3858,23 @@ createCardCopy: function(card) {
     },
 
     showCardModal: function(card) {
-    if (window.deckModule && typeof window.showCardModal === 'function') {
-        const cardForModal = { ...card };
-        
-        // Показываем оригинальную силу, а не измененную погодой
-        if (card._originalStrength !== undefined) {
-            cardForModal.strength = card._originalStrength;
-            cardForModal.showOriginalStrength = true;
-        }
-        
-        window.showCardModal(cardForModal);
-    } else {
-        this.showBasicCardModal(card);
-    }
-    audioManager.playSound('button');
-},
+		if (window.deckModule && typeof window.showCardModal === 'function') {
+			const cardForModal = { ...card };
+			
+			// Показываем оригинальную силу для всех карт
+			if (card.originalStrength !== undefined) {
+				cardForModal.strength = card.originalStrength;
+				cardForModal.showOriginalStrength = true;
+			} else if (card._displayStrength !== undefined) {
+				cardForModal.strength = card._displayStrength;
+			}
+			
+			window.showCardModal(cardForModal);
+		} else {
+			this.showBasicCardModal(card);
+		}
+		audioManager.playSound('button');
+	},
 
     showRoundResult: function(winner, playerScore, opponentScore) {
 		if (window.audioManager && window.audioManager.playSound) {
@@ -4627,34 +4515,6 @@ createCardCopy: function(card) {
                 }, 300);
             }
         }, 3000);
-    },
-
-    addMessageStyles: function() {
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes messageAppear {
-                from { 
-                    opacity: 0; 
-                    transform: translateY(-20px) translateX(-50%); 
-                }
-                to { 
-                    opacity: 1; 
-                    transform: translateY(0) translateX(-50%); 
-                }
-            }
-            
-            @keyframes messageDisappear {
-                from { 
-                    opacity: 1; 
-                    transform: translateY(0) translateX(-50%); 
-                }
-                to { 
-                    opacity: 0; 
-                    transform: translateY(-20px) translateX(-50%); 
-                }
-            }
-        `;
-        document.head.appendChild(style);
     },
 
 };

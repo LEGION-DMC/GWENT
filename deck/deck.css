@@ -389,7 +389,7 @@
     margin: 0 auto;
     position: absolute;
     overflow: hidden;
-    top: 65%;
+    top: 62%;
     left: 50%;
     transform: translate(-50%, 0);
     transform-origin: center;
@@ -645,7 +645,7 @@
 	background: rgba(20, 20, 20, 0.8);
 	border: 1px solid #222;
 	border-radius: 10px;
-	margin-top: 25px;
+	margin-top: -18px;
 	padding: 5px;
 	width: 300px;
 }

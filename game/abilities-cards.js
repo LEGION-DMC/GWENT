@@ -24,89 +24,10 @@ const skillSystem = {
     },
 
     abilities: {
-        'eredin_ability': {
-            name: 'Власть Чудовищ',
-            type: 'leader',
-            description: 'Призвать случайное чудовище из колоды на поле боя',
-            faction: 'monsters',
-            effect: {
-                type: 'summon',
-                target: 'random',
-                filters: ['monster'],
-                strength: 8
-            }
-        },
-        
-        'foltest_ability': {
-            name: 'Королевское вдохновение',
-            type: 'leader', 
-            description: 'Усилить все ваши осадные отряды на 2 ед.',
-            faction: 'realms',
-            effect: {
-                type: 'boost',
-                target: 'row',
-                row: 'siege',
-                value: 2,
-                condition: 'ally'
-            }
-        },
-        
-        'emhyr_ability': {
-            name: 'Имперская стратегия',
-            type: 'leader',
-            description: 'Посмотреть 2 случайные карты из руки противника',
-            faction: 'nilfgaard',
-            effect: {
-                type: 'reveal',
-                target: 'opponent_hand',
-                count: 2
-            }
-        },
-        
-        'francesca_ability': {
-            name: 'Дар природы',
-            type: 'leader',
-            description: 'Усилить 3 случайных отряда в вашей руке на 3 ед.',
-            faction: 'scoiatael',
-            effect: {
-                type: 'boost',
-                target: 'hand',
-                count: 3,
-                value: 3,
-                condition: 'ally'
-            }
-        },
-        
-        'bran_ability': {
-            name: 'Безрассудная ярость',
-            type: 'leader',
-            description: 'Нанести 2 ед. урона 3 случайным вражеским отрядам',
-            faction: 'skellige',
-            effect: {
-                type: 'damage',
-                target: 'random',
-                count: 3,
-                value: 2,
-                condition: 'enemy'
-            }
-        },
-
-        'geralt': {
-            name: 'Рвение',
-            type: 'combat',
-            description: 'Нанести 3 ед. урона вражескому отряду. Если его сила была кратна 3, уничтожить его.',
-            effect: {
-                type: 'conditional_damage',
-                baseDamage: 3,
-                condition: 'strength_multiple_of_3',
-                bonusEffect: 'destroy'
-            }
-        },
-
         'biting_frost': {
             name: 'Белый хлад',
             type: 'weather',
-            description: 'Установить силу всех карт в ближнем ряду противника до 1',
+            description: 'Снижает силу всех карт в дальнем и блежнем рядах до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'frost',
@@ -114,12 +35,23 @@ const skillSystem = {
                 target: 'enemy',
                 strengthCap: 1
             }
-        },
-        
+        },      
+		'frost': {
+            name: 'Трескучий мороз',
+            type: 'weather',
+            description: 'Снижает силу всех карт в блежнем ряду до 1',
+            effect: {
+                type: 'weather',
+                weatherType: 'frost',
+                row: 'close',
+                target: 'enemy',
+                strengthCap: 1
+            }
+        },		
         'impenetrable_fog': {
             name: 'Густой туман',
             type: 'weather',
-            description: 'Установить силу всех карт в дальнем ряду противника до 1',
+            description: 'Снижает силу всех карт в дальнем ряду до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'fog',
@@ -127,12 +59,11 @@ const skillSystem = {
                 target: 'enemy',
                 strengthCap: 1
             }
-        },
-        
+        },       
         'torrential_rain': {
             name: 'Проливной дождь',
             type: 'weather',
-            description: 'Установить силу всех карт в осадном ряду противника до 1',
+            description: 'Снижает силу всех карт в осадном ряду до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'rain',
@@ -140,12 +71,11 @@ const skillSystem = {
                 target: 'enemy',
                 strengthCap: 1
             }
-        },
-        
+        },       
         'storm': {
             name: 'Шторм',
             type: 'weather',
-            description: 'Нанести 1 ед. урона всем картам в дальнем ряду',
+            description: 'Снижает силу всех карт в дальнем и осадном рядах до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'storm',
@@ -153,17 +83,15 @@ const skillSystem = {
                 target: 'all',
                 damage: 1
             }
-        },
-        
+        },    
         'clear_weather': {
             name: 'Чистое небо',
             type: 'weather',
-            description: 'Снять все погодные эффекты с поля боя',
+            description: 'Снимает все погодные эффекты с поля боя',
             effect: {
                 type: 'clear_weather'
             }
         },
-
         'morale_boost': {
             name: 'Боевой дух',
             type: 'combat',
@@ -198,14 +126,179 @@ const skillSystem = {
 		'decoy': {
 			name: 'Чучело',
 			type: 'special',
-			description: 'Замещает карту на поле на Чучело, возвращая исходную карту в руку',
+			description: 'Замещает карту на поле Чучелом, возвращая исходную карту в руку',
 			effect: {
 				type: 'swap_with_hand',
 				target: 'unit',
 				condition: 'ally'
 			}
+		},
+		'damage_1': {
+			name: 'Нанесение урона 1',
+			type: 'special',
+			description: 'Наносит 1 ед. урона выбранной карте противника',
+			effect: {
+				type: 'damage',
+				target: 'unit',
+				condition: 'enemy',
+				value: 1,
+				requiresSelection: true
+			}
+		},
+		
+		'damage_2': {
+			name: 'Нанесение урона 2',
+			type: 'special',
+			description: 'Наносит 2 ед. урона выбранной карте противника',
+			effect: {
+				type: 'damage',
+				target: 'unit',
+				condition: 'enemy',
+				value: 2,
+				requiresSelection: true
+			}
+		},
+		
+		'damage_3': {
+			name: 'Нанесение урона 3',
+			type: 'special',
+			description: 'Наносит 3 ед. урона выбранной карте противника',
+			effect: {
+				type: 'damage',
+				target: 'unit',
+				condition: 'enemy',
+				value: 3,
+				requiresSelection: true
+			}
+		},
+		
+		'damage_row_1': {
+			name: 'Урон по ряду 1',
+			type: 'special',
+			description: 'Наносит 1 ед. урона всем картам в выбранном ряду противника',
+			effect: {
+				type: 'damage_row',
+				target: 'row',
+				condition: 'enemy',
+				value: 1,
+				requiresRowSelection: true
+			}
+		},
+		
+		'damage_row_2': {
+			name: 'Урон по ряду 2',
+			type: 'special',
+			description: 'Наносит 2 ед. урона всем картам в выбранном ряду противника',
+			effect: {
+				type: 'damage_row',
+				target: 'row',
+				condition: 'enemy',
+				value: 2,
+				requiresRowSelection: true
+			}
+		},
+		
+		'damage_row_3': {
+			name: 'Урон по ряду 3',
+			type: 'special',
+			description: 'Наносит 3 ед. урона всем картам в выбранном ряду противника',
+			effect: {
+				type: 'damage_row',
+				target: 'row',
+				condition: 'enemy',
+				value: 3,
+				requiresRowSelection: true
+			}
 		}
-    },
+	},
+
+	applyEffect: function(effect, context) {
+		try {
+			switch (effect.type) {
+				case 'boost':
+					return this.applyBoostEffect(effect, context);
+				case 'damage':
+					return this.applyDamageEffect(effect, context);
+				case 'conditional_damage':
+					return this.applyConditionalDamageEffect(effect, context);
+				case 'summon':
+					return this.applySummonEffect(effect, context);
+				case 'weather':
+					return this.applyWeatherEffect(effect, context);
+				case 'clear_weather':
+					return this.applyClearWeatherEffect(context);
+				case 'destroy_strongest_enemy':
+					return this.applyDestroyStrongestEnemyEffect(effect, context);
+				case 'destroy_artifact':
+					return this.applyDestroyArtifactEffect(effect, context);
+				case 'reveal':
+					return this.applyRevealEffect(effect, context);
+				case 'swap_with_hand':
+					return this.applySwapEffect(effect, context);
+				case 'damage_row': // Добавляем обработку урона по ряду
+					return this.applyDamageRowEffect(effect, context);
+				default:
+					return { success: false, message: 'Неизвестный тип эффекта' };
+			}
+		} catch (error) {
+			return { success: false, message: 'Ошибка применения способности' };
+		}
+	},
+
+	applyDamageRowEffect: function(effect, context) {
+		if (!context.gameState || !context.damageRowState) {
+			return { 
+				success: false, 
+				message: 'Требуется выбор ряда',
+				requiresRowSelection: true
+			};
+		}
+		
+		if (context.damageRowState && context.damageRowState.awaitingSelection) {
+			const selectedRow = context.damageRowState.selectedRow;
+			if (selectedRow) {
+				return this.executeRowDamage(selectedRow, effect.value, context);
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: 'Выберите ряд противника для нанесения урона',
+			requiresRowSelection: true
+		};
+	},
+
+	executeRowDamage: function(row, damageValue, context) {
+		const rowState = context.gameState.opponent.rows[row];
+		let damagedCards = 0;
+		let destroyedCards = 0;
+		
+		rowState.cards.forEach(card => {
+			if (card.type === 'unit') {
+				const originalStrength = card.strength;
+				card.strength = Math.max(0, card.strength - damageValue);
+				
+				if (card.strength === 0) {
+					destroyedCards++;
+					this.destroyCard(card);
+				} else {
+					damagedCards++;
+					this.updateCardDisplay(card);
+				}
+				
+				this.createVisualEffect(card, 'damage', damageValue);
+			}
+		});
+		
+		this.updateRowStrength(row, 'opponent');
+		
+		return {
+			success: true,
+			message: `Нанесен урон ${damageValue} по ряду ${row}. Повреждено: ${damagedCards}, уничтожено: ${destroyedCards}`,
+			damagedCount: damagedCards,
+			destroyedCount: destroyedCards
+		};
+	},
 
     activateAbility: function(abilityId, context) {
         const ability = this.abilities[abilityId];
@@ -266,298 +359,265 @@ const skillSystem = {
         }
     },
 
-applyDestroyArtifactEffect: function(effect, context) {
-    // Находим артефакты противника на поле
-    const enemyArtifacts = this.findEnemyArtifacts(context);
-    
-    if (enemyArtifacts.length === 0) {
-        return { 
-            success: false, 
-            message: 'У противника нет артефактов для уничтожения',
-            requiresSelection: true,
-            selectionType: 'artifact_on_board'
-        };
-    }
-    
-    // Проверяем, есть ли активный выбор
-    if (context.destroyArtifactState && context.destroyArtifactState.awaitingSelection) {
-        const selectedArtifact = context.destroyArtifactState.selectedCard;
-        if (selectedArtifact && (selectedArtifact.type === 'artifact' || selectedArtifact.type === 'tactic')) {
-            return this.executeArtifactDestroy(selectedArtifact, context);
-        }
-    }
-    
-    // Если только начинаем применение способности
-    return { 
-        success: true, 
-        message: 'Выберите артефакт противника для уничтожения',
-        requiresSelection: true,
-        selectionType: 'artifact_on_board'
-    };
-},
+	applyDestroyArtifactEffect: function(effect, context) {
+		const enemyArtifacts = this.findEnemyArtifacts(context);
+		
+		if (enemyArtifacts.length === 0) {
+			return { 
+				success: false, 
+				message: 'У противника нет артефактов для уничтожения',
+				requiresSelection: true,
+				selectionType: 'artifact_on_board'
+			};
+		}
+		
+		if (context.destroyArtifactState && context.destroyArtifactState.awaitingSelection) {
+			const selectedArtifact = context.destroyArtifactState.selectedCard;
+			if (selectedArtifact && (selectedArtifact.type === 'artifact' || selectedArtifact.type === 'tactic')) {
+				return this.executeArtifactDestroy(selectedArtifact, context);
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: 'Выберите артефакт противника для уничтожения',
+			requiresSelection: true,
+			selectionType: 'artifact_on_board'
+		};
+	},
 
-findEnemyArtifacts: function(context) {
-    if (!context.gameState || !context.gameState.opponent) return [];
-    
-    const artifacts = [];
-    const rows = ['close', 'ranged', 'siege'];
-    
-    rows.forEach(row => {
-        // Проверяем тактические карты в ряду
-        if (context.gameState.opponent.rows[row].tactic) {
-            artifacts.push({
-                card: context.gameState.opponent.rows[row].tactic,
-                row: row,
-                type: 'tactic',
-                location: 'tactic_slot'
-            });
-        }
-        
-        // Проверяем артефакты в ряду
-        const rowCards = context.gameState.opponent.rows[row].cards || [];
-        rowCards.forEach(card => {
-            if (card.type === 'artifact') {
-                artifacts.push({
-                    card: card,
-                    row: row,
-                    type: 'artifact',
-                    location: 'row',
-                    position: rowCards.indexOf(card)
-                });
-            }
-        });
-    });
-    
-    return artifacts;
-},
+	findEnemyArtifacts: function(context) {
+		if (!context.gameState || !context.gameState.opponent) return [];
+		
+		const artifacts = [];
+		const rows = ['close', 'ranged', 'siege'];
+		
+		rows.forEach(row => {
+			if (context.gameState.opponent.rows[row].tactic) {
+				artifacts.push({
+					card: context.gameState.opponent.rows[row].tactic,
+					row: row,
+					type: 'tactic',
+					location: 'tactic_slot'
+				});
+			}
+			
+			const rowCards = context.gameState.opponent.rows[row].cards || [];
+			rowCards.forEach(card => {
+				if (card.type === 'artifact') {
+					artifacts.push({
+						card: card,
+						row: row,
+						type: 'artifact',
+						location: 'row',
+						position: rowCards.indexOf(card)
+					});
+				}
+			});
+		});
+		
+		return artifacts;
+	},
 
-executeArtifactDestroy: function(artifactData, context) {
-    const { card, row, type, location } = artifactData;
-    
-    // Создаем визуальный эффект уничтожения
-    this.createDestroyArtifactVisualEffect(card, row, type);
-    
-    // Удаляем артефакт с поля
-    if (type === 'tactic' && location === 'tactic_slot') {
-        // Удаляем тактическую карту
-        delete context.gameState.opponent.rows[row].tactic;
-        
-        if (window.gameModule) {
-            const tacticSlot = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Tactics`);
-            if (tacticSlot) {
-                tacticSlot.innerHTML = '';
-            }
-        }
-    } else if (type === 'artifact' && location === 'row') {
-        // Удаляем артефакт из ряда
-        const rowState = context.gameState.opponent.rows[row];
-        const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
-        if (cardIndex !== -1) {
-            rowState.cards.splice(cardIndex, 1);
-            
-            if (window.gameModule) {
-                window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
-                window.gameModule.updateRowStrength(row, 'opponent');
-            }
-        }
-    }
-    
-    // Добавляем уничтоженный артефакт в сброс противника
-    const destroyedCardCopy = { ...card };
-    context.gameState.opponent.discard.push(destroyedCardCopy);
-    
-    return { 
-        success: true, 
-        message: `Уничтожен артефакт: ${card.name}`,
-        destroyedCard: card
-    };
-},
+	executeArtifactDestroy: function(artifactData, context) {
+		const { card, row, type, location } = artifactData;
+		
+		this.createDestroyArtifactVisualEffect(card, row, type);
+		
+		if (type === 'tactic' && location === 'tactic_slot') {
+			delete context.gameState.opponent.rows[row].tactic;
+			
+			if (window.gameModule) {
+				const tacticSlot = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Tactics`);
+				if (tacticSlot) {
+					tacticSlot.innerHTML = '';
+				}
+			}
+		} else if (type === 'artifact' && location === 'row') {
+			const rowState = context.gameState.opponent.rows[row];
+			const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
+			if (cardIndex !== -1) {
+				rowState.cards.splice(cardIndex, 1);
+				
+				if (window.gameModule) {
+					window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
+					window.gameModule.updateRowStrength(row, 'opponent');
+				}
+			}
+		}
+		
+		const destroyedCardCopy = { ...card };
+		context.gameState.opponent.discard.push(destroyedCardCopy);
+		
+		return { 
+			success: true, 
+			message: `Уничтожен артефакт: ${card.name}`,
+			destroyedCard: card
+		};
+	},
 
-createDestroyArtifactVisualEffect: function(card, row, type) {
-    if (!window.gameModule) return;
-    
-    let targetElement;
-    
-    if (type === 'tactic') {
-        const tacticSlot = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Tactics`);
-        if (tacticSlot) {
-            targetElement = tacticSlot.querySelector(`[data-card-id="${card.id}"]`);
-        }
-    } else {
-        const rowElement = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Row`);
-        if (rowElement) {
-            targetElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
-        }
-    }
-    
-    if (!targetElement) return;
-    
-    // Создаем эффект уничтожения артефакта
-    const destroyEffect = document.createElement('div');
-    destroyEffect.className = 'destroy-artifact-effect';
-    destroyEffect.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: url('card/destroy_card.jpg') center/cover no-repeat;
-        z-index: 100;
-        animation: destroyArtifactAnimation 1s ease-out forwards;
-        border-radius: 5px;
-    `;
-    
-    targetElement.appendChild(destroyEffect);
-    
-    // Воспроизводим звук
-    if (window.audioManager && window.audioManager.playSound) {
-        audioManager.playSound('artefact_destroy');
-    }
-    
-    // Удаляем эффект через секунду
-    setTimeout(() => {
-        if (destroyEffect.parentNode) {
-            destroyEffect.remove();
-        }
-    }, 1000);
-},
+	createDestroyArtifactVisualEffect: function(card, row, type) {
+		if (!window.gameModule) return;
+		
+		let targetElement;
+		
+		if (type === 'tactic') {
+			const tacticSlot = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Tactics`);
+			if (tacticSlot) {
+				targetElement = tacticSlot.querySelector(`[data-card-id="${card.id}"]`);
+			}
+		} else {
+			const rowElement = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Row`);
+			if (rowElement) {
+				targetElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+			}
+		}
+		
+		if (!targetElement) return;
+		
+		const destroyEffect = document.createElement('div');
+		destroyEffect.className = 'destroy-artifact-effect';
+		destroyEffect.style.cssText = `
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: url('card/destroy_card.jpg') center/cover no-repeat;
+			z-index: 100;
+			animation: destroyArtifactAnimation 1s ease-out forwards;
+			border-radius: 5px;
+		`;
+		
+		targetElement.appendChild(destroyEffect);
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact_destroy');
+		}
+		
+		setTimeout(() => {
+			if (destroyEffect.parentNode) {
+				destroyEffect.remove();
+			}
+		}, 1000);
+	},
 
-applyDestroyStrongestEnemyEffect: function(effect, context) {
-    // Находим самые сильные карты противника
-    const strongestCards = this.findStrongestEnemyCards(context);
-    
-    if (strongestCards.length === 0) {
-        return { success: false, message: 'Нет подходящих целей у противника' };
-    }
-    
-    // Уничтожаем самую сильную карту (первую в массиве, так как они отсортированы)
-    const targetCard = strongestCards[0];
-    
-    // Создаем визуальный эффект уничтожения
-    this.createDestroyVisualEffect(targetCard);
-    
-    // Уничтожаем карту
-    this.destroyEnemyCard(targetCard, context);
-    
-    return { 
-        success: true, 
-        message: `Уничтожена карта ${targetCard.name} (сила: ${targetCard.currentStrength || targetCard.strength})`,
-        destroyedCard: targetCard
-    };
-},
+	applyDestroyStrongestEnemyEffect: function(effect, context) {
+		const strongestCards = this.findStrongestEnemyCards(context);
+		
+		if (strongestCards.length === 0) {
+			return { success: false, message: 'Нет подходящих целей у противника' };
+		}
+		
+		const targetCard = strongestCards[0];
+		
+		this.createDestroyVisualEffect(targetCard);
+		
+		this.destroyEnemyCard(targetCard, context);
+		
+		return { 
+			success: true, 
+			message: `Уничтожена карта ${targetCard.name} (сила: ${targetCard.currentStrength || targetCard.strength})`,
+			destroyedCard: targetCard
+		};
+	},
 
-findStrongestEnemyCards: function(context) {
-    if (!context.gameBoard || !context.gameState) return [];
-    
-    const enemyCards = [];
-    const rows = ['close', 'ranged', 'siege'];
-    
-    rows.forEach(row => {
-        if (context.gameState.opponent && context.gameState.opponent.rows) {
-            const rowCards = context.gameState.opponent.rows[row].cards || [];
-            rowCards.forEach(card => {
-                if (card.type === 'unit') {
-                    enemyCards.push({
-                        card: card,
-                        row: row,
-                        strength: card.currentStrength || card.strength || 0
-                    });
-                }
-            });
-        }
-    });
-    
-    if (enemyCards.length === 0) return [];
-    
-    // Сортируем по силе (по убыванию)
-    enemyCards.sort((a, b) => b.strength - a.strength);
-    
-    const maxStrength = enemyCards[0].strength;
-    
-    // Возвращаем все карты с максимальной силой (на случай ничьей)
-    return enemyCards.filter(card => card.strength === maxStrength);
-},
+	findStrongestEnemyCards: function(context) {
+		if (!context.gameBoard || !context.gameState) return [];
+		
+		const enemyCards = [];
+		const rows = ['close', 'ranged', 'siege'];
+		
+		rows.forEach(row => {
+			if (context.gameState.opponent && context.gameState.opponent.rows) {
+				const rowCards = context.gameState.opponent.rows[row].cards || [];
+				rowCards.forEach(card => {
+					if (card.type === 'unit') {
+						enemyCards.push({
+							card: card,
+							row: row,
+							strength: card.currentStrength || card.strength || 0
+						});
+					}
+				});
+			}
+		});
+		
+		if (enemyCards.length === 0) return [];
+		
+		enemyCards.sort((a, b) => b.strength - a.strength);
+		
+		const maxStrength = enemyCards[0].strength;
+		
+		return enemyCards.filter(card => card.strength === maxStrength);
+	},
 
-destroyEnemyCard: function(targetCardData, context) {
-    const { card, row } = targetCardData;
-    
-    if (!context.gameState || !context.gameState.opponent) return;
-    
-    const rowState = context.gameState.opponent.rows[row];
-    if (!rowState) return;
-    
-    // Удаляем карту из ряда
-    const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
-    if (cardIndex !== -1) {
-        // Создаем копию для сброса
-        const destroyedCard = { ...rowState.cards[cardIndex] };
-        
-        // Удаляем из ряда
-        rowState.cards.splice(cardIndex, 1);
-        
-        // Добавляем в сброс противника
-        context.gameState.opponent.discard.push(destroyedCard);
-        
-        // Обновляем отображение через gameModule
-        if (window.gameModule) {
-            // Визуально удаляем карту с поля
-            window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
-            
-            // Обновляем силу ряда
-            window.gameModule.updateRowStrength(row, 'opponent');
-            
-            // Обновляем сброс противника
-            if (window.gameModule.displayOpponentDiscard) {
-                window.gameModule.displayOpponentDiscard();
-            }
-        }
-    }
-},
+	destroyEnemyCard: function(targetCardData, context) {
+		const { card, row } = targetCardData;
+		
+		if (!context.gameState || !context.gameState.opponent) return;
+		
+		const rowState = context.gameState.opponent.rows[row];
+		if (!rowState) return;
+		
+		const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
+		if (cardIndex !== -1) {
+			const destroyedCard = { ...rowState.cards[cardIndex] };
+			
+			rowState.cards.splice(cardIndex, 1);
+			
+			context.gameState.opponent.discard.push(destroyedCard);
+			
+			if (window.gameModule) {
+				window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
+				
+				window.gameModule.updateRowStrength(row, 'opponent');
+				
+				if (window.gameModule.displayOpponentDiscard) {
+					window.gameModule.displayOpponentDiscard();
+				}
+			}
+		}
+	},
 
-createDestroyVisualEffect: function(targetCardData) {
-    if (!window.gameModule) return;
-    
-    const { card, row } = targetCardData;
-    
-    // Находим элемент карты на поле
-    const rowElement = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Row`);
-    if (!rowElement) return;
-    
-    const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
-    if (!cardElement) return;
-    
-    // Создаем эффект уничтожения
-    const destroyEffect = document.createElement('div');
-    destroyEffect.className = 'destroy-effect';
-    destroyEffect.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: url('card/destroy_card.jpg') center/cover no-repeat;
-        z-index: 100;
-        animation: destroyAnimation 1s ease-out forwards;
-    `;
-    
-    cardElement.appendChild(destroyEffect);
-    
-    // Удаляем эффект через секунду
-    setTimeout(() => {
-        if (destroyEffect.parentNode) {
-            destroyEffect.remove();
-        }
-    }, 1000);
-},
+	createDestroyVisualEffect: function(targetCardData) {
+		if (!window.gameModule) return;
+		
+		const { card, row } = targetCardData;
+		
+		const rowElement = document.getElementById(`opponent${row.charAt(0).toUpperCase() + row.slice(1)}Row`);
+		if (!rowElement) return;
+		
+		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+		if (!cardElement) return;
+		
+		const destroyEffect = document.createElement('div');
+		destroyEffect.className = 'destroy-effect';
+		destroyEffect.style.cssText = `
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: url('card/destroy_card.jpg') center/cover no-repeat;
+			z-index: 100;
+			animation: destroyAnimation 1s ease-out forwards;
+		`;
+		
+		cardElement.appendChild(destroyEffect);
+		
+		setTimeout(() => {
+			if (destroyEffect.parentNode) {
+				destroyEffect.remove();
+			}
+		}, 1000);
+	},
 
 	applySwapEffect: function(effect, context) {
-    // Проверяем, есть ли активный выбор для Чучела
     if (context.decoyState && context.decoyState.awaitingSelection) {
-        // Если карта выбрана с поля
         if (context.decoyState.selectedCard && context.decoyState.selectedCard.type === 'unit') {
             const cardToSwap = context.decoyState.selectedCard;
             
-            // Находим Чучело в руке
             const decoyCard = context.playerHand.find(card => 
                 card.ability === 'decoy' || card.id === 'neutral_special_5'
             );
@@ -566,23 +626,19 @@ createDestroyVisualEffect: function(targetCardData) {
                 return { success: false, message: 'Чучело не найдено в руке' };
             }
             
-            // Удаляем Чучело из руки
             const decoyIndex = context.playerHand.indexOf(decoyCard);
             if (decoyIndex !== -1) {
                 context.playerHand.splice(decoyIndex, 1);
             }
             
-            // Удаляем карту с поля
             if (window.gameModule && window.gameModule.removeCardFromBoard) {
                 window.gameModule.removeCardFromBoard(cardToSwap);
             }
             
-            // Добавляем карту с поля обратно в руку
             const cardCopy = { ...cardToSwap };
             cardCopy.playedThisRound = false;
             context.playerHand.push(cardCopy);
             
-            // Размещаем Чучело на поле
             decoyCard.owner = 'player';
             decoyCard.row = cardToSwap.row;
             decoyCard.positionInRow = cardToSwap.positionInRow;
@@ -591,13 +647,11 @@ createDestroyVisualEffect: function(targetCardData) {
                 window.gameModule.placeCardOnBoard(decoyCard, decoyCard.row, decoyCard.positionInRow);
             }
             
-            // Обновляем отображение
             if (window.gameModule) {
                 window.gameModule.displayPlayerHand();
                 window.gameModule.updateRowStrength(cardToSwap.row);
             }
             
-            // Сбрасываем состояние
             context.decoyState = null;
             
             return { 
@@ -608,7 +662,6 @@ createDestroyVisualEffect: function(targetCardData) {
         }
     }
     
-    // Если только начинаем применение способности
     return { 
         success: true, 
         message: 'Выберите карту на поле для замены на Чучело',
@@ -947,8 +1000,10 @@ createDestroyVisualEffect: function(targetCardData) {
                     if (special.tags && special.tags.includes('weather')) {
                         switch(special.name) {
                             case 'Белый Хлад':
+								special.ability = 'biting_frost';
+                                break;
                             case 'Трескучий мороз':
-                                special.ability = 'biting_frost';
+                                special.ability = 'frost';
                                 break;
                             case 'Густой туман':
                                 special.ability = 'impenetrable_fog';

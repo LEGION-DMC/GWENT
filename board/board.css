@@ -275,9 +275,9 @@
 .deck-modal-overlay.active { opacity: 1; visibility: visible; }
 .deck-modal { background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 2px solid #d4af37; border-radius: 10px; width: 800px; height: 500px; transform: scale(0.9); opacity: 0; transition: all 0.3s ease; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 50px rgba(212, 175, 55, 0.3); } 
 .deck-modal-overlay.active .deck-modal { transform: scale(1); opacity: 1; } 
-.deck-modal__header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 2px solid #d4af37; position: relative; min-height: 50px; }
+.deck-modal__header { display: flex; justify-content: space-between; align-items: center; padding: 0px 15px; border-bottom: 2px solid #d4af37; position: relative; min-height: 50px; }
 .deck-modal__title { color: #d4af37; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; } 
-.deck-modal__count { position: absolute; color: #ffd700; font-size: 18px; right: 20px; } 
+.deck-modal__count { position: absolute; color: #ffd700; font-size: 20px; right: 20px; } 
 .deck-modal__close { display: none; } 
 .deck-modal__content { overflow-x: hidden; flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 25px; align-content: flex-start; }
 
@@ -486,11 +486,55 @@
     animation: cardSelectPulse 2s infinite;
 }
 
-.timer-icon {
-    width: 30px;
-    height: 30px;
+.turn-timer-display {
+    position: fixed;
+    top: 70%;
+    right: 6.7%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #d4af37;
+    border-radius: 4px;
+    padding: 2px 0px;
+    color: white;
+    font-family: 'Gwent', sans-serif;
+    font-weight: bold;
+    z-index: 9999;
+    text-align: center;
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px !important;
+    transition: all 0.3s ease;
+}
+            
+@keyframes timerPulse {
+    0% { box-shadow: 0 0 5px rgba(244, 0, 0, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(244, 0, 0, 0.8); }
+    100% { box-shadow: 0 0 5px rgba(244, 0, 0, 0.5); }
+}
+            
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+            
+.timer-time {
+    font-size: 18px;
+    font-weight: bold;
+}
+            
+.timer-label {
+    font-size: 13px;
+    opacity: 0.8;
+	  margin-top: 2px;
 }
 
+.timer-icon {
+    width: 30px;
+    height: 28px;
+}
 
 .crown-indicator {
     position: absolute;
@@ -663,4 +707,243 @@
 
 .artifact-destroy-overlay {
     animation: destroyArtifactAnimation 1s ease-out forwards;
+}
+
+@keyframes messageAppear {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px) translateX(-50%); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) translateX(-50%); 
+  }
+}
+            
+@keyframes messageDisappear {
+  from { 
+    opacity: 1; 
+    transform: translateY(0) translateX(-50%); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(-20px) translateX(-50%); 
+  }
+}
+
+.coin-toss-container {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   text-align: center;
+   max-width: 600px;
+}
+            
+.coin-toss-title {
+   color: #d4af37;
+   font-size: 30px;
+   font-weight: bold;
+   text-transform: uppercase;
+   letter-spacing: 3px;
+   text-shadow: 0 2px 10px rgba(212, 175, 55, 0.2);
+}
+            
+@keyframes titlePulse {
+   0% { opacity: 0.8; }
+   50% { opacity: 1; }
+   100% { opacity: 0.8; }
+}
+            
+.coin-wrapper {
+   width: 300px;
+   height: 300px;
+   position: relative;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+}
+            
+.coin {
+   position: relative;
+   transform-style: preserve-3d;
+   transition: transform 0.1s linear;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   left: 0%;
+}
+            
+.coin-front, .coin-back {
+   position: absolute;
+   backface-visibility: hidden;
+}
+            
+.coin-front {
+   transform: rotateX(0deg);
+}
+            
+.coin-back {
+   transform: rotateX(180deg);
+}
+            
+@keyframes coinTossUp {
+   0% {
+          transform: translateY(0) rotateX(0deg);
+          animation-timing-function: ease-out;
+   }
+   20% {
+          transform: translateY(-200px) rotateX(360deg);
+          animation-timing-function: ease-in;
+   }
+   40% {
+          transform: translateY(-50px) rotateX(720deg);
+          animation-timing-function: ease-out;
+   }
+   60% {
+          transform: translateY(-150px) rotateX(1080deg);
+          animation-timing-function: ease-in;
+   }
+   80% {
+          transform: translateY(-30px) rotateX(1440deg);
+          animation-timing-function: ease-out;
+   }
+   100% {
+          transform: translateY(0) rotateX(1800deg);
+   }
+}
+            
+.coin-tossing {
+   animation: coinTossUp 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+            
+.coin-result {
+   color: #fff;
+   font-size: 25px;
+   font-weight: bold;
+   text-transform: uppercase;
+   letter-spacing: 2px;
+   min-height: 40px;
+   opacity: 0;
+   transition: opacity 0.5s ease;
+}
+            
+.coin-result.show {
+   opacity: 1;
+}
+
+@keyframes smoothCoinToss {
+    0% {
+        transform: translateY(0) rotateX(0deg);
+        animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    }
+    25% {
+        transform: translateY(-200px) rotateX(450deg);
+        animation-timing-function: cubic-bezier(0.550, 0.055, 0.675, 0.190);
+    }
+    50% {
+        transform: translateY(-50px) rotateX(900deg);
+        animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    }
+    75% {
+        transform: translateY(-150px) rotateX(1350deg);
+        animation-timing-function: cubic-bezier(0.550, 0.055, 0.675, 0.190);
+    }
+    100% {
+        transform: translateY(0) rotateX(var(--final-rotation, 1800deg));
+        animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    }
+}
+
+.smooth-coin-toss {
+    animation: smoothCoinToss var(--animation-duration, 2500ms) forwards;
+    transform-origin: center center;
+}
+
+.coin-result.show {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.coin-result {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Анимация урона */
+@keyframes damageAnimation {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+        font-size: 12px;
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -150%) scale(1.2);
+        font-size: 32px;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -250%) scale(0.8);
+        font-size: 20px;
+    }
+}
+
+/* Подсветка целей для урона */
+.damage-target {
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.7) !important;
+    cursor: pointer !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+.damage-target:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.9) !important;
+}
+
+/* Подсветка рядов для урона */
+.row-damage-target {
+    position: relative;
+    z-index: 5;
+    box-shadow: inset 0 0 20px rgba(255, 68, 68, 0.5) !important;
+    cursor: pointer !important;
+    border: 2px solid rgba(255, 68, 68, 0.7) !important;
+}
+
+.row-damage-target:hover {
+    box-shadow: inset 0 0 25px rgba(255, 68, 68, 0.7) !important;
+    border: 2px solid rgba(255, 68, 68, 0.9) !important;
+}
+
+/* Анимация обновления силы */
+@keyframes strengthUpdate {
+    0% {
+        color: white;
+        transform: scale(1);
+    }
+    50% {
+        color: #ff4444;
+        transform: scale(1.3);
+    }
+    100% {
+        color: white;
+        transform: scale(1);
+    }
 }

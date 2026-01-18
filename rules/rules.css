@@ -63,10 +63,6 @@
     margin: 10px 0;
 }
 
-.instructions {
-    flex: 1;
-}
-
 .rules-list {
     display: flex;
     flex-direction: column;
@@ -180,4 +176,44 @@
 
 .rule-modal__image {
     height: 70px;                   
+}
+
+.back-to-menu-btn {
+    background: none;
+    color: #d4af37;
+    border: 1px solid #d4af37;
+    padding: 3px 9px;
+    font-size: 13px;
+    font-family: 'Gwent', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: url('../ui/cursor_hover.png'), pointer;
+    transition: all 0.3s ease;
+    border-radius: 3px;
+    overflow: hidden;
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    padding-top: 5px;
+}
+
+.back-to-menu-btn:hover {
+    scale: 1.03;
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.3);
+}
+
+.bloc-rule li {
+    line-height: 1.2;
+}
+
+.rules-title {
+    opacity: 0;
+    transform: translateY(-50px);
+    animation: fadeInDown 0.5s ease forwards;
+}
+
+.rules-container {
+    opacity: 0;
+    transform: translateY(50px);
+    animation: fadeInUp 0.5s ease forwards;
 }

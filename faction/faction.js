@@ -24,7 +24,7 @@ const factionsData = {
         name: 'Нильфгаард',
         leaderName: 'Эмгыр вар Эмрейс',
 		description: 'IV Император Нильфгаарда',
-        descriptionfull: 'Вся Большая земля дрожит от чеканного шага тяжеловооруженных нильфгаардских пехотинцев. За ними следом движутся плюющие огнем боевые машины, златоустые эмиссары, наемные убийцы с окровавленными стилетами. Жители Севера с ужасом наблюдают за этим походом из-за полуприкрытых ставен и шепчут слова молитвы',
+        descriptionfull: 'Вся Большая земля дрожит от чеканного шага тяжеловооруженных нильфгаардских пехотинцев. За ними следом движутся плюющие огнем боевые машины, златоустые эмиссары, наемные убийцы с окровавленными стилетами. Жители Севера с ужасом наблюдают за этим походом и шепчут слова молитвы',
         ability: 'Победа в раунде при ничьей',
 		logo: 'faction/nilfgaard/logo_faction.png',
         background: 'faction/nilfgaard/fon_faction.jpg',
@@ -34,7 +34,7 @@ const factionsData = {
         name: 'Чудовища',
         leaderName: 'Эредин Бреакк Глас',
 		description: 'Командир Дикой Охоты',
-        descriptionfull: 'Людям нравится думать, что они хозяева Большой земли. Но достаточно сойти с привычного большака или навострить ухо во время полнолуния, как станет ясно, насколько далека эта мысль от истины. Посреди лесной чащи, в тенистых оврагах и сырых погребах покинутых домов сверкает множество глаз.',
+        descriptionfull: 'Людям думают, что они хозяева Большой земли. Но достаточно сойти с привычного большака или навострить ухо во время полнолуния, как станет ясно, насколько далека эта мысль от истины. Посреди лесной чащи, в тенистых оврагах и сырых погребах покинутых домов сверкает множество глаз.',
         ability: 'Сохранение 1 размещённой карты, в конце раунда',
 		logo: 'faction/monsters/logo_faction.png',
         background: 'faction/monsters/fon_faction.jpg',
@@ -44,7 +44,7 @@ const factionsData = {
         name: 'Скеллиге',
         leaderName: 'Бран Тиршах',
 		description: 'Король Скеллиге',
-        descriptionfull: 'В сотнях миль от восточного побережья Большой земли лежат острова Скеллиге. В сравнении с Королевствами Севера или Нильфгаардской империей они нечтожно малы. Хотя многие пытались захватить Скеллиге. Останки их кораблей до сих пор торчат среди скал, а воины-островитяне пьют мед из их заржавленных шлемов.',
+        descriptionfull: 'В сотнях миль от восточного побережья Большой земли лежат острова Скеллиге. В сравнении с Королевствами Севера или Нильфгаардской империей они нечтожно малы. Хотя многие пытались захватить их. Останки их кораблей до сих пор торчат среди скал, а островитяне пьют мед из их шлемов.',
         ability: 'Возврат 2 карт из Сброса в 3 раунде',
 		logo: 'faction/skellige/logo_faction.png',
         background: 'faction/skellige/fon_faction.jpg',
@@ -54,24 +54,35 @@ const factionsData = {
         name: 'Синдикат',
         leaderName: 'Тесак',
 		description: 'Предводитель группировки «Златорубы»',
-        descriptionfull: 'Одни сражаются за честь, а другие — за империю. Одни сражаются за короля, а другие — за свободу. Те, кто состоит в Синдикате «Большой восьмёрки», не станут сражаться ни за что, кроме богатства. И если щедро им заплатить, они будут готовы для вас на любые деяния… Даже самые чудовищные.',
+        descriptionfull: 'Одни сражаются за честь, а другие — за империю. Одни сражаются за короля, а другие — за свободу. Те, кто состоит в Синдикате, не станут сражаться ни за что, кроме богатства. И если щедро им заплатить, они будут готовы для вас на любые деяния… Даже самые чудовищные.',
         ability: 'Отмена фазы Муллиганы противника',
 		logo: 'faction/syndicate/logo_faction.png',
         background: 'faction/syndicate/fon_faction.jpg',
     },
 };
 
-let selectedFaction = null;  
-let isHovering = false;      
+let selectedFaction = null;
+let isHovering = false;
+let isFactionSectionCreated = false;
 
 function initFactionSelection() {
-    createFactionSelectionHTML();     
-    setupFactionEventListeners();    
+    const existingSection = document.querySelector('.faction-selection');
+    if (existingSection) {
+        existingSection.parentNode.removeChild(existingSection);
+    }
+    
+    createFactionSelectionHTML();
+    setupFactionEventListeners();
     hideStartPage();
-	document.addEventListener('keydown', handleKeyPress);
+    document.addEventListener('keydown', handleKeyPress);
 }
 
 function createFactionSelectionHTML() {
+    if (document.querySelector('.faction-selection')) {
+        console.warn('Faction section already exists. Skipping creation.');
+        return;
+    }
+    
     const factionSection = document.createElement('section');
     factionSection.className = 'faction-selection';
     
@@ -88,12 +99,14 @@ function createFactionSelectionHTML() {
         <div class="faction-description">
             <div class="faction-description__name"></div>
             <div class="faction-description__text"></div>
-			<div class="faction-description__ability"></div>
+            <div class="faction-description__ability"></div>
         </div>
         <button class="confirm-btn" id="confirmFactionBtn">ПОДТВЕРДИТЬ ВЫБОР</button>
     `;
     
     document.body.appendChild(factionSection);
+    
+    isFactionSectionCreated = true;
     
     setTimeout(() => {
         factionSection.style.opacity = '1';
@@ -106,6 +119,12 @@ function setupFactionEventListeners() {
     const confirmBtn = document.getElementById('confirmFactionBtn');
     
     factionCards.forEach(card => {
+        card.replaceWith(card.cloneNode(true));
+    });
+    
+    const updatedCards = document.querySelectorAll('.faction-card');
+    
+    updatedCards.forEach(card => {
         const factionId = card.dataset.faction;
         const faction = factionsData[factionId];
         
@@ -134,59 +153,75 @@ function setupFactionEventListeners() {
         });
     });
     
-    confirmBtn.addEventListener('mouseenter', () => {
-        audioManager.playSound('touch');
-    });
-    
-    confirmBtn.addEventListener('click', () => {
-        if (selectedFaction) {
-            audioManager.playSound('button');
-            proceedToDeckBuilding(selectedFaction);
-        }
-    });
+    if (confirmBtn) {
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        newConfirmBtn.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+        
+        newConfirmBtn.addEventListener('click', () => {
+            if (selectedFaction) {
+                audioManager.playSound('button');
+                proceedToDeckBuilding(selectedFaction);
+            }
+        });
+    }
 }
 
 function showFactionDescription(faction) {
     const description = document.querySelector('.faction-description');
+    if (!description) return;
+    
     const nameElement = description.querySelector('.faction-description__name');
     const textElement = description.querySelector('.faction-description__text');
     const abilityElement = description.querySelector('.faction-description__ability');
-	
-    nameElement.textContent = faction.name;
-    textElement.textContent = faction.descriptionfull;
     
-	if (faction.ability) {
-        abilityElement.innerHTML = `<strong>Способность фракции:</strong> ${faction.ability}`;
-        abilityElement.style.display = 'block';
-    } else {
-        abilityElement.style.display = 'none';
+    if (nameElement) nameElement.textContent = faction.name;
+    if (textElement) textElement.textContent = faction.descriptionfull;
+    
+    if (abilityElement) {
+        if (faction.ability) {
+            abilityElement.innerHTML = `<strong>Способность фракции:</strong> ${faction.ability}`;
+            abilityElement.style.display = 'block';
+        } else {
+            abilityElement.style.display = 'none';
+        }
     }
-	
+    
     description.style.opacity = '1';
     description.style.transform = 'translateY(0)';
 }
 
 function hideFactionDescription() {
     const description = document.querySelector('.faction-description');
-    description.style.opacity = '0';
-    description.style.transform = 'translateY(20px)';
+    if (description) {
+        description.style.opacity = '0';
+        description.style.transform = 'translateY(20px)';
+    }
 }
 
 function selectFaction(faction) {
-    document.querySelectorAll('.faction-card').forEach(card => {
+    const factionCards = document.querySelectorAll('.faction-card');
+    factionCards.forEach(card => {
         card.classList.remove('faction-card--selected');
     });
     
     const selectedCard = document.querySelector(`[data-faction="${faction.id}"]`);
-    selectedCard.classList.add('faction-card--selected');
+    if (selectedCard) {
+        selectedCard.classList.add('faction-card--selected');
+    }
     selectedFaction = faction;
     
     showFactionDescription(faction);
     
     const confirmBtn = document.getElementById('confirmFactionBtn');
-    confirmBtn.style.opacity = '1';
-    confirmBtn.style.transform = 'translateY(0)';
-    confirmBtn.style.pointerEvents = 'auto';
+    if (confirmBtn) {
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.transform = 'translateY(0)';
+        confirmBtn.style.pointerEvents = 'auto';
+    }
 }
 
 function hideStartPage() {
@@ -197,8 +232,28 @@ function hideStartPage() {
 }
 
 function proceedToDeckBuilding(faction) {
-    document.removeEventListener('keydown', handleKeyPress);
+    cleanupFactionSelection();
     window.deckModule.initDeckBuilding(faction);
+}
+
+function cleanupFactionSelection() {
+    document.removeEventListener('keydown', handleKeyPress);
+    
+    const factionCards = document.querySelectorAll('.faction-card');
+    factionCards.forEach(card => {
+        const newCard = card.cloneNode(true);
+        card.parentNode.replaceChild(newCard, card);
+    });
+    
+    const confirmBtn = document.getElementById('confirmFactionBtn');
+    if (confirmBtn) {
+        const newBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+    }
+    
+    selectedFaction = null;
+    isHovering = false;
+    isFactionSectionCreated = false;
 }
 
 function handleKeyPress(event) {
@@ -210,38 +265,45 @@ function handleKeyPress(event) {
 function returnToMainMenu() {
     const factionSection = document.querySelector('.faction-selection');
     const startPage = document.querySelector('.start-page');
+    
     if (factionSection) {
         factionSection.style.opacity = '0';
-        factionSection.style.transform = 'translateY(20px)';
-        factionSection.parentNode.removeChild(factionSection);
-
+        factionSection.style.transform = 'translateY(50px)';
+        
+        setTimeout(() => {
+            if (factionSection.parentNode) {
+                factionSection.parentNode.removeChild(factionSection);
+            }
+        }, 500);
     }
+    
     if (startPage) {
         startPage.style.display = 'flex';
-        startPage.style.opacity = '1';
-        const logo = startPage.querySelector('.logo');
-        const menuButtons = startPage.querySelector('.main-menu-buttons');
-        if (logo) {
-            logo.style.animation = 'none';
-            logo.style.opacity = '1';
-            logo.style.transform = 'translateY(0)';
-            void logo.offsetWidth;
-            logo.style.animation = 'fadeInDown 0.8s ease forwards';
-        }
-        if (menuButtons) {
-            menuButtons.style.animation = 'none';
-            menuButtons.style.opacity = '1';
-            menuButtons.style.transform = 'translateY(0)';
-            void menuButtons.offsetWidth;
-            menuButtons.style.animation = 'fadeInUp 0.8s ease forwards';
-        }
+        setTimeout(() => {
+            startPage.style.opacity = '1';
+            
+            const logo = startPage.querySelector('.logo');
+            const menuButtons = startPage.querySelector('.main-menu-buttons');
+            
+            if (logo) {
+                logo.style.animation = 'none';
+                void logo.offsetWidth; 
+                logo.style.animation = 'fadeInDown 0.5s ease forwards';
+            }
+            
+            if (menuButtons) {
+                menuButtons.style.animation = 'none';
+                void menuButtons.offsetWidth; 
+                menuButtons.style.animation = 'fadeInUp 0.5s ease forwards';
+            }
+        }, 400);
     }
-    selectedFaction = null;
-    isHovering = false;
-    document.removeEventListener('keydown', handleKeyPress);
+    
+    cleanupFactionSelection();
 }
 
 window.factionModule = {
     initFactionSelection,
+    cleanupFactionSelection,
     factionsData
 };
