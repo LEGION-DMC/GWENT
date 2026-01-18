@@ -34,6 +34,7 @@ const localization = {
         tactic: 'Тактика',
         spell: 'Заклятие',
         hazard: 'Бедствие',
+        ritual: 'Ритуал',
     }
 };
 
@@ -789,12 +790,56 @@ function displayCollectionCards() {
     sortCollection(filterType);
 }
 
+function getCardCopyCountInDeck(cardId) {
+    return currentDeck.cards.filter(card => card.id === cardId).length;
+}
+
+function getAvailableCopies(card) {
+    if (!card.copy || card.copy <= 1) return 1;
+    const inDeck = getCardCopyCountInDeck(card.id);
+    return Math.max(0, card.copy - inDeck);
+}
+
+function updateCardCopyIndicator(cardElement, card) {
+    const availableCopies = getAvailableCopies(card);
+    const oldIndicator = cardElement.querySelector('.card__copy-indicator');
+    const oldBanner = cardElement.querySelector('.card__copy-banner');
+    
+    if (oldIndicator) {
+        oldIndicator.remove();
+    }
+    if (oldBanner) {
+        oldBanner.remove();
+    }
+    
+    if (card.copy && card.copy > 1 && availableCopies > 1) {
+        const copyBanner = document.createElement('img');
+        copyBanner.className = 'card__copy-banner';
+        copyBanner.src = `faction/${card.faction}/banner_position.png`;
+        copyBanner.alt = 'Копия';
+		
+        const copyIndicator = document.createElement('div');
+        copyIndicator.className = 'card__copy-indicator';
+        copyIndicator.textContent = `×${availableCopies}`;
+        
+        const cardContainer = cardElement.querySelector('.card__container');
+        if (cardContainer) {
+            cardContainer.appendChild(copyBanner);
+            cardContainer.appendChild(copyIndicator);
+        }
+    }
+}
+
 function createCardElement(card, context) {
     const cardElement = document.createElement('div');
     cardElement.className = `card ${card.type} ${card.rarity} ${context}-card`;
     cardElement.dataset.cardId = card.id;
     cardElement.dataset.cardType = card.type;
     cardElement.dataset.cardPosition = card.position || 'any';
+    
+    if (card.copy) {
+        cardElement.dataset.cardCopy = card.copy;
+    }
     
     const cardDisplayMode = window.settingsModule ? window.settingsModule.getCardDisplayMode() : 'animated';
     
@@ -850,6 +895,10 @@ function createCardElement(card, context) {
             ${positionElement}
         </div>
     `;
+    
+    if (context === 'collection') {
+        updateCardCopyIndicator(cardElement, card);
+    }
     
     cardElement.addEventListener('click', (event) => {
         handleCardClick(card, context, event);
@@ -1165,9 +1214,36 @@ function addCardToDeck(card) {
         showMessage('Максимальный размер колоды - 40 карт');
         return;
     }
-    currentDeck.cards.push(card);
+    
+    if (card.copy && card.copy > 1) {
+        const availableCopies = getAvailableCopies(card);
+        if (availableCopies <= 0) {
+            showMessage('Все доступные копии этой карты уже добавлены в колоду');
+            return;
+        }
+        
+        const copiesInDeck = getCardCopyCountInDeck(card.id);
+        if (copiesInDeck >= card.copy) {
+            showMessage(`Максимальное количество копий этой карты (${card.copy}) уже в колоде`);
+            return;
+        }
+    } else {
+        const alreadyInDeck = currentDeck.cards.some(c => c.id === card.id);
+        if (alreadyInDeck) {
+            showMessage('Эта карта уже добавлена в колоду');
+            return;
+        }
+    }
+    
+    currentDeck.cards.push({...card});
     sortDeckCards();
-    removeCardFromCollection(card.id);
+    
+    if (card.copy && card.copy > 1) {
+        updateCollectionCardDisplay(card.id);
+    } else {
+        removeCardFromCollectionCompletely(card.id);
+    }
+    
     updateDeckStats();
     updateDeckDisplay();
     animateCardAddition(card);
@@ -1187,26 +1263,71 @@ function removeCardFromDeck(card) {
     }
 }
 
+function updateCollectionCardDisplay(cardId) {
+    const card = displayedCollectionCards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    const collectionCardElement = document.querySelector(`.collection-card[data-card-id="${cardId}"]`);
+    
+    if (card.copy && card.copy > 1) {
+        if (collectionCardElement) {
+            updateCardCopyIndicator(collectionCardElement, card);
+            
+            const availableCopies = getAvailableCopies(card);
+            if (availableCopies <= 0) {
+                removeCardFromCollectionCompletely(cardId);
+            } else {
+                collectionCardElement.style.display = 'block';
+            }
+        }
+    } else {
+        if (collectionCardElement) {
+            collectionCardElement.remove();
+        }
+    }
+}
+
 function removeCardFromCollection(cardId) {
+    const card = displayedCollectionCards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    if (card.copy && card.copy > 1) {
+        const availableCopies = getAvailableCopies(card);
+        if (availableCopies > 0) {
+            updateCollectionCardDisplay(cardId);
+        } else {
+            removeCardFromCollectionCompletely(cardId);
+        }
+    } else {
+        removeCardFromCollectionCompletely(cardId);
+    }
+}
+
+function removeCardFromCollectionCompletely(cardId) {
     const index = displayedCollectionCards.findIndex(c => c.id === cardId);
     if (index !== -1) {
         displayedCollectionCards.splice(index, 1);
-        displayCollectionCards();
+    }
+    
+    const cardElement = document.querySelector(`.collection-card[data-card-id="${cardId}"]`);
+    if (cardElement) {
+        cardElement.remove();
     }
 }
 
 function addCardToCollection(card) {
-    const existingIndex = displayedCollectionCards.findIndex(c => c.id === card.id);
-    if (existingIndex === -1) {
+    const existingCard = displayedCollectionCards.find(c => c.id === card.id);
+    if (!existingCard) {
         displayedCollectionCards.push(card);
         sortCollectionCards();
-        const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
-        if (activeFilter) {
-            const filterType = activeFilter.dataset.type;
-            sortCollection(filterType);
-        } else {
-            displayCollectionCards();
-        }
+    }
+    
+    const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
+    if (activeFilter) {
+        const filterType = activeFilter.dataset.type;
+        sortCollection(filterType);
+    } else {
+        displayCollectionCards();
     }
 }
 
@@ -1232,22 +1353,66 @@ function sortCollectionCards() {
 }
 
 function animateCardAddition(card) {
-    const cardElement = document.querySelector(`[data-card-id="${card.id}"]`);
-    if (cardElement) {
-        cardElement.style.animation = 'cardAddition 0.5s ease';
+    const deckCards = document.querySelectorAll('.deck-card');
+    const lastDeckCard = deckCards[deckCards.length - 1];
+    
+    if (lastDeckCard) {
+        lastDeckCard.style.animation = 'cardAddition 0.5s ease';
         setTimeout(() => {
-            cardElement.style.animation = '';
+            lastDeckCard.style.animation = '';
         }, 500);
+    }
+    
+    if (card.copy && card.copy > 1) {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            const copyIndicator = collectionCard.querySelector('.card__copy-indicator');
+            if (copyIndicator) {
+                copyIndicator.style.animation = 'copyIndicatorPulse 0.5s ease';
+                setTimeout(() => {
+                    copyIndicator.style.animation = '';
+                }, 500);
+            }
+        }
+    }
+    
+    else {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            collectionCard.style.animation = 'cardRemoval 0.5s ease';
+            setTimeout(() => {
+                collectionCard.style.animation = '';
+            }, 500);
+        }
     }
 }
 
 function animateCardRemoval(card) {
-    const cardElement = document.querySelector(`[data-card-id="${card.id}"]`);
-    if (cardElement) {
-        cardElement.style.animation = 'cardAddition 0.5s ease';
-         setTimeout(() => {
-            cardElement.style.animation = '';
-        }, 500);
+    if (card.copy && card.copy > 1) {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            collectionCard.style.animation = 'cardAddition 0.5s ease';
+            setTimeout(() => {
+                collectionCard.style.animation = '';
+            }, 500);
+            
+            const copyIndicator = collectionCard.querySelector('.card__copy-indicator');
+            if (copyIndicator) {
+                copyIndicator.style.animation = 'copyIndicatorPulse 0.5s ease';
+                setTimeout(() => {
+                    copyIndicator.style.animation = '';
+                }, 500);
+            }
+        }
+    }
+    else {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            collectionCard.style.animation = 'cardAddition 0.5s ease';
+            setTimeout(() => {
+                collectionCard.style.animation = '';
+            }, 500);
+        }
     }
 }
 
@@ -1426,10 +1591,11 @@ function autoBuildDeck() {
     let unitsCount = 0;
     let specialsCount = 0;
     const cardsToAdd = [];
+    const usedCardIds = new Set();
     
     const targetTotalCards = 25;
     const targetUnitCards = 22;
-    const targetSpecialCards = 5; 
+    const targetSpecialCards = 5;
     
     for (const card of sortedCards) {
         if (cardsToAdd.length >= targetTotalCards) break;
@@ -1442,13 +1608,23 @@ function autoBuildDeck() {
                 if (specialsCount >= targetSpecialCards) continue;
                 specialsCount++;
             }
-            cardsToAdd.push(card);
+            
+            if (card.copy && card.copy > 1) {
+                const maxCopies = Math.min(card.copy, targetTotalCards - cardsToAdd.length);
+                for (let i = 0; i < maxCopies; i++) {
+                    cardsToAdd.push(card);
+                    usedCardIds.add(card.id);
+                }
+            } else {
+                cardsToAdd.push(card);
+                usedCardIds.add(card.id);
+            }
         }
     }
     
     for (const card of sortedCards) {
         if (cardsToAdd.length >= targetTotalCards) break;
-        if (cardsToAdd.some(c => c.id === card.id)) continue;
+        if (usedCardIds.has(card.id)) continue;
         
         if (card.type === 'unit') {
             if (unitsCount >= targetUnitCards) continue;
@@ -1457,18 +1633,28 @@ function autoBuildDeck() {
             if (specialsCount >= targetSpecialCards) continue;
             specialsCount++;
         }
-        cardsToAdd.push(card);
+        
+        if (card.copy && card.copy > 1) {
+            const maxCopies = Math.min(card.copy, targetTotalCards - cardsToAdd.length);
+            for (let i = 0; i < maxCopies; i++) {
+                cardsToAdd.push(card);
+                usedCardIds.add(card.id);
+            }
+        } else {
+            cardsToAdd.push(card);
+            usedCardIds.add(card.id);
+        }
     }
     
     cardsToAdd.forEach(card => {
         currentDeck.cards.push(card);
-        removeCardFromCollection(card.id);
     });
     
     sortDeckCards();
     updateDeckStats();
     updateDeckDisplay();
-    displayCollectionCards();
+    loadFactionCards(faction);
+    audioManager.playSound('button');
 }
 
 function clearDeckSilent() {
@@ -1479,13 +1665,7 @@ function clearDeckSilent() {
     sortCollectionCards();
     updateDeckStats();
     updateDeckDisplay();
-    const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
-    if (activeFilter) {
-        const filterType = activeFilter.dataset.type;
-        sortCollection(filterType);
-    } else {
-        displayCollectionCards();
-    }
+    displayCollectionCards();
 }
 
 function saveDeckToFile() {
@@ -1590,16 +1770,9 @@ function clearDeck() {
     });
     currentDeck.cards = [];
     sortCollectionCards();
-    
     updateDeckStats();
     updateDeckDisplay();
-    const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
-    if (activeFilter) {
-        const filterType = activeFilter.dataset.type;
-        sortCollection(filterType);
-    } else {
-        displayCollectionCards();
-    }
+    loadFactionCards(window.selectedFaction);
 }
 
 function validateDeckAndStartGame() {
@@ -1701,21 +1874,55 @@ function sortCollection(type) {
             break;
     }
     
+    const filteredCards = sortedCards.filter(card => {
+        if (card.copy && card.copy > 1) {
+            return getAvailableCopies(card) > 0;
+        } else {
+            return !currentDeck.cards.some(c => c.id === card.id);
+        }
+    });
+    
     collectionGrid.innerHTML = '';
     
-    if (sortedCards.length === 0) {
+    if (filteredCards.length === 0) {
         collectionGrid.innerHTML = `
             <div class="empty-category-message">
                 <p>Нет карт данной категории</p>
-			    <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
+                <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
             </div>
         `;
     } else {
-        sortedCards.forEach(card => {
+        filteredCards.forEach(card => {
             const cardElement = createCardElement(card, 'collection');
+            cardElement.classList.add('collection-card');
             collectionGrid.appendChild(cardElement);
         });
     }
+}
+
+function createDeckCardElement(card) {
+    const cardElement = createCardElement(card, 'deck');
+    cardElement.classList.add('deck-card');
+    
+    const copiesInDeck = getCardCopyCountInDeck(card.id);
+    if (copiesInDeck > 1) {
+        const copyBanner = document.createElement('img');
+        copyBanner.className = 'card__copy-banner';
+        copyBanner.src = `faction/${card.faction}/banner_position.png`;
+        copyBanner.alt = 'Копия';
+        
+        const copyCount = document.createElement('div');
+        copyCount.className = 'card__copy-count';
+        copyCount.textContent = `×${copiesInDeck}`;
+        
+        const cardContainer = cardElement.querySelector('.card__container');
+        if (cardContainer) {
+            cardContainer.appendChild(copyBanner);
+            cardContainer.appendChild(copyCount);
+        }
+    }
+    
+    return cardElement;
 }
 
 function sortDeck(type) {
@@ -1752,12 +1959,23 @@ function sortDeck(type) {
         deckGrid.innerHTML = `
             <div class="empty-category-message">
                 <p>Нет карт данной категории в колоде</p>
-			    <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
+                <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
             </div>
         `;
     } else {
+        const uniqueCards = [];
+        const cardCounts = {};
+        
         sortedCards.forEach(card => {
-            const cardElement = createCardElement(card, 'deck');
+            if (!cardCounts[card.id]) {
+                cardCounts[card.id] = 0;
+                uniqueCards.push(card);
+            }
+            cardCounts[card.id]++;
+        });
+        
+        uniqueCards.forEach(card => {
+            const cardElement = createDeckCardElement(card);
             deckGrid.appendChild(cardElement);
         });
     }

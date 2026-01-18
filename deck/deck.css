@@ -205,12 +205,12 @@
 
 .card__strength {
 	position: absolute;
-	top: 5px;
+	top: 3.3px;
 	left: 8.5%;
 	color: white;
 	transform: translateX(-58%);
 	-webkit-text-stroke: 0.1px black;
-	font-size: 18px;
+	font-size: 20px;
 	text-align: center;
 	z-index: 4;
 }
@@ -1014,4 +1014,30 @@
     margin-bottom: 15px;
     color: #ccc;
     -webkit-text-stroke: 0.2px black;
+}
+
+.card__copy-indicator, .card__copy-count{
+    position: absolute;
+    bottom: 2px;
+    left: -4.5px;
+    color: #d4af37;
+    font-size: 16px;
+    font-weight: bold;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.card__copy-banner {
+    position: absolute;
+    bottom: -2px;
+    left: -2px;
+    width: 33px;
+    height: 33px;
+	  rotate: 90deg;
+    z-index: 9;
+    pointer-events: none;
 }
