@@ -66,6 +66,17 @@ let isHovering = false;
 let isFactionSectionCreated = false;
 
 function initFactionSelection() {
+    window.selectedFaction = null;
+    selectedFaction = null;
+	
+    document.body.style.background = "url('ui/fon.jpg') no-repeat center center fixed";
+    document.body.style.backgroundSize = 'cover';
+    
+    const startPage = document.querySelector('.start-page');
+    if (startPage) {
+        startPage.style.display = 'none';
+    }
+    
     const existingSection = document.querySelector('.faction-selection');
     if (existingSection) {
         existingSection.parentNode.removeChild(existingSection);
@@ -73,7 +84,6 @@ function initFactionSelection() {
     
     createFactionSelectionHTML();
     setupFactionEventListeners();
-    hideStartPage();
     document.addEventListener('keydown', handleKeyPress);
 }
 
@@ -232,8 +242,12 @@ function hideStartPage() {
 }
 
 function proceedToDeckBuilding(faction) {
+    window.selectedFaction = faction;
     cleanupFactionSelection();
-    window.deckModule.initDeckBuilding(faction);
+    
+    if (window.deckModule && window.deckModule.initDeckBuilding) {
+        window.deckModule.initDeckBuilding(faction);
+    }
 }
 
 function cleanupFactionSelection() {
@@ -258,7 +272,25 @@ function cleanupFactionSelection() {
 
 function handleKeyPress(event) {
     if (event.key === 'Escape' || event.key === 'Esc') {
-        returnToMainMenu();
+        if (selectedFaction) {
+            const factionCards = document.querySelectorAll('.faction-card');
+            factionCards.forEach(card => {
+                card.classList.remove('faction-card--selected');
+            });
+            selectedFaction = null;
+            
+            const confirmBtn = document.getElementById('confirmFactionBtn');
+            if (confirmBtn) {
+                confirmBtn.style.opacity = '0';
+                confirmBtn.style.transform = 'translateY(20px)';
+                confirmBtn.style.pointerEvents = 'none';
+            }
+            
+            hideFactionDescription();
+            audioManager.playSound('button');
+        } else {
+            returnToMainMenu();
+        }
     }
 }
 
@@ -299,11 +331,14 @@ function returnToMainMenu() {
         }, 400);
     }
     
+    window.selectedFaction = null;
+    selectedFaction = null;
     cleanupFactionSelection();
 }
 
 window.factionModule = {
     initFactionSelection,
     cleanupFactionSelection,
-    factionsData
+    factionsData,
+    returnToMainMenu
 };

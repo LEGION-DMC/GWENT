@@ -1282,6 +1282,10 @@ const gameModule = {
         this.gameState.selectingRow = false;
         this.gameState.selectedCard = null;
         
+		if (window.boardModule && window.boardModule.updateControlsVisibility) {
+			window.boardModule.updateControlsVisibility(true);
+		}
+	
         if (!this.gameState.player.passed) {
             this.startTurnTimer();
         } else {
@@ -1300,6 +1304,11 @@ const gameModule = {
         this.gameState.currentPlayer = 'opponent';
         this.gameState.cardsPlayedThisTurn = 0;
         this.stopTurnTimer();
+		
+		if (window.boardModule && window.boardModule.updateControlsVisibility) {
+			window.boardModule.updateControlsVisibility(false);
+		}
+	
         this.updateTurnIndicator();
         this.updateControlButtons();
         this.showGameMessage('Ход противника', 'warning');
@@ -2740,18 +2749,25 @@ const gameModule = {
         }
     },
 
-    loadPlayerDeck: function() {
-        if (window.deckModule && window.deckModule.currentDeck) {
-            const playerDeck = window.deckModule.currentDeck;
-            this.gameState.player.deck = this.shuffleArray([...playerDeck.cards]);
-            this.gameState.player.faction = playerDeck.faction;
-            this.gameState.player.ability = playerDeck.ability;
-        } else {
-            this.loadDemoDeck('player');
-        }
-        
-        this.displayPlayerDeck();
-    },
+	loadPlayerDeck: function() {
+		let playerDeck;
+		
+		if (window.deckModule && window.deckModule.currentDeck) {
+			playerDeck = window.deckModule.currentDeck;
+			
+			if (playerDeck.faction && playerDeck.cards && playerDeck.cards.length > 0) {
+				this.gameState.player.deck = this.shuffleArray([...playerDeck.cards]);
+				this.gameState.player.faction = playerDeck.faction;
+				this.gameState.player.ability = playerDeck.ability;
+			} else {
+				this.loadDemoDeck('player');
+			}
+		} else {
+			this.loadDemoDeck('player');
+		}
+		
+		this.displayPlayerDeck();
+	},
 
     loadOpponentDeck: function() {
         const availableFactions = this.getAvailableFactions();
@@ -2867,44 +2883,36 @@ const gameModule = {
     createBalancedDeck: function(factionCards, factionId) {
     const deck = [];
     
-    // Получаем все карты фракции
     const unitCards = [...(factionCards.units || [])];
     const specialCards = [...(factionCards.specials || [])];
     const artifactCards = [...(factionCards.artifacts || [])];
     const tacticCards = [...(factionCards.tactics || [])];
     
-    // Получаем нейтральные карты
     const neutralCards = window.cardsModule?.getFactionCards('neutral') || {};
     const neutralUnits = [...(neutralCards.units || [])];
     const neutralSpecials = [...(neutralCards.specials || [])];
     const neutralArtifacts = [...(neutralCards.artifacts || [])];
     const neutralTactics = [...(neutralCards.tactics || [])];
     
-    // Объединяем карты по типам
     const allUnits = [...unitCards, ...neutralUnits];
     const allSpecials = [...specialCards, ...neutralSpecials];
     const allArtifacts = [...artifactCards, ...neutralArtifacts];
     const allTactics = [...tacticCards, ...neutralTactics];
     
-    // Все специальные карты (спешлы, артефакты, тактики)
     const allSpecialCards = [...allSpecials, ...allArtifacts, ...allTactics];
     
-    // Определяем параметры колоды (как в validateDeckAndStartGame)
     const minDeckSize = 15;
     const maxDeckSize = 25;
     const minUnits = 10;
     const minSpecials = 3;
     const maxSpecials = 5;
     
-    // 1. Выбираем специальные карты (от 3 до 5)
     const specialCount = minSpecials + Math.floor(Math.random() * (maxSpecials - minSpecials + 1));
     const selectedSpecials = [];
     
-    // Сначала пытаемся выбрать карты из фракции
     const factionSpecials = [...specialCards, ...artifactCards, ...tacticCards];
     const availableSpecials = [...factionSpecials, ...allSpecialCards];
     
-    // Удаляем дубликаты по ID
     const uniqueSpecials = [];
     const seenIds = new Set();
     
@@ -2915,18 +2923,15 @@ const gameModule = {
         }
     });
     
-    // Перемешиваем и выбираем специальные карты
     this.shuffleArray(uniqueSpecials);
     for (let i = 0; i < Math.min(specialCount, uniqueSpecials.length); i++) {
         selectedSpecials.push(uniqueSpecials[i]);
         deck.push(uniqueSpecials[i]);
     }
     
-    // 2. Выбираем юнитов (минимум 10)
     const selectedUnits = [];
     const availableUnits = [...allUnits];
     
-    // Удаляем дубликаты по ID
     const uniqueUnits = [];
     seenIds.clear();
     
@@ -2937,16 +2942,12 @@ const gameModule = {
         }
     });
     
-    // Перемешиваем и выбираем юнитов
     this.shuffleArray(uniqueUnits);
     
-    // Минимум 10 юнитов, максимум до заполнения колоды до 25 карт
     const maxUnits = maxDeckSize - selectedSpecials.length;
     const unitsNeeded = Math.max(minUnits, Math.min(uniqueUnits.length, maxUnits));
     
-    // Если не хватает уникальных юнитов, допускаем дубли
     if (uniqueUnits.length < unitsNeeded) {
-        // Собираем все доступные юниты (включая дубли)
         const allAvailableUnits = [...allUnits];
         this.shuffleArray(allAvailableUnits);
         
@@ -2962,10 +2963,8 @@ const gameModule = {
         }
     }
     
-    // 3. Проверяем размер колоды
     const currentDeckSize = deck.length;
     
-    // Если колода меньше минимального размера, добавляем еще карт
     if (currentDeckSize < minDeckSize) {
         const cardsNeeded = minDeckSize - currentDeckSize;
         const allCards = [...allUnits, ...allSpecialCards];
@@ -2983,7 +2982,6 @@ const gameModule = {
             }
         }
         
-        // Если все еще не хватает карт, добавляем любые
         if (added < cardsNeeded) {
             for (let i = 0; i < cardsNeeded - added; i++) {
                 const randomCard = allCards[i % allCards.length];
@@ -2992,9 +2990,7 @@ const gameModule = {
         }
     }
     
-    // 4. Если колода больше максимального размера, обрезаем до 25
     if (deck.length > maxDeckSize) {
-        // Сначала оставляем все специальные карты (они важнее)
         const specialsInDeck = deck.filter(card => 
             card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
         );
@@ -3002,23 +2998,19 @@ const gameModule = {
         
         deck.length = 0;
         
-        // Добавляем специальные карты
         specialsInDeck.forEach(card => deck.push(card));
         
-        // Добавляем юнитов до максимального размера
         const remainingSlots = maxDeckSize - deck.length;
         for (let i = 0; i < Math.min(remainingSlots, unitsInDeck.length); i++) {
             deck.push(unitsInDeck[i]);
         }
     }
     
-    // 5. Проверяем соблюдение всех ограничений
     const finalUnitCount = deck.filter(card => card.type === 'unit').length;
     const finalSpecialCount = deck.filter(card => 
         card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
     ).length;
     
-    // Если не хватает юнитов, пытаемся исправить
     if (finalUnitCount < minUnits) {
         const neededUnits = minUnits - finalUnitCount;
         const allAvailableUnits = [...allUnits];
@@ -3027,7 +3019,6 @@ const gameModule = {
         const deckCardIds = new Set(deck.map(card => card.id));
         let added = 0;
         
-        // Удаляем лишние специальные карты (если они превышают минимум)
         const excessSpecials = finalSpecialCount - minSpecials;
         if (excessSpecials > 0) {
             for (let i = 0; i < excessSpecials; i++) {
@@ -3040,7 +3031,6 @@ const gameModule = {
             }
         }
         
-        // Добавляем недостающих юнитов
         for (const unit of allAvailableUnits) {
             if (added >= neededUnits) break;
             if (!deckCardIds.has(unit.id)) {
@@ -3050,7 +3040,6 @@ const gameModule = {
         }
     }
     
-    // 6. Финальная проверка и фикс если нужно
     const finalCheck = () => {
         const total = deck.length;
         const units = deck.filter(card => card.type === 'unit').length;
@@ -3072,12 +3061,10 @@ const gameModule = {
     let attempts = 0;
     const maxAttempts = 10;
     
-    // Попытки исправить колоду
     while (!check.valid && attempts < maxAttempts) {
         attempts++;
         
         if (check.total < minDeckSize) {
-            // Добавляем случайные карты
             const allCards = [...allUnits, ...allSpecialCards];
             this.shuffleArray(allCards);
             
@@ -3093,13 +3080,11 @@ const gameModule = {
                 }
             }
         } else if (check.total > maxDeckSize) {
-            // Удаляем лишние карты, начиная с дубликатов
             const cardCounts = {};
             deck.forEach(card => {
                 cardCounts[card.id] = (cardCounts[card.id] || 0) + 1;
             });
             
-            // Сортируем карты по количеству дубликатов
             deck.sort((a, b) => {
                 const countA = cardCounts[a.id];
                 const countB = cardCounts[b.id];
@@ -3108,20 +3093,14 @@ const gameModule = {
                 return 0;
             });
             
-            // Удаляем дубликаты пока не достигнем нужного размера
             while (deck.length > maxDeckSize) {
                 deck.pop();
             }
         }
-        
-        // Проверяем количество юнитов и специальных карт
         check = finalCheck();
     }
     
-    // 7. Перемешиваем финальную колоду
     this.shuffleArray(deck);
-    
-    console.log(`Колода AI создана: ${deck.length} карт, ${check.units} юнитов, ${check.specials} специальных`);
     
     return deck;
 },
@@ -4259,47 +4238,45 @@ const gameModule = {
         window.location.reload();
     },
 
-    redeckGame: function() {
-    const currentPlayerFaction = this.gameState.player.faction;
-    
-    this.stopTurnTimer();
-    
-    this.resetGameState();
-    
-    const gameBoard = document.querySelector('.game-board');
-    if (gameBoard) {
-        gameBoard.remove();
-    }
-    
-    const gameResultOverlay = document.querySelector('.game-result-overlay');
-    if (gameResultOverlay) {
-        gameResultOverlay.remove();
-    }
-    
-    const modals = document.querySelectorAll('.card-modal-overlay, .deck-modal-overlay, .round-result-overlay');
-    modals.forEach(modal => modal.remove());
-    
-    const deckBuilding = document.querySelector('.deck-building');
-    if (deckBuilding) {
-        deckBuilding.remove();
-    }
-    
-    if (window.factionModule && currentPlayerFaction) {
-        const factionData = window.factionModule.factionsData[currentPlayerFaction];
-        if (factionData) {
-            // Инициализируем сбор колоды для этой фракции
-            if (window.deckModule && window.deckModule.initDeckBuilding) {
-                window.deckModule.initDeckBuilding(factionData);
-            }
-        } else {
-            // Если не нашли данные фракции, перезагружаем страницу
-            window.location.reload();
-        }
-    } else {
-        window.location.reload();
-    }
-	this.resetCrownIndicators();
-},
+	redeckGame: function() {
+		const playerDeck = window.deckModule?.currentDeck;
+		
+		if (!playerDeck || !playerDeck.faction) {
+			window.location.reload();
+			return;
+		}
+		
+		const factionId = playerDeck.faction;
+		const factionData = window.factionModule?.factionsData[factionId];
+		
+		if (!factionData) {
+			window.location.reload();
+			return;
+		}
+		
+		this.stopTurnTimer();
+		this.resetGameState();
+		
+		const gameBoard = document.querySelector('.game-board');
+		if (gameBoard) gameBoard.remove();
+		
+		const gameResultOverlay = document.querySelector('.game-result-overlay');
+		if (gameResultOverlay) gameResultOverlay.remove();
+		
+		const modals = document.querySelectorAll('.card-modal-overlay, .deck-modal-overlay, .round-result-overlay');
+		modals.forEach(modal => modal.remove());
+		
+		const deckBuilding = document.querySelector('.deck-building');
+		if (deckBuilding) deckBuilding.remove();
+		
+		if (window.deckModule && window.deckModule.initDeckBuilding) {
+			window.deckModule.initDeckBuilding(factionData);
+		} else {
+			window.location.reload();
+		}
+		
+		this.resetCrownIndicators();
+	},
 
 	resetGameState: function() {
 		const playerFaction = this.gameState.player.faction;

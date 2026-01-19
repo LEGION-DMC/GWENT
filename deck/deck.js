@@ -282,7 +282,8 @@ let displayedCollectionCards = [];
 
 function initDeckBuilding(faction) {
     window.selectedFaction = faction;
-    
+    currentDeck.faction = faction.id;
+	
     const savedDeck = localStorage.getItem(`gwent_deck_${faction.id}`);
     
     if (savedDeck) {
@@ -755,21 +756,23 @@ function backToFactionSelection() {
         
         setTimeout(() => {
             deckBuildingSection.remove();
-            currentDeck = {
-                faction: null,
-                leader: null,
-                ability: null, 
-                cards: [],
-                stats: {
-                    total: 0,
-                    units: 0,
-                    specials: 0,
-                    totalStrength: 0
-                }
+            
+            currentDeck.faction = null;
+            currentDeck.leader = null;
+            currentDeck.ability = null;
+            currentDeck.cards = [];
+            currentDeck.stats = {
+                total: 0,
+                units: 0,
+                specials: 0,
+                totalStrength: 0
             };
+            
             displayedCollectionCards = [];
             document.body.style.background = "url('ui/fon.jpg') no-repeat center center fixed";
             document.body.style.backgroundSize = 'cover';
+            
+            window.selectedFaction = null;
             
             if (window.factionModule && window.factionModule.initFactionSelection) {
                 window.factionModule.initFactionSelection();

@@ -119,11 +119,40 @@ const boardModule = {
             </div>
 
             <div class="game-controls">
-                <button class="control-btn pass-btn" id="passBtn">ПАС</button>
-                <button class="control-btn end-turn-btn" id="endTurnBtn">ЗАКОНЧИТЬ ХОД</button>
+                <button class="control-btn pass-btn hidden-control" id="passBtn">ПАС</button>
+                <button class="control-btn end-turn-btn hidden-control" id="endTurnBtn">ЗАКОНЧИТЬ ХОД</button>
             </div>
         `;
     },
+
+updateControlsVisibility: function(isPlayerTurn) {
+    const passBtn = document.getElementById('passBtn');
+    const endTurnBtn = document.getElementById('endTurnBtn');
+    
+    if (passBtn && endTurnBtn) {
+        if (isPlayerTurn) {
+            passBtn.classList.remove('hidden-control');
+            endTurnBtn.classList.remove('hidden-control');
+            
+            setTimeout(() => {
+                passBtn.style.opacity = '1';
+                passBtn.style.transform = 'translateY(0)';
+                endTurnBtn.style.opacity = '1';
+                endTurnBtn.style.transform = 'translateY(0)';
+            }, 50);
+        } else {
+            passBtn.style.opacity = '0';
+            passBtn.style.transform = 'translateY(15px)';
+            endTurnBtn.style.opacity = '0';
+            endTurnBtn.style.transform = 'translateY(15px)';
+            
+            setTimeout(() => {
+                passBtn.classList.add('hidden-control');
+                endTurnBtn.classList.add('hidden-control');
+            }, 100);
+        }
+    }
+},
 
     setupBoardEventListeners: function() {
         const passBtn = document.getElementById('passBtn');
@@ -148,6 +177,8 @@ const boardModule = {
 	handlePass: function() {
 		audioManager.playSound('button');
 		
+		this.updateControlsVisibility(false);
+		 
 		if (window.playerModule && window.playerModule.handlePass) {
 			window.playerModule.handlePass();
 		}
@@ -155,6 +186,8 @@ const boardModule = {
 
 	handleEndTurn: function() {
 		audioManager.playSound('button');
+		
+		this.updateControlsVisibility(false);
 		
 		if (window.playerModule && window.playerModule.handleEndTurn) {
 			window.playerModule.handleEndTurn();
