@@ -4,14 +4,13 @@ const audioManager = {
     backgroundMusic: null,
     sounds: {},
     isFirstInteractionHandled: false,
-    debounceTimers: {},
     soundCooldowns: {},
-    cooldownTime: 150, 
-	
+    cooldownTime: 150,
+    
     init: function() {
         this.createAudioElements();
-        this.loadSettings();
         this.setupEventListeners();
+        this.loadSettings();
     },
     
     createAudioElements: function() {
@@ -22,26 +21,20 @@ const audioManager = {
         const soundFiles = {
             button: 'sfx/button.mp3',
             touch: 'sfx/touch.mp3',
-			
             warning: 'sfx/warning.mp3',
             lock: 'sfx/lock.mp3',
-			
             cardAdd: 'sfx/card_add.mp3',
             cardRemove: 'sfx/card_remove.mp3',
             card_selected: 'sfx/card-selected.mp3',
-			
             weatherFrost: 'sfx/frost.mp3',
             weatherFog: 'sfx/fog.mp3',
             weatherRain: 'sfx/rain.mp3',
             weatherClear: 'sfx/clear.mp3',
-			
-			round_start: 'sfx/round_start.mp3',
+            round_start: 'sfx/round_start.mp3',
             win: 'sfx/win.mp3',
             lose: 'sfx/lose.mp3',
             draw: 'sfx/draw.mp3',
-			
             scorch: 'sfx/scorch.mp3',
-			
             card_close: 'sfx/card_close.wav',
             card_range: 'sfx/card_range.wav',
             card_siege: 'sfx/card_siege.wav',
@@ -59,18 +52,6 @@ const audioManager = {
         this.sounds.weatherClear.volume = 0.6;
     },
     
-    loadSettings: function() {
-        const soundSetting = localStorage.getItem('soundEnabled');
-        const musicSetting = localStorage.getItem('musicEnabled');       
-        if (soundSetting !== null) this.soundEnabled = JSON.parse(soundSetting);
-        if (musicSetting !== null) this.musicEnabled = JSON.parse(musicSetting);
-    },
-    
-    saveSettings: function() {
-        localStorage.setItem('soundEnabled', JSON.stringify(this.soundEnabled));
-        localStorage.setItem('musicEnabled', JSON.stringify(this.musicEnabled));
-    },
-    
     setupEventListeners: function() {
         const handler = () => this.handleFirstInteraction();
         ['click', 'touchstart', 'keydown'].forEach(event => {
@@ -86,11 +67,26 @@ const audioManager = {
         }
     },
     
+    loadSettings: function() {
+        const savedSettings = localStorage.getItem('gwentSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            this.soundEnabled = settings.soundEnabled !== undefined ? settings.soundEnabled : true;
+            this.musicEnabled = settings.musicEnabled !== undefined ? settings.musicEnabled : true;
+        }
+    },
+    
+    saveAudioSettings: function() {
+        const currentSettings = JSON.parse(localStorage.getItem('gwentSettings') || '{}');
+        currentSettings.soundEnabled = this.soundEnabled;
+        currentSettings.musicEnabled = this.musicEnabled;
+        localStorage.setItem('gwentSettings', JSON.stringify(currentSettings));
+    },
+    
     playBackgroundMusic: function() {
         if (this.backgroundMusic && this.musicEnabled) {
             this.backgroundMusic.currentTime = 0;
-            const playPromise = this.backgroundMusic.play();
-            if (playPromise !== undefined) playPromise.catch(() => {});
+            this.backgroundMusic.play().catch(() => {});
         }
     },
     
@@ -116,13 +112,13 @@ const audioManager = {
     
     toggleSound: function() {
         this.soundEnabled = !this.soundEnabled;
-        this.saveSettings();
+        this.saveAudioSettings();
         return this.soundEnabled;
     },
     
     toggleMusic: function() {
         this.musicEnabled = !this.musicEnabled;
-        this.saveSettings();
+        this.saveAudioSettings();
         this.musicEnabled ? this.playBackgroundMusic() : this.stopBackgroundMusic();
         return this.musicEnabled;
     },
@@ -159,9 +155,9 @@ const audioManager = {
 
 window.addEventListener('load', () => {
     audioManager.init();
-    setTimeout(() => {
-        if (audioManager.musicEnabled) audioManager.playBackgroundMusic();
-    }, 100);
+    if (audioManager.musicEnabled) {
+        audioManager.playBackgroundMusic();
+    }
 });
 
 window.audioManager = audioManager;

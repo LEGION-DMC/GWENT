@@ -193,35 +193,36 @@ const playerModule = {
 	executeUnitDamage: function(damageCard, targetCard, row) {
 		const damageValue = this.getDamageValueFromAbility(damageCard.ability);
 		
-		// Удаляем карту урона из руки
 		this.removeCardFromHand(damageCard);
 		
-		// Добавляем карту урона в сброс игрока
 		const damageCardCopy = { ...damageCard };
 		this.gameState.player.discard.push(damageCardCopy);
 		
-		// Сохраняем оригинальную силу если еще не сохранена
 		if (targetCard.originalStrength === undefined) {
 			targetCard.originalStrength = targetCard.strength;
 		}
 		
-		// Применяем урон через displayStrength
+		if (targetCard._damageDisplayStrength === undefined) {
+			const currentDisplayStrength = targetCard._displayStrength !== undefined ? 
+				targetCard._displayStrength : targetCard.strength;
+			targetCard._damageDisplayStrength = currentDisplayStrength;
+		}
+		
 		const currentDisplayStrength = targetCard._displayStrength !== undefined ? 
 			targetCard._displayStrength : targetCard.strength;
 		
-		targetCard._displayStrength = Math.max(0, currentDisplayStrength - damageValue);
+		const newStrength = Math.max(0, currentDisplayStrength - damageValue);
 		
-		// Визуальный эффект урона
+		targetCard._damageDisplayStrength = newStrength;
+		targetCard._displayStrength = newStrength;
+		
 		this.createDamageVisualEffect(targetCard, row, damageValue);
 		
-		// Обновляем отображение силы
 		if (window.gameModule) {
 			window.gameModule.updateCardStrengthDisplay(targetCard, row, 'opponent');
 		}
 		
-		// Если карта уничтожена
 		if (targetCard._displayStrength === 0) {
-			// Удаляем карту из ряда
 			const rowState = this.gameState.opponent.rows[row];
 			const cardIndex = rowState.cards.findIndex(c => c.id === targetCard.id);
 			if (cardIndex !== -1) {
@@ -229,16 +230,18 @@ const playerModule = {
 				rowState.cards.splice(cardIndex, 1);
 				this.gameState.opponent.discard.push(destroyedCard);
 				
-				// Обновляем отображение
 				setTimeout(() => {
 					if (window.gameModule) {
 						window.gameModule.removeCardFromBoardVisual(targetCard, row, 'opponent');
 					}
 				}, 500);
+				
+				delete targetCard.originalStrength;
+				delete targetCard._displayStrength;
+				delete targetCard._damageDisplayStrength;
 			}
 		}
 		
-		// Обновляем отображение
 		if (window.gameModule) {
 			window.gameModule.updateRowStrength(row, 'opponent');
 			window.gameModule.displayPlayerDiscard();
@@ -246,85 +249,90 @@ const playerModule = {
 			window.gameModule.completeCardPlay();
 		}
 		
-		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('card_damage');
 		}
 		
-		// Сбрасываем состояние
 		this.cancelDamageSelection();
 	},
 
 	executeRowDamage: function(damageCard, row) {
 		const damageValue = this.getDamageValueFromAbility(damageCard.ability);
 		
-		// Удаляем карту урона из руки
 		this.removeCardFromHand(damageCard);
 		
-		// Добавляем карту урона в сброс игрока
 		const damageCardCopy = { ...damageCard };
 		this.gameState.player.discard.push(damageCardCopy);
 		
 		const rowState = this.gameState.opponent.rows[row];
 		let destroyedCards = [];
 		
-		// Применяем урон ко всем картам в ряду
 		rowState.cards.forEach(card => {
-			if (card.type === 'unit' && card.strength > 0) {
-				// Сохраняем оригинальную силу если еще не сохранена
-				if (card.originalStrength === undefined) {
-					card.originalStrength = card.strength;
-				}
-				
-				// Применяем урон через displayStrength
+			if (card.type === 'unit') {
 				const currentDisplayStrength = card._displayStrength !== undefined ? 
 					card._displayStrength : card.strength;
 				
-				card._displayStrength = Math.max(0, currentDisplayStrength - damageValue);
-				
-				// Визуальный эффект урона
-				this.createDamageVisualEffect(card, row, damageValue);
-				
-				// Обновляем отображение силы
-				if (window.gameModule) {
-					window.gameModule.updateCardStrengthDisplay(card, row, 'opponent');
-				}
-				
-				if (card._displayStrength === 0) {
-					destroyedCards.push(card);
+				if (currentDisplayStrength > 0) {
+					if (card.originalStrength === undefined) {
+						card.originalStrength = card.strength;
+					}
+					
+					if (card._damageDisplayStrength === undefined) {
+						card._damageDisplayStrength = currentDisplayStrength;
+					}
+					
+					const newStrength = Math.max(0, currentDisplayStrength - damageValue);
+					
+					card._damageDisplayStrength = newStrength;
+					card._displayStrength = newStrength;
+					
+					this.createDamageVisualEffect(card, row, damageValue);
+					
+					if (window.gameModule) {
+						window.gameModule.updateCardStrengthDisplay(card, row, 'opponent');
+					}
+					
+					if (card._displayStrength === 0) {
+						destroyedCards.push(card);
+					}
 				}
 			}
 		});
 		
-		// Удаляем уничтоженные карты
-		destroyedCards.forEach(destroyedCard => {
+		for (let i = destroyedCards.length - 1; i >= 0; i--) {
+			const destroyedCard = destroyedCards[i];
 			const cardIndex = rowState.cards.findIndex(c => c.id === destroyedCard.id);
+			
 			if (cardIndex !== -1) {
 				const destroyedCardCopy = { ...rowState.cards[cardIndex] };
 				rowState.cards.splice(cardIndex, 1);
 				this.gameState.opponent.discard.push(destroyedCardCopy);
+				
+				setTimeout(() => {
+					if (window.gameModule) {
+						window.gameModule.removeCardFromBoardVisual(destroyedCard, row, 'opponent');
+					}
+				}, 500);
+				
+				delete destroyedCard.originalStrength;
+				delete destroyedCard._displayStrength;
+				delete destroyedCard._damageDisplayStrength;
 			}
-		});
+		}
 		
-		// Обновляем отображение
 		if (window.gameModule) {
-			// Обновляем силу ряда
 			window.gameModule.updateRowStrength(row, 'opponent');
 			
-			// Обновляем сбросы
 			window.gameModule.displayPlayerDiscard();
 			window.gameModule.displayOpponentDiscard();
 			
-			// Завершаем ход
 			window.gameModule.completeCardPlay();
 		}
 		
-		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('card_damage');
 		}
 		
-		// Сбрасываем состояние
 		this.cancelDamageSelection();
 	},
 
@@ -742,33 +750,43 @@ const playerModule = {
 			
 			rowCards.forEach((unitCard, index) => {
 				if (unitCard.type === 'unit') {
-					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player');
+					const cardKey = unitCard.uniqueId || `${unitCard.id}_${row}_${index}`;
+					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player', cardKey);
 					if (cardElement) {
 						cardElement.classList.add('decoy-target');
-						this.setupDecoySelectionHandler(cardElement, unitCard, row);
+						cardElement.dataset.cardKey = cardKey;
+						this.setupDecoySelectionHandler(cardElement, unitCard, row, cardKey);
 					}
 				}
 			});
 		});
 	},
 
-	getCardElementOnBoard: function(card, row, owner) {
+	getCardElementOnBoard: function(card, row, owner, cardKey = null) {
 		const rowElement = document.getElementById(`${owner}${this.capitalizeFirst(row)}Row`);
 		if (!rowElement) return null;
+		
+		if (cardKey) {
+			const cardElement = rowElement.querySelector(`[data-card-key="${cardKey}"]`);
+			if (cardElement) return cardElement;
+		}
 		
 		const cardElements = rowElement.querySelectorAll('.board-card');
 		for (let cardElement of cardElements) {
 			if (cardElement.dataset.cardId === card.id) {
-				return cardElement;
+				const existingKey = cardElement.dataset.cardKey;
+				if (!existingKey || existingKey === cardKey) {
+					return cardElement;
+				}
 			}
 		}
 		return null;
 	},
 
-	setupDecoySelectionHandler: function(cardElement, card, row) {
+	setupDecoySelectionHandler: function(cardElement, card, row, cardKey) {
 		const clickHandler = () => {
 			if (this.gameState.selectingRow && this.gameState.placementType === 'decoy') {
-				this.placeDecoyCard(this.gameState.decoyCard, card, row);
+				this.placeDecoyCard(this.gameState.decoyCard, card, row, cardKey);
 				cardElement.removeEventListener('click', clickHandler);
 			}
 		};
@@ -781,71 +799,85 @@ const playerModule = {
 		this.gameState.decoySelectionHandlers.push({ 
 			element: cardElement, 
 			handler: clickHandler,
-			card: card
+			card: card,
+			row: row,
+			cardKey: cardKey
 		});
 	},
 
-	placeDecoyCard: function(decoyCard, targetCard, row) {
+	placeDecoyCard: function(decoyCard, targetCard, row, cardKey) {
 		const rowState = this.gameState.player.rows[row];
+		const targetIndex = rowState.cards.findIndex(card => {
+			const cardUniqueKey = card.uniqueId || `${card.id}_${row}_${rowState.cards.indexOf(card)}`;
+			return cardKey === cardUniqueKey || card.id === targetCard.id;
+		});
 		
-		// Находим индекс целевой карты в ряду
-		const targetIndex = rowState.cards.findIndex(card => card.id === targetCard.id);
 		if (targetIndex === -1) {
 			this.showMessage('Карта не найдена в ряду!');
 			return;
 		}
 		
-		// Создаем копию целевой карты для возврата в руку
 		const cardCopy = { ...targetCard };
 		cardCopy.playedThisRound = false;
 		
-		// Восстанавливаем оригинальную силу, если карта была под погодой
 		if (cardCopy.originalStrength !== undefined) {
 			cardCopy.strength = cardCopy.originalStrength;
 			delete cardCopy.originalStrength;
 		}
 		
-		// Удаляем Чучело из руки
 		this.removeCardFromHand(decoyCard);
-		
-		// Добавляем копию карты в руку
 		this.gameState.player.hand.push(cardCopy);
 		
-		// Заменяем карту на поле на Чучело
 		const placedDecoy = { ...decoyCard };
 		placedDecoy.owner = 'player';
 		placedDecoy.row = row;
 		placedDecoy.currentStrength = 1;
-		
+		placedDecoy.uniqueId = `decoy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 		rowState.cards[targetIndex] = placedDecoy;
 		
-		// Обновляем отображение
 		if (window.gameModule) {
-			// Удаляем старую карту с поля
-			const oldCardElement = this.getCardElementOnBoard(targetCard, row, 'player');
+			const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			const oldCardElement = this.getCardElementOnBoard(targetCard, row, 'player', cardKey);
 			if (oldCardElement) {
+				const cardRect = oldCardElement.getBoundingClientRect();
+				const rowRect = rowElement.getBoundingClientRect();
+				const relativePosition = cardRect.left - rowRect.left;
+				
 				oldCardElement.remove();
+				
+				const decoyElement = window.gameModule.createBoardCardElement(placedDecoy, 'special');
+				const cardsInRow = Array.from(rowElement.children);
+				let insertIndex = 0;
+				
+				for (let i = 0; i < cardsInRow.length; i++) {
+					const cardEl = cardsInRow[i];
+					const elRect = cardEl.getBoundingClientRect();
+					const elRelativePosition = elRect.left - rowRect.left;
+					
+					if (elRelativePosition > relativePosition) {
+						break;
+					}
+					insertIndex++;
+				}
+				
+				if (insertIndex < cardsInRow.length) {
+					rowElement.insertBefore(decoyElement, cardsInRow[insertIndex]);
+				} else {
+					rowElement.appendChild(decoyElement);
+				}
+			} else {
+				window.gameModule.displayCardOnRow(row, placedDecoy, 'player', targetIndex);
 			}
 			
-			// Добавляем Чучело на поле
-			window.gameModule.displayCardOnRow(row, placedDecoy, 'player', targetIndex);
-			
-			// Обновляем руку
 			window.gameModule.displayPlayerHand();
-			
-			// Обновляем силу ряда
 			window.gameModule.updateRowStrength(row);
-			
-			// Завершаем ход
 			window.gameModule.completeCardPlay();
 		}
 		
-		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('artefact');
 		}
 		
-		// Сбрасываем состояние
 		this.cancelCardSelection();
 	},
 

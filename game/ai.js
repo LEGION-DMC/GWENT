@@ -1,104 +1,109 @@
 const aiModule = {
     gameState: null,
     usedCardIds: new Set(),
-    
+    isMakingMove: false,
+	
     init: function(gameState) {
         this.gameState = gameState;
         this.usedCardIds.clear();
+		this.isMakingMove = false;
     },
     
 	reset: function() {
 		this.usedCardIds.clear();
 		this.gameState = null;
+		this.isMakingMove = false;
 	},
 
-    makeMove: function() {
-        if (this.gameState.opponent.passed) {
-            this.endAITurn();
-            return;
-        }
-        
-        if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-            this.endAITurn();
-            return;
-        }
-        
-        if (this.gameState.player.passed) {
-            if (this.gameState.cardsPlayedThisTurn > 0) {
-                this.pass();
-                return;
-            }
-            
-            const playableCards = this.getPlayableCards();
-            if (playableCards.length > 0) {
-                const bestCard = this.selectBestCard(playableCards);
-                if (bestCard && bestCard.strength > 5) {
-                    this.playCard(bestCard);
-                    this.gameState.cardsPlayedThisTurn++;
-                    
-                    setTimeout(() => {
-                        this.pass();
-                    }, 1500);
-                    return;
-                } else {
-                    this.pass();
-                    return;
-                }
-            } else {
-                this.pass();
-                return;
-            }
-        }
-        
-        if (this.gameState.opponent.hand.length === 0) {
-            this.pass();
-            return;
-        }
-        
-        const playableCards = this.getPlayableCards();
-        
-        if (playableCards.length === 0) {
-            this.pass();
-            return;
-        }
-        
-        const bestCard = this.selectBestCard(playableCards);
-        
-        if (bestCard) {
-            this.playCard(bestCard);
-            
-            this.gameState.cardsPlayedThisTurn++;
-            
-            setTimeout(() => {
-                if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-                    this.endAITurn();
-                } else if (this.gameState.opponent.hand.length > 0) {
-                    setTimeout(() => this.makeMove(), 1000);
-                } else {
-                    this.endAITurn();
-                }
-            }, 1500);
-        } else {
-            this.pass();
-        }
-    },
+	makeMove: function() {
+		if (this.isMakingMove) return;
+		this.isMakingMove = true;
+		
+		if (this.gameState.opponent.passed) {
+			this.isMakingMove = false;
+			this.endAITurn();
+			return;
+		}
+		
+		if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
+			this.isMakingMove = false;
+			this.endAITurn();
+			return;
+		}
+		
+		if (this.gameState.player.passed) {
+			if (this.gameState.cardsPlayedThisTurn > 0) {
+				this.isMakingMove = false;
+				this.pass();
+				return;
+			}
+			
+			const playableCards = this.getPlayableCards();
+			if (playableCards.length > 0) {
+				const bestCard = this.selectBestCard(playableCards);
+				if (bestCard && bestCard.strength > 5) {
+					this.playCard(bestCard);
+					
+					setTimeout(() => {
+						this.isMakingMove = false;
+						this.pass();
+					}, 1500);
+					return;
+				} else {
+					this.isMakingMove = false;
+					this.pass();
+					return;
+				}
+			} else {
+				this.isMakingMove = false;
+				this.pass();
+				return;
+			}
+		}
+		
+		if (this.gameState.opponent.hand.length === 0) {
+			this.isMakingMove = false;
+			this.pass();
+			return;
+		}
+		
+		const playableCards = this.getPlayableCards();
+		
+		if (playableCards.length === 0) {
+			this.isMakingMove = false;
+			this.pass();
+			return;
+		}
+		
+		const bestCard = this.selectBestCard(playableCards);
+		
+		if (bestCard) {
+			this.playCard(bestCard);
+			setTimeout(() => {
+				this.isMakingMove = false;
+			}, 100);
+		} else {
+			this.isMakingMove = false;
+			this.pass();
+		}
+	},
 
-    pass: function() {
-        this.gameState.opponent.passed = true;
-        
-        if (window.gameModule) {
-            window.gameModule.showGameMessage('Противник пасует', 'info');
-            window.gameModule.updateControlButtons();
-            
-            if (this.gameState.player.passed) {
-                setTimeout(() => {
-                    window.gameModule.checkRoundEnd();
-                }, 1000);
-            } else {
-                window.gameModule.handleTurnEnd();
-            }
-        }
-    },
+	pass: function() {
+		this.gameState.opponent.passed = true;
+		
+		if (window.gameModule) {
+			window.gameModule.showGameMessage('Противник пасует', 'info');
+			window.gameModule.updateControlButtons();
+			
+			if (this.gameState.player.passed) {
+				setTimeout(() => {
+					window.gameModule.checkRoundEnd();
+				}, 1000);
+			} else {
+				window.gameModule.handleTurnEnd();
+			}
+		}
+	},
 
     getPlayableCards: function() {
     const uniqueCards = [];
@@ -514,77 +519,65 @@ const aiModule = {
 	},
 
 	playUnitDamageCard: function(card) {
-		// Получаем значение урона
 		const damageMatch = card.ability.match(/damage_(\d+)/);
 		const damageValue = damageMatch ? parseInt(damageMatch[1]) : 1;
-		
-		// Находим лучшую цель
 		const bestTarget = this.findBestDamageTarget(damageValue);
 		
 		if (!bestTarget) {
-			// Если нет целей, не играем эту карту
 			this.usedCardIds.delete(card.id);
 			return;
 		}
-		
-		// Выполняем урон
 		this.executeUnitDamage(card, bestTarget);
 	},
 
 	playRowDamageCard: function(card) {
-		// Получаем значение урона
 		const damageMatch = card.ability.match(/damage_row_(\d+)/);
 		const damageValue = damageMatch ? parseInt(damageMatch[1]) : 1;
-		
-		// Находим лучший ряд
 		const bestRow = this.findBestRowForDamage(damageValue);
 		
 		if (!bestRow) {
-			// Если нет подходящих рядов, не играем эту карту
 			this.usedCardIds.delete(card.id);
 			return;
 		}
-		
-		// Выполняем урон по ряду
 		this.executeRowDamage(card, bestRow, damageValue);
 	},
 
 	executeUnitDamage: function(damageCard, targetData) {
 		const { card: targetCard, row: targetRow } = targetData;
 		
-		// Удаляем карту урона из руки
 		this.removeCardFromHand(damageCard);
 		
-		// Добавляем карту урона в сброс противника
 		const damageCardCopy = { ...damageCard };
 		this.gameState.opponent.discard.push(damageCardCopy);
 		
-		// Получаем значение урона
 		const damageMatch = damageCard.ability.match(/damage_(\d+)/);
 		const damageValue = damageMatch ? parseInt(damageMatch[1]) : 1;
 		
-		// Сохраняем оригинальную силу если еще не сохранена
 		if (targetCard.originalStrength === undefined) {
 			targetCard.originalStrength = targetCard.strength;
 		}
 		
-		// Применяем урон через displayStrength, не меняя оригинальную силу
+		if (targetCard._damageDisplayStrength === undefined) {
+			const currentDisplayStrength = targetCard._displayStrength !== undefined ? 
+				targetCard._displayStrength : targetCard.strength;
+			targetCard._damageDisplayStrength = currentDisplayStrength;
+		}
+		
 		const currentDisplayStrength = targetCard._displayStrength !== undefined ? 
 			targetCard._displayStrength : targetCard.strength;
 		
-		targetCard._displayStrength = Math.max(0, currentDisplayStrength - damageValue);
+		const newStrength = Math.max(0, currentDisplayStrength - damageValue);
 		
-		// Визуальный эффект
+		targetCard._damageDisplayStrength = newStrength;
+		targetCard._displayStrength = newStrength;
+		
 		this.createDamageVisualEffect(targetCard, targetRow, damageValue);
 		
-		// Обновляем отображение силы
 		if (window.gameModule) {
 			window.gameModule.updateCardStrengthDisplay(targetCard, targetRow, 'player');
 		}
 		
-		// Если карта уничтожена
 		if (targetCard._displayStrength === 0) {
-			// Удаляем карту из ряда
 			const rowState = this.gameState.player.rows[targetRow];
 			const cardIndex = rowState.cards.findIndex(c => c.id === targetCard.id);
 			if (cardIndex !== -1) {
@@ -592,22 +585,23 @@ const aiModule = {
 				rowState.cards.splice(cardIndex, 1);
 				this.gameState.player.discard.push(destroyedCard);
 				
-				// Обновляем отображение
 				setTimeout(() => {
 					if (window.gameModule) {
 						window.gameModule.removeCardFromBoardVisual(targetCard, targetRow, 'player');
 					}
 				}, 500);
+				
+				delete targetCard.originalStrength;
+				delete targetCard._displayStrength;
+				delete targetCard._damageDisplayStrength;
 			}
 		}
 		
-		// Обновляем отображение
 		if (window.gameModule) {
 			window.gameModule.updateRowStrength(targetRow, 'player');
 			window.gameModule.displayPlayerDiscard();
 			window.gameModule.displayOpponentDiscard();
 			
-			// Завершаем ход
 			if (window.gameModule.completeCardPlay) {
 				setTimeout(() => {
 					window.gameModule.completeCardPlay();
@@ -615,68 +609,79 @@ const aiModule = {
 			}
 		}
 		
-		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('card_damage');
 		}
 	},
 
 	executeRowDamage: function(damageCard, row, damageValue) {
-		// Удаляем карту урона из руки
 		this.removeCardFromHand(damageCard);
 		
-		// Добавляем карту урона в сброс противника
 		const damageCardCopy = { ...damageCard };
 		this.gameState.opponent.discard.push(damageCardCopy);
 		
 		const rowState = this.gameState.player.rows[row];
 		let destroyedCards = [];
 		
-		// Применяем урон ко всем картам в ряду
 		rowState.cards.forEach(card => {
-			if (card.type === 'unit' && card.strength > 0) {
-				// Сохраняем оригинальную силу если еще не сохранена
-				if (card.originalStrength === undefined) {
-					card.originalStrength = card.strength;
-				}
-				
-				// Применяем урон через displayStrength
+			if (card.type === 'unit') {
 				const currentDisplayStrength = card._displayStrength !== undefined ? 
 					card._displayStrength : card.strength;
 				
-				card._displayStrength = Math.max(0, currentDisplayStrength - damageValue);
-				
-				// Визуальный эффект урона
-				this.createDamageVisualEffect(card, row, damageValue);
-				
-				// Обновляем отображение силы
-				if (window.gameModule) {
-					window.gameModule.updateCardStrengthDisplay(card, row, 'player');
-				}
-				
-				if (card._displayStrength === 0) {
-					destroyedCards.push(card);
+				if (currentDisplayStrength > 0) {
+					if (card.originalStrength === undefined) {
+						card.originalStrength = card.strength;
+					}
+					
+					if (card._damageDisplayStrength === undefined) {
+						card._damageDisplayStrength = currentDisplayStrength;
+					}
+					
+					const newStrength = Math.max(0, currentDisplayStrength - damageValue);
+					
+					card._damageDisplayStrength = newStrength;
+					card._displayStrength = newStrength;
+					
+					this.createDamageVisualEffect(card, row, damageValue);
+					
+					if (window.gameModule) {
+						window.gameModule.updateCardStrengthDisplay(card, row, 'player');
+					}
+					
+					if (card._displayStrength === 0) {
+						destroyedCards.push(card);
+					}
 				}
 			}
 		});
 		
-		// Удаляем уничтоженные карты
-		destroyedCards.forEach(destroyedCard => {
+		for (let i = destroyedCards.length - 1; i >= 0; i--) {
+			const destroyedCard = destroyedCards[i];
 			const cardIndex = rowState.cards.findIndex(c => c.id === destroyedCard.id);
+			
 			if (cardIndex !== -1) {
 				const destroyedCardCopy = { ...rowState.cards[cardIndex] };
 				rowState.cards.splice(cardIndex, 1);
 				this.gameState.player.discard.push(destroyedCardCopy);
+				
+				setTimeout(() => {
+					if (window.gameModule) {
+						window.gameModule.removeCardFromBoardVisual(destroyedCard, row, 'player');
+					}
+				}, 500);
+				
+				delete destroyedCard.originalStrength;
+				delete destroyedCard._displayStrength;
+				delete destroyedCard._damageDisplayStrength;
 			}
-		});
+		}
 		
-		// Обновляем отображение
 		if (window.gameModule) {
 			window.gameModule.updateRowStrength(row, 'player');
+			
 			window.gameModule.displayPlayerDiscard();
 			window.gameModule.displayOpponentDiscard();
 			
-			// Завершаем ход
 			if (window.gameModule.completeCardPlay) {
 				setTimeout(() => {
 					window.gameModule.completeCardPlay();
@@ -684,7 +689,6 @@ const aiModule = {
 			}
 		}
 		
-		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('card_damage');
 		}
@@ -1387,13 +1391,15 @@ const aiModule = {
 		}
 	},
 
-    endAITurn: function() {
-        if (window.gameModule) {
-            window.gameModule.handleTurnEnd();
-        }
-    },
-
-    playWeatherCard: function(card) {
+	endAITurn: function() {
+		this.isMakingMove = false;
+		
+		if (window.gameModule) {
+			window.gameModule.handleTurnEnd();
+		}
+	},
+	
+	playWeatherCard: function(card) {
 		const weatherCardWithOwner = { ...card, owner: 'opponent' };
 		
 		this.removeCardFromHand(card);
@@ -1406,6 +1412,12 @@ const aiModule = {
 			}
 			
 			window.gameModule.displayWeatherCards();
+			
+			setTimeout(() => {
+				if (window.gameModule.completeCardPlay) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 100);
 		}
 	},
 
@@ -1438,20 +1450,26 @@ const aiModule = {
         return scoredRows[0].row;
     },
 
-    playTacticCard: function(card) {
-        const bestRow = this.findBestTacticRow();
-        if (bestRow) {
-            this.gameState.opponent.rows[bestRow].tactic = card;
-            if (window.audioManager && window.audioManager.playSound) {
-                audioManager.playSound('artefact');
-            }
-            if (window.gameModule && window.gameModule.displayTacticCard) {
-                window.gameModule.displayTacticCard(bestRow, card, 'opponent');
-            }
-        }
-    },
+	playTacticCard: function(card) {
+		const bestRow = this.findBestTacticRow();
+		if (bestRow) {
+			this.gameState.opponent.rows[bestRow].tactic = card;
+			if (window.audioManager && window.audioManager.playSound) {
+				audioManager.playSound('artefact');
+			}
+			if (window.gameModule && window.gameModule.displayTacticCard) {
+				window.gameModule.displayTacticCard(bestRow, card, 'opponent');
+				
+				setTimeout(() => {
+					if (window.gameModule.completeCardPlay) {
+						window.gameModule.completeCardPlay();
+					}
+				}, 1000);
+			}
+		}
+	},
     
-    playUnitCard: function(card) {
+	playUnitCard: function(card) {
 		const bestRow = this.findBestRowForUnit(card);
 		if (bestRow) {
 			const rowState = this.gameState.opponent.rows[bestRow];
@@ -1470,10 +1488,8 @@ const aiModule = {
 				} else {
 					const cardStrength = card.strength || 0;
 					if (cardStrength >= 8) {
-						// Сильные карты - в центр
 						insertIndex = Math.floor(rowState.cards.length / 2);
 					} else if (cardStrength <= 3) {
-						// Слабые карты - по краям
 						const placeAtStart = Math.random() < 0.5;
 						insertIndex = placeAtStart ? 0 : rowState.cards.length;
 					}
@@ -1536,6 +1552,12 @@ const aiModule = {
 				if (window.gameModule.updateRowStrength) {
 					window.gameModule.updateRowStrength(bestRow, 'opponent');
 				}
+				
+				setTimeout(() => {
+					if (window.gameModule.completeCardPlay) {
+						window.gameModule.completeCardPlay();
+					}
+				}, 1000);
 			}
 		}
 	},

@@ -8,22 +8,7 @@ const settingsModule = {
 
     init: function() {
         this.loadSettings();
-        this.applySettings();
-        this.setupHoverSounds();
-    },
-
-    setupHoverSounds: function() {
-        document.addEventListener('mouseover', (e) => {
-            if (!audioManager || !audioManager.soundEnabled) return;
-            
-            const target = e.target;
-            if (target.tagName === 'BUTTON' || 
-                target.tagName === 'SELECT' || 
-                target.classList.contains('settings-control__btn') ||
-                target.classList.contains('settings-select')) {
-                audioManager.playSound('touch');
-            }
-        });
+        this.applyAudioSettings();
     },
 
     loadSettings: function() {
@@ -31,26 +16,24 @@ const settingsModule = {
         if (savedSettings) {
             this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
         }
-        if (window.audioManager) {
-            audioManager.soundEnabled = this.settings.soundEnabled;
-            audioManager.musicEnabled = this.settings.musicEnabled;
-        }
     },
 
     saveSettings: function() {
         localStorage.setItem('gwentSettings', JSON.stringify(this.settings));
-        this.applySettings();
+        this.applyAudioSettings();
         this.notifySettingsChange();
     },
 
-    applySettings: function() {
-        const cardDisplayMode = document.getElementById('cardDisplayMode');
-        if (cardDisplayMode) {
-            cardDisplayMode.value = this.settings.cardDisplayMode;
-        }
-        const gameMode = document.getElementById('gameMode');
-        if (gameMode) {
-            gameMode.value = this.settings.gameMode;
+    applyAudioSettings: function() {
+        if (window.audioManager) {
+            audioManager.soundEnabled = this.settings.soundEnabled;
+            audioManager.musicEnabled = this.settings.musicEnabled;
+            
+            if (this.settings.musicEnabled) {
+                audioManager.playBackgroundMusic();
+            } else {
+                audioManager.stopBackgroundMusic();
+            }
         }
     },
 
@@ -87,7 +70,7 @@ window.settingsModule = settingsModule;
 function showSettingsModal() {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'settings-modal-overlay';
-    const isFullscreenActive = window.fullscreenManager && window.fullscreenManager.isFullscreen();
+    const isFullscreenActive = isFullscreen();
     const currentCardMode = settingsModule.getCardDisplayMode();
     const currentGameMode = settingsModule.getGameMode();
     
@@ -151,7 +134,7 @@ function showSettingsModal() {
                     <div class="settings-control__buttons">
                         <select id="gameMode" class="settings-select">
                             <option value="classic" ${currentGameMode === 'classic' ? 'selected' : ''} title="Раздаётся 10 карт на всю игру">Классический</option>
-                            <option value="cdpred" ${currentGameMode === 'cdpred' ? 'selected' : ''} style="cursor: url('../ui/cursor_hover.png'), pointer !important;" title="Каждый раунд карты раздаются до 10 на руку">CD Project Red</option>
+                            <option value="cdpred" ${currentGameMode === 'cdpred' ? 'selected' : ''} title="Каждый раунд карты раздаются до 10 на руку">CD Project Red</option>
                         </select>
                     </div>
                 </div>
@@ -164,6 +147,7 @@ function showSettingsModal() {
     setTimeout(() => {
         modalOverlay.classList.add('active');
     }, 10);
+    
     setupSettingsModalEventListeners(modalOverlay);
 }
 
@@ -209,17 +193,15 @@ function setupSettingsModalEventListeners(modalOverlay) {
     });
 
     document.getElementById('modalFullscreenOn').addEventListener('click', () => {
-        if (window.fullscreenManager && !window.fullscreenManager.isFullscreen()) {
-            window.fullscreenManager.enterFullscreen();
-            updateSettingsButtons();
+        if (!isFullscreen()) {
+            enterFullscreen();
             audioManager.playSound('button');
         }
     });
 
     document.getElementById('modalFullscreenOff').addEventListener('click', () => {
-        if (window.fullscreenManager && window.fullscreenManager.isFullscreen()) {
-            window.fullscreenManager.exitFullscreen();
-            updateSettingsButtons();
+        if (isFullscreen()) {
+            exitFullscreen();
             audioManager.playSound('button');
         }
     });
@@ -245,8 +227,7 @@ function setupSettingsModalEventListeners(modalOverlay) {
         const soundOffBtn = document.getElementById('modalSoundOff');
         const musicOnBtn = document.getElementById('modalMusicOn');
         const musicOffBtn = document.getElementById('modalMusicOff');
-        const fullscreenOnBtn = document.getElementById('modalFullscreenOn');
-        const fullscreenOffBtn = document.getElementById('modalFullscreenOff');
+        
         if (soundOnBtn && soundOffBtn) {
             soundOnBtn.classList.toggle('active', audioManager.soundEnabled);
             soundOffBtn.classList.toggle('active', !audioManager.soundEnabled);
@@ -255,11 +236,7 @@ function setupSettingsModalEventListeners(modalOverlay) {
             musicOnBtn.classList.toggle('active', audioManager.musicEnabled);
             musicOffBtn.classList.toggle('active', !audioManager.musicEnabled);
         }
-        if (fullscreenOnBtn && fullscreenOffBtn) {
-            const isFullscreen = window.fullscreenManager && window.fullscreenManager.isFullscreen();
-            fullscreenOnBtn.classList.toggle('active', isFullscreen);
-            fullscreenOffBtn.classList.toggle('active', !isFullscreen);
-        }
+        updateFullscreenButtons();
     }
 
     function closeSettingsModal(modalOverlay) {
@@ -280,17 +257,78 @@ function setupSettingsModalEventListeners(modalOverlay) {
             closeSettingsModal(modalOverlay);
         }
     });
-	
+    
     const escapeHandler = (e) => {
         if (e.key === 'Escape') {
             closeSettingsModal(modalOverlay);
         }
     };
-	
+    
     document.addEventListener('keydown', escapeHandler);
     modalOverlay.escapeHandler = escapeHandler;
     updateSettingsButtons();
 }
+
+function enterFullscreen() {
+    const docElement = document.documentElement;
+    if (docElement.requestFullscreen) {
+        docElement.requestFullscreen();
+    } else if (docElement.mozRequestFullScreen) {
+        docElement.mozRequestFullScreen();
+    } else if (docElement.webkitRequestFullscreen) {
+        docElement.webkitRequestFullscreen();
+    } else if (docElement.msRequestFullscreen) {
+        docElement.msRequestFullscreen();
+    }
+}
+
+function exitFullscreen() {
+    if (document.exitFullscreen) {
+        document.exitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+    }
+}
+
+function isFullscreen() {
+    return !!(document.fullscreenElement ||
+             document.mozFullScreenElement ||
+             document.webkitFullscreenElement ||
+             document.msFullscreenElement);
+}
+
+function updateFullscreenButtons() {
+    const fullscreenOnBtn = document.getElementById('modalFullscreenOn');
+    const fullscreenOffBtn = document.getElementById('modalFullscreenOff');
+    
+    if (fullscreenOnBtn && fullscreenOffBtn) {
+        const fullscreenActive = isFullscreen();
+        fullscreenOnBtn.classList.toggle('active', fullscreenActive);
+        fullscreenOffBtn.classList.toggle('active', !fullscreenActive);
+    }
+}
+
+function handleFullscreenChange() {
+    updateFullscreenButtons();
+}
+
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+window.fullscreenManager = {
+    enterFullscreen,
+    exitFullscreen,
+    isFullscreen,
+    updateFullscreenButtons
+};
+
+window.updateFullscreenButtons = updateFullscreenButtons;
 
 document.addEventListener('DOMContentLoaded', function() {
     if (window.settingsModule) {

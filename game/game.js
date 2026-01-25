@@ -82,10 +82,6 @@ const gameModule = {
         },
         roundLossDueToTimeout: null,
 		roundResults: [],
-		roundsWon: {
-			player: 0,
-			opponent: 0
-		},
     },
 	
     currentSettings: {
@@ -802,27 +798,28 @@ const gameModule = {
         return cardElement;
     },
 
-    handleMulliganCardSelection: function(card, cardElement) {
-        const mulliganState = this.gameState.mulligan.player;
-        
-        if (mulliganState.cards.length >= mulliganState.available && 
-            !mulliganState.cards.includes(card)) {
-            return;
-        }
-        
-        const cardIndex = mulliganState.cards.indexOf(card);
-        if (cardIndex === -1) {
-            mulliganState.cards.push(card);
-            cardElement.classList.add('mulligan-selected');
-            audioManager.playSound('cardAdd');
-        } else {
-            mulliganState.cards.splice(cardIndex, 1);
-            cardElement.classList.remove('mulligan-selected');
-            audioManager.playSound('cardRemove');
-        }
-        
-        this.updateMulliganInfo();
-    },
+	handleMulliganCardSelection: function(card, cardElement) {
+		const mulliganState = this.gameState.mulligan.player;
+		const handIndex = parseInt(cardElement.dataset.handIndex);
+		
+		if (mulliganState.cards.length >= mulliganState.available && 
+			!mulliganState.cards.includes(handIndex)) {
+			return;
+		}
+		
+		const cardIndex = mulliganState.cards.indexOf(handIndex);
+		if (cardIndex === -1) {
+			mulliganState.cards.push(handIndex);
+			cardElement.classList.add('mulligan-selected');
+			audioManager.playSound('cardAdd');
+		} else {
+			mulliganState.cards.splice(cardIndex, 1);
+			cardElement.classList.remove('mulligan-selected');
+			audioManager.playSound('cardRemove');
+		}
+		
+		this.updateMulliganInfo();
+	},
 
 	removeCardFromBoardVisual: function(card, row, player) {
 		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
@@ -867,17 +864,18 @@ const gameModule = {
         }
     },
 
-    resetPlayerMulliganSelection: function() {
-        const mulliganState = this.gameState.mulligan.player;
-        
-        const selectedCards = document.querySelectorAll('.mulligan-selected');
-        selectedCards.forEach(cardElement => {
-            cardElement.classList.remove('mulligan-selected');
-        });
-        
-        mulliganState.cards = [];
-        this.updateMulliganInfo();
-    },
+	resetPlayerMulliganSelection: function() {
+		const mulliganState = this.gameState.mulligan.player;
+		
+		mulliganState.cards = [];
+		
+		const selectedCards = document.querySelectorAll('.mulligan-selected');
+		selectedCards.forEach(cardElement => {
+			cardElement.classList.remove('mulligan-selected');
+		});
+		
+		this.updateMulliganInfo();
+	},
 
     completePlayerMulligan: function() {
 		const mulliganState = this.gameState.mulligan.player;
@@ -893,55 +891,55 @@ const gameModule = {
 		}, 1000);
 	},
 
-    replaceMulliganCards: function(player) {
-        const mulliganState = this.gameState.mulligan[player];
-        const gameState = this.gameState[player];
-        
-        const cardsToReplace = [...mulliganState.cards];
-        const currentHand = [...gameState.hand];
-        const currentDeck = [...gameState.deck];
-        
-        const removedCards = [];
-        cardsToReplace.forEach(card => {
-            const handIndex = currentHand.findIndex(c => c.id === card.id);
-            if (handIndex !== -1) {
-                const removedCard = currentHand.splice(handIndex, 1)[0];
-                removedCards.push(removedCard);
-            }
-        });
-        
-        this.shuffleArray(currentDeck);
-        
-        const newCards = [];
-        for (let i = 0; i < cardsToReplace.length; i++) {
-            if (currentDeck.length > 0) {
-                const newCard = currentDeck.shift();
-                newCards.push(newCard);
-            }
-        }
-        
-        newCards.forEach(newCard => {
-            currentHand.push(newCard);
-        });
-        
-        removedCards.forEach(oldCard => {
-            const randomPosition = Math.floor(Math.random() * (currentDeck.length + 1));
-            currentDeck.splice(randomPosition, 0, oldCard);
-        });
-
-        this.shuffleArray(currentDeck);
-        
-        gameState.hand = currentHand;
-        gameState.deck = currentDeck;
-        mulliganState.used = cardsToReplace.length;
-        
-        if (player === 'player') {
-            this.displayPlayerHand();
-            this.displayPlayerDeck();
-        }
-        
-        return true;
-    },
+	replaceMulliganCards: function(player) {
+		const mulliganState = this.gameState.mulligan[player];
+		const gameState = this.gameState[player];
+		const cardIndicesToReplace = [...mulliganState.cards]
+			.sort((a, b) => b - a)
+			.filter(index => index >= 0 && index < gameState.hand.length);
+		
+		if (cardIndicesToReplace.length === 0) {
+			return true;
+		}
+		
+		const cardsBeingReplaced = cardIndicesToReplace.map(index => gameState.hand[index]);
+		
+		cardIndicesToReplace.forEach(index => {
+			gameState.hand.splice(index, 1);
+		});
+		
+		const newCards = [];
+		const cardsToTake = Math.min(cardIndicesToReplace.length, gameState.deck.length);
+		
+		for (let i = 0; i < cardsToTake; i++) {
+			if (gameState.deck.length > 0) {
+				newCards.push(gameState.deck.shift());
+			}
+		}
+		
+		gameState.hand.push(...newCards);
+		gameState.deck.push(...cardsBeingReplaced);
+		
+		this.shuffleArray(gameState.deck);
+		
+		mulliganState.used = cardIndicesToReplace.length;
+		
+		if (gameState.hand.length !== 10) {
+			console.error(`${player} has ${gameState.hand.length} cards after mulligan!`);
+			
+			if (gameState.hand.length > 10) {
+				const excess = gameState.hand.length - 10;
+				const excessCards = gameState.hand.splice(-excess, excess);
+				gameState.deck.push(...excessCards);
+			} else if (gameState.hand.length < 10) {
+				const needed = 10 - gameState.hand.length;
+				const additionalCards = gameState.deck.splice(0, Math.min(needed, gameState.deck.length));
+				gameState.hand.push(...additionalCards);
+			}
+		}
+		
+		return true;
+	},
 
     startOpponentMulligan: function() {
 		this.gameState.mulligan.phase = 'opponent';
@@ -961,7 +959,7 @@ const gameModule = {
 		}, 1500);
 	},
 
-    performOpponentMulligan: function() {
+	performOpponentMulligan: function() {
 		const mulliganState = this.gameState.mulligan.opponent;
 		
 		if (mulliganState.available === 0) {
@@ -971,16 +969,25 @@ const gameModule = {
 		
 		const hand = this.gameState.opponent.hand;
 		
-		const weakCards = hand
+		let cardsToReplace = hand
 			.filter(card => card.type === 'unit')
-			.sort((a, b) => (a.strength || 0) - (b.strength || 0))
-			.slice(0, Math.min(2, hand.length));
+			.sort((a, b) => (a.strength || 0) - (b.strength || 0));
 		
-		if (weakCards.length === 0) {
-			weakCards.push(...hand.slice(0, Math.min(2, hand.length)));
+		if (cardsToReplace.length < mulliganState.available) {
+			const otherCards = hand
+				.filter(card => card.type !== 'unit')
+				.slice(0, mulliganState.available - cardsToReplace.length);
+			cardsToReplace = [...cardsToReplace, ...otherCards];
 		}
 		
-		mulliganState.cards = weakCards.slice(0, mulliganState.available);
+		cardsToReplace = cardsToReplace.slice(0, mulliganState.available);
+		mulliganState.cards = [];
+		cardsToReplace.forEach(card => {
+			const index = hand.findIndex(c => c.id === card.id);
+			if (index !== -1) {
+				mulliganState.cards.push(index);
+			}
+		});
 		
 		if (mulliganState.cards.length > 0) {
 			this.replaceMulliganCards('opponent');
@@ -1454,62 +1461,80 @@ const gameModule = {
         });
     },
 	
-    endRound: function() {
-        this.hideTimerDisplay();
+	endRound: function() {
+		this.hideTimerDisplay();
 		const playerScore = this.calculateTotalScore('player');
-        const opponentScore = this.calculateTotalScore('opponent');
-        
-        if (this.gameState.roundLossDueToTimeout) {
-            const losingPlayer = this.gameState.roundLossDueToTimeout;
-            
-            if (losingPlayer === 'player') {
-                this.gameState.roundsWon.opponent++;
-                this.showRoundResult('opponent', playerScore, opponentScore);
-            } else {
-                this.gameState.roundsWon.player++;
-                this.showRoundResult('player', playerScore, opponentScore);
-            }
-            
-            this.gameState.roundLossDueToTimeout = null;
-        } else {
-            let roundWinner = null;
-            
-            if (window.factionAbilitiesModule) {
-                roundWinner = window.factionAbilitiesModule.checkRoundWinner(
-                    this.gameState, 
-                    playerScore, 
-                    opponentScore
-                );
-            } else {
-                if (playerScore > opponentScore) {
-                    roundWinner = 'player';
-                } else if (opponentScore > playerScore) {
-                    roundWinner = 'opponent';
-                }
-            }
-            
-            if (roundWinner === 'player') {
-                this.gameState.roundsWon.player++;
-            } else if (roundWinner === 'opponent') {
-                this.gameState.roundsWon.opponent++;
-            } else {
-                this.gameState.roundsWon.player++;
-                this.gameState.roundsWon.opponent++;
-            }
-            
-            this.showRoundResult(roundWinner, playerScore, opponentScore);
-        }
-        
-        if (window.factionAbilitiesModule) {
-            window.factionAbilitiesModule.handleRoundEndForMonsters(this.gameState);
-        }
-        
-        if (this.gameState.roundsWon.player >= 2 || this.gameState.roundsWon.opponent >= 2) {
-            setTimeout(() => this.endGame(), 3000);
-        } else {
-            setTimeout(() => this.startNewRound(), 3000);
-        }
-    },
+		const opponentScore = this.calculateTotalScore('opponent');
+		
+		if (this.gameState.roundLossDueToTimeout) {
+			const losingPlayer = this.gameState.roundLossDueToTimeout;
+			
+			if (losingPlayer === 'player') {
+				this.gameState.roundsWon.opponent++;
+				this.gameState.roundResults.push('opponent');
+				this.showRoundResult('opponent', playerScore, opponentScore);
+			} else {
+				this.gameState.roundsWon.player++;
+				this.gameState.roundResults.push('player');
+				this.showRoundResult('player', playerScore, opponentScore);
+			}
+			
+			this.gameState.roundLossDueToTimeout = null;
+		} else {
+			let roundWinner = null;
+			
+			if (window.factionAbilitiesModule) {
+				roundWinner = window.factionAbilitiesModule.checkRoundWinner(
+					this.gameState, 
+					playerScore, 
+					opponentScore
+				);
+			} else {
+				if (playerScore > opponentScore) {
+					roundWinner = 'player';
+				} else if (opponentScore > playerScore) {
+					roundWinner = 'opponent';
+				} else {
+					roundWinner = 'draw';
+				}
+			}
+			
+			if (roundWinner === 'player') {
+				this.gameState.roundsWon.player++;
+				this.gameState.roundResults.push('player');
+			} else if (roundWinner === 'opponent') {
+				this.gameState.roundsWon.opponent++;
+				this.gameState.roundResults.push('opponent');
+			} else {
+				this.gameState.roundsWon.player++;
+				this.gameState.roundsWon.opponent++;
+				this.gameState.roundResults.push('draw');
+			}
+			
+			this.showRoundResult(roundWinner, playerScore, opponentScore);
+		}
+		
+		if (window.factionAbilitiesModule) {
+			window.factionAbilitiesModule.handleRoundEndForMonsters(this.gameState);
+		}
+		
+		const playerWins = this.gameState.roundsWon.player;
+		const opponentWins = this.gameState.roundsWon.opponent;
+		
+		if (playerWins >= 2 || opponentWins >= 2) {
+			setTimeout(() => this.endGame(), 3000);
+		} else if (this.gameState.currentRound >= this.gameState.totalRounds) {
+			if (playerWins > opponentWins) {
+				setTimeout(() => this.endGame(), 3000);
+			} else if (opponentWins > playerWins) {
+				setTimeout(() => this.endGame(), 3000);
+			} else {
+				setTimeout(() => this.endGame(), 3000);
+			}
+		} else {
+			setTimeout(() => this.startNewRound(), 3000);
+		}
+	},
 
     calculateTotalScore: function(player) {
         const rows = this.gameState[player].rows;
@@ -1543,19 +1568,19 @@ const gameModule = {
         return null;
     },
 
-    startNewRound: function() {
+	startNewRound: function() {
 		this.hideTimerDisplay();
+		
+		if (this.gameState.currentRound < this.gameState.totalRounds) {
+			this.gameState.currentRound++;
+		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
 			audioManager.playSound('round_start');
 		}
 		
-		if (window.factionAbilitiesModule) {
-			window.factionAbilitiesModule.handleRound3ForSkellige(this.gameState);
-		}
-		
-		const mode = this.gameState.gameSettings.mode;
 		this.showGameMessage(`Раунд ${this.gameState.currentRound}`, 'info');
+		
 		this.updateRoundCounter();
 		this.updateCrownIndicators();
 		this.resetRoundState();
@@ -1593,51 +1618,62 @@ const gameModule = {
         modeIndicator.title = `Режим игры: ${modeName}\n${mode === 'classic' ? '10 карт на всю игру' : 'Карты добираются каждый раунд'}`;
     },
 
-    resetRoundState: function() {
-        this.gameState.player.passed = false;
-        this.gameState.opponent.passed = false;
-        this.gameState.cardsPlayedThisTurn = 0;
-        this.resetTimeoutCounter();
-        this.gameState.roundLossDueToTimeout = null;
-        this.invalidateScoreCache('player');
-        this.invalidateScoreCache('opponent');
-        this.restoreAllCardStrengths();
-        
-        this.gameState.weather.cards.forEach(weatherCard => {
-            const cardOwner = this.getWeatherCardOwner(weatherCard);
-            this.addCardToDiscard(weatherCard, cardOwner);
-        });
-        
-        this.gameState.weather.cards = [];
-        this.clearAllWeatherEffects();
-        
-        const rows = ['close', 'ranged', 'siege'];
-        
-        rows.forEach(row => {
-            this.gameState.player.rows[row].cards.forEach(card => {
-                this.addCardToDiscard(card, 'player');
-            });
-            
-            this.gameState.opponent.rows[row].cards.forEach(card => {
-                this.addCardToDiscard(card, 'opponent');
-            });
-            
-            if (this.gameState.player.rows[row].tactic) {
-                this.addCardToDiscard(this.gameState.player.rows[row].tactic, 'player');
-            }
-            
-            if (this.gameState.opponent.rows[row].tactic) {
-                this.addCardToDiscard(this.gameState.opponent.rows[row].tactic, 'opponent');
-            }
-            
-            this.gameState.player.rows[row] = { cards: [], strength: 0, tactic: null };
-            this.gameState.opponent.rows[row] = { cards: [], strength: 0, tactic: null };
-        });
-        
-        this.clearAllBoardRows();
-        this.displayWeatherCards();
-        this.updateTotalScoreDisplays();
-    },
+	resetRoundState: function() {
+		this.gameState.player.passed = false;
+		this.gameState.opponent.passed = false;
+		this.gameState.cardsPlayedThisTurn = 0;
+		this.resetTimeoutCounter();
+		this.gameState.roundLossDueToTimeout = null;
+		this.invalidateScoreCache('player');
+		this.invalidateScoreCache('opponent');
+		this.restoreAllCardStrengths();
+		this.gameState.selectedCard = null;
+		this.gameState.selectingRow = false;
+		this.gameState.placementType = null;
+		
+		if (window.playerModule && window.playerModule.cancelRowSelection) {
+			window.playerModule.cancelRowSelection();
+		}
+		
+		this.gameState.weather.cards.forEach(weatherCard => {
+			const cardOwner = this.getWeatherCardOwner(weatherCard);
+			this.addCardToDiscard(weatherCard, cardOwner);
+		});
+		this.gameState.weather.cards = [];
+		this.clearAllWeatherEffects();
+		
+		const rows = ['close', 'ranged', 'siege'];
+		
+		rows.forEach(row => {
+			this.gameState.player.rows[row].cards.forEach(card => {
+				this.addCardToDiscard(card, 'player');
+			});
+			
+			this.gameState.opponent.rows[row].cards.forEach(card => {
+				this.addCardToDiscard(card, 'opponent');
+			});
+			
+			if (this.gameState.player.rows[row].tactic) {
+				this.addCardToDiscard(this.gameState.player.rows[row].tactic, 'player');
+			}
+			
+			if (this.gameState.opponent.rows[row].tactic) {
+				this.addCardToDiscard(this.gameState.opponent.rows[row].tactic, 'opponent');
+			}
+			
+			this.gameState.player.rows[row] = { cards: [], strength: 0, tactic: null };
+			this.gameState.opponent.rows[row] = { cards: [], strength: 0, tactic: null };
+		});
+		
+		this.clearAllBoardRows();
+		this.displayWeatherCards();
+		this.updateTotalScoreDisplays();
+		this.displayPlayerHand();
+		this.displayPlayerDiscard();
+		this.displayOpponentDiscard();
+		this.updateControlButtons();
+		this.stopTurnTimer();
+	},
 
     restoreAllCardStrengths: function() {
 		const rows = ['close', 'ranged', 'siege'];
@@ -2141,26 +2177,31 @@ const gameModule = {
         this.startOpponentTurn();
     },
 
-    checkRoundEnd: function() {
-        if (this.gameState.player.passed && this.gameState.opponent.passed) {
-            setTimeout(() => this.endRound(), 1000);
-        } else {
-            let nextPlayer;
-            if (this.gameState.player.passed && !this.gameState.opponent.passed) {
-                nextPlayer = 'opponent';
-            } else if (!this.gameState.player.passed && this.gameState.opponent.passed) {
-                nextPlayer = 'player';
-            } else {
-                nextPlayer = this.gameState.currentPlayer === 'player' ? 'opponent' : 'player';
-            }
-            
-            if (nextPlayer === 'player') {
-                this.startPlayerTurn();
-            } else {
-                this.startOpponentTurn();
-            }
-        }
-    },
+	checkRoundEnd: function() {
+		if (this.gameState.gamePhase === 'roundEnd') {
+			return;
+		}
+		
+		if (this.gameState.player.passed && this.gameState.opponent.passed) {
+			this.gameState.gamePhase = 'roundEnd';
+			setTimeout(() => this.endRound(), 1000);
+		} else {
+			let nextPlayer;
+			if (this.gameState.player.passed && !this.gameState.opponent.passed) {
+				nextPlayer = 'opponent';
+			} else if (!this.gameState.player.passed && this.gameState.opponent.passed) {
+				nextPlayer = 'player';
+			} else {
+				nextPlayer = this.gameState.currentPlayer === 'player' ? 'opponent' : 'player';
+			}
+			
+			if (nextPlayer === 'player') {
+				this.startPlayerTurn();
+			} else {
+				this.startOpponentTurn();
+			}
+		}
+	},
 
     addCardToDiscard: function(card, player) {
         this.gameState[player].discard.push(card);
@@ -2881,229 +2922,229 @@ const gameModule = {
     },
 
     createBalancedDeck: function(factionCards, factionId) {
-    const deck = [];
-    
-    const unitCards = [...(factionCards.units || [])];
-    const specialCards = [...(factionCards.specials || [])];
-    const artifactCards = [...(factionCards.artifacts || [])];
-    const tacticCards = [...(factionCards.tactics || [])];
-    
-    const neutralCards = window.cardsModule?.getFactionCards('neutral') || {};
-    const neutralUnits = [...(neutralCards.units || [])];
-    const neutralSpecials = [...(neutralCards.specials || [])];
-    const neutralArtifacts = [...(neutralCards.artifacts || [])];
-    const neutralTactics = [...(neutralCards.tactics || [])];
-    
-    const allUnits = [...unitCards, ...neutralUnits];
-    const allSpecials = [...specialCards, ...neutralSpecials];
-    const allArtifacts = [...artifactCards, ...neutralArtifacts];
-    const allTactics = [...tacticCards, ...neutralTactics];
-    
-    const allSpecialCards = [...allSpecials, ...allArtifacts, ...allTactics];
-    
-    const minDeckSize = 15;
-    const maxDeckSize = 25;
-    const minUnits = 10;
-    const minSpecials = 3;
-    const maxSpecials = 5;
-    
-    const specialCount = minSpecials + Math.floor(Math.random() * (maxSpecials - minSpecials + 1));
-    const selectedSpecials = [];
-    
-    const factionSpecials = [...specialCards, ...artifactCards, ...tacticCards];
-    const availableSpecials = [...factionSpecials, ...allSpecialCards];
-    
-    const uniqueSpecials = [];
-    const seenIds = new Set();
-    
-    availableSpecials.forEach(card => {
-        if (!seenIds.has(card.id)) {
-            seenIds.add(card.id);
-            uniqueSpecials.push(card);
-        }
-    });
-    
-    this.shuffleArray(uniqueSpecials);
-    for (let i = 0; i < Math.min(specialCount, uniqueSpecials.length); i++) {
-        selectedSpecials.push(uniqueSpecials[i]);
-        deck.push(uniqueSpecials[i]);
-    }
-    
-    const selectedUnits = [];
-    const availableUnits = [...allUnits];
-    
-    const uniqueUnits = [];
-    seenIds.clear();
-    
-    availableUnits.forEach(card => {
-        if (!seenIds.has(card.id)) {
-            seenIds.add(card.id);
-            uniqueUnits.push(card);
-        }
-    });
-    
-    this.shuffleArray(uniqueUnits);
-    
-    const maxUnits = maxDeckSize - selectedSpecials.length;
-    const unitsNeeded = Math.max(minUnits, Math.min(uniqueUnits.length, maxUnits));
-    
-    if (uniqueUnits.length < unitsNeeded) {
-        const allAvailableUnits = [...allUnits];
-        this.shuffleArray(allAvailableUnits);
-        
-        for (let i = 0; i < unitsNeeded; i++) {
-            const card = allAvailableUnits[i % allAvailableUnits.length];
-            selectedUnits.push(card);
-            deck.push(card);
-        }
-    } else {
-        for (let i = 0; i < unitsNeeded; i++) {
-            selectedUnits.push(uniqueUnits[i]);
-            deck.push(uniqueUnits[i]);
-        }
-    }
-    
-    const currentDeckSize = deck.length;
-    
-    if (currentDeckSize < minDeckSize) {
-        const cardsNeeded = minDeckSize - currentDeckSize;
-        const allCards = [...allUnits, ...allSpecialCards];
-        this.shuffleArray(allCards);
-        
-        const addedCardIds = new Set(deck.map(card => card.id));
-        let added = 0;
-        
-        for (const card of allCards) {
-            if (added >= cardsNeeded) break;
-            if (!addedCardIds.has(card.id)) {
-                deck.push(card);
-                addedCardIds.add(card.id);
-                added++;
-            }
-        }
-        
-        if (added < cardsNeeded) {
-            for (let i = 0; i < cardsNeeded - added; i++) {
-                const randomCard = allCards[i % allCards.length];
-                deck.push({...randomCard, id: `${randomCard.id}_copy_${i}`});
-            }
-        }
-    }
-    
-    if (deck.length > maxDeckSize) {
-        const specialsInDeck = deck.filter(card => 
-            card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-        );
-        const unitsInDeck = deck.filter(card => card.type === 'unit');
-        
-        deck.length = 0;
-        
-        specialsInDeck.forEach(card => deck.push(card));
-        
-        const remainingSlots = maxDeckSize - deck.length;
-        for (let i = 0; i < Math.min(remainingSlots, unitsInDeck.length); i++) {
-            deck.push(unitsInDeck[i]);
-        }
-    }
-    
-    const finalUnitCount = deck.filter(card => card.type === 'unit').length;
-    const finalSpecialCount = deck.filter(card => 
-        card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-    ).length;
-    
-    if (finalUnitCount < minUnits) {
-        const neededUnits = minUnits - finalUnitCount;
-        const allAvailableUnits = [...allUnits];
-        this.shuffleArray(allAvailableUnits);
-        
-        const deckCardIds = new Set(deck.map(card => card.id));
-        let added = 0;
-        
-        const excessSpecials = finalSpecialCount - minSpecials;
-        if (excessSpecials > 0) {
-            for (let i = 0; i < excessSpecials; i++) {
-                const specialIndex = deck.findIndex(card => 
-                    card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-                );
-                if (specialIndex !== -1) {
-                    deck.splice(specialIndex, 1);
-                }
-            }
-        }
-        
-        for (const unit of allAvailableUnits) {
-            if (added >= neededUnits) break;
-            if (!deckCardIds.has(unit.id)) {
-                deck.push(unit);
-                added++;
-            }
-        }
-    }
-    
-    const finalCheck = () => {
-        const total = deck.length;
-        const units = deck.filter(card => card.type === 'unit').length;
-        const specials = deck.filter(card => 
-            card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-        ).length;
-        
-        return {
-            valid: total >= minDeckSize && total <= maxDeckSize && 
-                   units >= minUnits && 
-                   specials >= minSpecials && specials <= maxSpecials,
-            total,
-            units,
-            specials
-        };
-    };
-    
-    let check = finalCheck();
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    while (!check.valid && attempts < maxAttempts) {
-        attempts++;
-        
-        if (check.total < minDeckSize) {
-            const allCards = [...allUnits, ...allSpecialCards];
-            this.shuffleArray(allCards);
-            
-            const deckCardIds = new Set(deck.map(card => card.id));
-            const needed = minDeckSize - check.total;
-            let added = 0;
-            
-            for (const card of allCards) {
-                if (added >= needed) break;
-                if (!deckCardIds.has(card.id)) {
-                    deck.push(card);
-                    added++;
-                }
-            }
-        } else if (check.total > maxDeckSize) {
-            const cardCounts = {};
-            deck.forEach(card => {
-                cardCounts[card.id] = (cardCounts[card.id] || 0) + 1;
-            });
-            
-            deck.sort((a, b) => {
-                const countA = cardCounts[a.id];
-                const countB = cardCounts[b.id];
-                if (countA > countB) return -1;
-                if (countA < countB) return 1;
-                return 0;
-            });
-            
-            while (deck.length > maxDeckSize) {
-                deck.pop();
-            }
-        }
-        check = finalCheck();
-    }
-    
-    this.shuffleArray(deck);
-    
-    return deck;
-},
+		const deck = [];
+		
+		const unitCards = [...(factionCards.units || [])];
+		const specialCards = [...(factionCards.specials || [])];
+		const artifactCards = [...(factionCards.artifacts || [])];
+		const tacticCards = [...(factionCards.tactics || [])];
+		
+		const neutralCards = window.cardsModule?.getFactionCards('neutral') || {};
+		const neutralUnits = [...(neutralCards.units || [])];
+		const neutralSpecials = [...(neutralCards.specials || [])];
+		const neutralArtifacts = [...(neutralCards.artifacts || [])];
+		const neutralTactics = [...(neutralCards.tactics || [])];
+		
+		const allUnits = [...unitCards, ...neutralUnits];
+		const allSpecials = [...specialCards, ...neutralSpecials];
+		const allArtifacts = [...artifactCards, ...neutralArtifacts];
+		const allTactics = [...tacticCards, ...neutralTactics];
+		
+		const allSpecialCards = [...allSpecials, ...allArtifacts, ...allTactics];
+		
+		const minDeckSize = 15;
+		const maxDeckSize = 25;
+		const minUnits = 10;
+		const minSpecials = 3;
+		const maxSpecials = 5;
+		
+		const specialCount = minSpecials + Math.floor(Math.random() * (maxSpecials - minSpecials + 1));
+		const selectedSpecials = [];
+		
+		const factionSpecials = [...specialCards, ...artifactCards, ...tacticCards];
+		const availableSpecials = [...factionSpecials, ...allSpecialCards];
+		
+		const uniqueSpecials = [];
+		const seenIds = new Set();
+		
+		availableSpecials.forEach(card => {
+			if (!seenIds.has(card.id)) {
+				seenIds.add(card.id);
+				uniqueSpecials.push(card);
+			}
+		});
+		
+		this.shuffleArray(uniqueSpecials);
+		for (let i = 0; i < Math.min(specialCount, uniqueSpecials.length); i++) {
+			selectedSpecials.push(uniqueSpecials[i]);
+			deck.push(uniqueSpecials[i]);
+		}
+		
+		const selectedUnits = [];
+		const availableUnits = [...allUnits];
+		
+		const uniqueUnits = [];
+		seenIds.clear();
+		
+		availableUnits.forEach(card => {
+			if (!seenIds.has(card.id)) {
+				seenIds.add(card.id);
+				uniqueUnits.push(card);
+			}
+		});
+		
+		this.shuffleArray(uniqueUnits);
+		
+		const maxUnits = maxDeckSize - selectedSpecials.length;
+		const unitsNeeded = Math.max(minUnits, Math.min(uniqueUnits.length, maxUnits));
+		
+		if (uniqueUnits.length < unitsNeeded) {
+			const allAvailableUnits = [...allUnits];
+			this.shuffleArray(allAvailableUnits);
+			
+			for (let i = 0; i < unitsNeeded; i++) {
+				const card = allAvailableUnits[i % allAvailableUnits.length];
+				selectedUnits.push(card);
+				deck.push(card);
+			}
+		} else {
+			for (let i = 0; i < unitsNeeded; i++) {
+				selectedUnits.push(uniqueUnits[i]);
+				deck.push(uniqueUnits[i]);
+			}
+		}
+		
+		const currentDeckSize = deck.length;
+		
+		if (currentDeckSize < minDeckSize) {
+			const cardsNeeded = minDeckSize - currentDeckSize;
+			const allCards = [...allUnits, ...allSpecialCards];
+			this.shuffleArray(allCards);
+			
+			const addedCardIds = new Set(deck.map(card => card.id));
+			let added = 0;
+			
+			for (const card of allCards) {
+				if (added >= cardsNeeded) break;
+				if (!addedCardIds.has(card.id)) {
+					deck.push(card);
+					addedCardIds.add(card.id);
+					added++;
+				}
+			}
+			
+			if (added < cardsNeeded) {
+				for (let i = 0; i < cardsNeeded - added; i++) {
+					const randomCard = allCards[i % allCards.length];
+					deck.push({...randomCard, id: `${randomCard.id}_copy_${i}`});
+				}
+			}
+		}
+		
+		if (deck.length > maxDeckSize) {
+			const specialsInDeck = deck.filter(card => 
+				card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
+			);
+			const unitsInDeck = deck.filter(card => card.type === 'unit');
+			
+			deck.length = 0;
+			
+			specialsInDeck.forEach(card => deck.push(card));
+			
+			const remainingSlots = maxDeckSize - deck.length;
+			for (let i = 0; i < Math.min(remainingSlots, unitsInDeck.length); i++) {
+				deck.push(unitsInDeck[i]);
+			}
+		}
+		
+		const finalUnitCount = deck.filter(card => card.type === 'unit').length;
+		const finalSpecialCount = deck.filter(card => 
+			card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
+		).length;
+		
+		if (finalUnitCount < minUnits) {
+			const neededUnits = minUnits - finalUnitCount;
+			const allAvailableUnits = [...allUnits];
+			this.shuffleArray(allAvailableUnits);
+			
+			const deckCardIds = new Set(deck.map(card => card.id));
+			let added = 0;
+			
+			const excessSpecials = finalSpecialCount - minSpecials;
+			if (excessSpecials > 0) {
+				for (let i = 0; i < excessSpecials; i++) {
+					const specialIndex = deck.findIndex(card => 
+						card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
+					);
+					if (specialIndex !== -1) {
+						deck.splice(specialIndex, 1);
+					}
+				}
+			}
+			
+			for (const unit of allAvailableUnits) {
+				if (added >= neededUnits) break;
+				if (!deckCardIds.has(unit.id)) {
+					deck.push(unit);
+					added++;
+				}
+			}
+		}
+		
+		const finalCheck = () => {
+			const total = deck.length;
+			const units = deck.filter(card => card.type === 'unit').length;
+			const specials = deck.filter(card => 
+				card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
+			).length;
+			
+			return {
+				valid: total >= minDeckSize && total <= maxDeckSize && 
+					   units >= minUnits && 
+					   specials >= minSpecials && specials <= maxSpecials,
+				total,
+				units,
+				specials
+			};
+		};
+		
+		let check = finalCheck();
+		let attempts = 0;
+		const maxAttempts = 10;
+		
+		while (!check.valid && attempts < maxAttempts) {
+			attempts++;
+			
+			if (check.total < minDeckSize) {
+				const allCards = [...allUnits, ...allSpecialCards];
+				this.shuffleArray(allCards);
+				
+				const deckCardIds = new Set(deck.map(card => card.id));
+				const needed = minDeckSize - check.total;
+				let added = 0;
+				
+				for (const card of allCards) {
+					if (added >= needed) break;
+					if (!deckCardIds.has(card.id)) {
+						deck.push(card);
+						added++;
+					}
+				}
+			} else if (check.total > maxDeckSize) {
+				const cardCounts = {};
+				deck.forEach(card => {
+					cardCounts[card.id] = (cardCounts[card.id] || 0) + 1;
+				});
+				
+				deck.sort((a, b) => {
+					const countA = cardCounts[a.id];
+					const countB = cardCounts[b.id];
+					if (countA > countB) return -1;
+					if (countA < countB) return 1;
+					return 0;
+				});
+				
+				while (deck.length > maxDeckSize) {
+					deck.pop();
+				}
+			}
+			check = finalCheck();
+		}
+		
+		this.shuffleArray(deck);
+		
+		return deck;
+	},
 
     getRandomFactionAbility: function(factionId) {
         const abilities = window.deckModule?.factionAbilities?.[factionId];
@@ -3836,17 +3877,23 @@ const gameModule = {
         audioManager.playSound('button');
     },
 
-    showCardModal: function(card) {
+	showCardModal: function(card) {
 		if (window.deckModule && typeof window.showCardModal === 'function') {
 			const cardForModal = { ...card };
 			
-			// Показываем оригинальную силу для всех карт
 			if (card.originalStrength !== undefined) {
 				cardForModal.strength = card.originalStrength;
 				cardForModal.showOriginalStrength = true;
-			} else if (card._displayStrength !== undefined) {
-				cardForModal.strength = card._displayStrength;
+			} 
+			else if (card.row === undefined && card.positionInRow === undefined) {
+				cardForModal.strength = card.strength || 0;
 			}
+			else {
+				cardForModal.strength = card.strength || 0;
+			}
+			
+			delete cardForModal.originalStrength;
+			delete cardForModal._displayStrength;
 			
 			window.showCardModal(cardForModal);
 		} else {
@@ -3855,7 +3902,7 @@ const gameModule = {
 		audioManager.playSound('button');
 	},
 
-    showRoundResult: function(winner, playerScore, opponentScore) {
+	showRoundResult: function(winner, playerScore, opponentScore) {
 		if (window.audioManager && window.audioManager.playSound) {
 			if (winner === 'player') {
 				audioManager.playSound('win');
@@ -3865,11 +3912,6 @@ const gameModule = {
 				audioManager.playSound('draw');
 			}
 		}
-		
-		if (!this.gameState.roundResults) {
-			this.gameState.roundResults = [];
-		}
-		this.gameState.roundResults.push(winner);
 		
 		const resultOverlay = document.createElement('div');
 		resultOverlay.className = 'round-result-overlay';
@@ -3939,25 +3981,6 @@ const gameModule = {
 				">
 					${this.generateRoundsProgress()}
 				</div>
-				
-				<div class="round-info" style="
-					color: #888;
-					font-size: 14px;
-					margin: 10px 0;
-					text-transform: uppercase;
-					letter-spacing: 1px;
-				">
-					Раунд ${this.gameState.currentRound} завершен
-				</div>
-				
-				<div class="auto-close-notice" style="
-					color: #aaa;
-					font-size: 12px;
-					margin-top: 20px;
-					text-transform: uppercase;
-					letter-spacing: 1px;
-				">
-				</div>
 			</div>
 		`;
 		
@@ -3970,80 +3993,65 @@ const gameModule = {
 			if (document.body.contains(resultOverlay)) {
 				this.animateResultDisappear(resultOverlay);
 			}
-		}, 2000);
+		}, 1000);
 	},
 
 	generateRoundsProgress: function() {
-    let progressHTML = '';
-    const totalRounds = this.gameState.totalRounds;
-    
-    // Получаем историю результатов раундов (должен быть массив в gameState)
-    // Если нет истории, создаем на основе текущих данных
-    let roundResults = this.gameState.roundResults || [];
-    
-    // Если история пуста, заполняем на основе roundsWon
-    if (roundResults.length === 0) {
-        const playerWins = this.gameState.roundsWon.player || 0;
-        const opponentWins = this.gameState.roundsWon.opponent || 0;
-        
-        // Создаем временную историю (для обратной совместимости)
-        for (let i = 0; i < playerWins; i++) {
-            roundResults.push('player');
-        }
-        for (let i = 0; i < opponentWins; i++) {
-            roundResults.push('opponent');
-        }
-    }
-    
-    for (let i = 1; i <= totalRounds; i++) {
-        let roundClass, roundSymbol, roundColor, tooltip;
-        
-        // Получаем результат для текущего раунда (индекс i-1 в массиве)
-        const roundResult = roundResults[i - 1];
-        
-        if (!roundResult || i > roundResults.length) {
-            // Раунд еще не сыгран
-            roundClass = 'empty';
-            roundSymbol = i;
-            roundColor = '#666';
-            tooltip = 'Раунд не сыгран';
-        } else if (roundResult === 'draw') {
-            roundClass = 'draw';
-            roundSymbol = '＝';
-            roundColor = '#FFD700';
-            tooltip = 'Ничья';
-        } else if (roundResult === 'player') {
-            roundClass = 'player-win';
-            roundSymbol = '✓';
-            roundColor = '#4CAF50';
-            tooltip = 'Победа игрока';
-        } else if (roundResult === 'opponent') {
-            roundClass = 'opponent-win';
-            roundSymbol = '✗';
-            roundColor = '#f44336';
-            tooltip = 'Победа противника';
-        }
-        
-        progressHTML += `
-            <div class="round-indicator ${roundClass}" style="
-                width: 35px;
-                height: 35px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                font-size: 14px;
-                background: ${roundClass === 'empty' ? 'transparent' : roundColor};
-                color: ${roundClass === 'empty' ? '#888' : 'white'};
-                border: 1px solid ${roundColor};
-                position: relative;
-            " title="${tooltip}">${roundSymbol}</div>
-        `;
-    }
-    
-    return progressHTML;
-},
+		let progressHTML = '';
+		const totalRounds = this.gameState.totalRounds;
+		const roundResults = this.gameState.roundResults || [];
+		
+		for (let i = 1; i <= totalRounds; i++) {
+			let roundClass, roundSymbol, roundColor, tooltip;
+			const roundResult = roundResults[i - 1];
+			
+			if (!roundResult || i > roundResults.length) {
+				roundClass = 'empty';
+				roundSymbol = i;
+				roundColor = '#666';
+				tooltip = 'Раунд не сыгран';
+			} else if (roundResult === 'draw') {
+				roundClass = 'draw';
+				roundSymbol = '＝';
+				roundColor = '#FFD700';
+				tooltip = 'Ничья';
+			} else if (roundResult === 'player') {
+				roundClass = 'player-win';
+				roundSymbol = '✓';
+				roundColor = '#4CAF50';
+				tooltip = 'Победа игрока';
+			} else if (roundResult === 'opponent') {
+				roundClass = 'opponent-win';
+				roundSymbol = '✗';
+				roundColor = '#f44336';
+				tooltip = 'Победа противника';
+			} else {
+				roundClass = 'empty';
+				roundSymbol = i;
+				roundColor = '#666';
+				tooltip = 'Раунд не сыгран';
+			}
+			
+			progressHTML += `
+				<div class="round-indicator ${roundClass}" style="
+					width: 35px;
+					height: 35px;
+					border-radius: 50%;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					font-weight: bold;
+					font-size: 14px;
+					background: ${roundClass === 'empty' ? 'transparent' : roundColor};
+					color: ${roundClass === 'empty' ? '#888' : 'white'};
+					border: 1px solid ${roundColor};
+					position: relative;
+				" title="${tooltip}">${roundSymbol}</div>
+			`;
+		}
+		
+		return progressHTML;
+	},
 
     addResultStyles: function() {
         if (document.getElementById('round-result-styles')) return;
@@ -4328,6 +4336,7 @@ const gameModule = {
 				player: 0,
 				opponent: 0
 			},
+			roundResults: [],
 			currentPlayer: 'player',
 			gamePhase: 'setup',
 			selectedCard: null,
@@ -4364,11 +4373,6 @@ const gameModule = {
 				penaltyApplied: false 
 			},
 			roundLossDueToTimeout: null,
-			roundResults: [],
-			roundsWon: {
-				player: 0,
-				opponent: 0
-			},
 		};
 		
 		if (window.aiModule && window.aiModule.reset) {

@@ -538,9 +538,11 @@ const rulesData = {
             </div>
         `
     }
+	
 };
 
 const rulesModule = {
+	
     escapeHandler: null,
     currentSection: null,
 
@@ -549,30 +551,38 @@ const rulesModule = {
         this.setupRulesEventListeners(); 
         this.showRulesPage();           
     },
-	
-	resetRulesState: function() {
-		document.querySelectorAll('.rule-item').forEach(item => {
-			item.classList.remove('active');
-		});
-		
-		document.querySelectorAll('.content-section').forEach(section => {
-			section.classList.remove('active');
-		});
-		
-		const noContent = document.querySelector('.no-content-selected');
-		if (noContent) {
-			noContent.style.display = 'flex';
-		}
-		
-		const rulesContent = document.getElementById('rulesContent');
-		if (rulesContent) {
-			rulesContent.scrollTop = 0;
-		}
-		
-		this.currentSection = null;
-	},
-	
-	createRulesPageHTML: function() {
+    
+    resetRulesState: function() {
+        const activeItems = document.querySelectorAll('.rule-item.active');
+        const activeSections = document.querySelectorAll('.content-section.active');
+        const noContent = document.querySelector('.no-content-selected');
+        
+        activeItems.forEach(item => item.classList.remove('active'));
+        activeSections.forEach(section => section.classList.remove('active'));
+        
+        if (noContent) {
+            noContent.style.display = 'flex';
+        }
+        
+        const rulesContent = document.getElementById('rulesContent');
+        if (rulesContent) {
+            rulesContent.scrollTop = 0;
+        }
+        
+        this.currentSection = null;
+    },
+    
+    createRulesPageHTML: function() {
+        const existingPage = document.querySelector('.rules-page');
+        if (existingPage) {
+            existingPage.remove();
+        }
+        
+        const existingModal = document.querySelector('.rule-modal-overlay');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
         const rulesPage = document.createElement('div');
         rulesPage.className = 'rules-page';
         rulesPage.innerHTML = `
@@ -580,33 +590,28 @@ const rulesModule = {
             <div class="rules-title">ПРАВИЛА И ИНСТРУКЦИИ</div>
             <div class="rules-container">
                 <div class="rules-sidebar">
-				
                     <div class="instructions">
                         <h3>ИНСТРУКЦИИ</h3>
-						<div class="section-divider"></div>
+                        <div class="section-divider"></div>
                         <div class="rules-list" id="instructionsList">
                             ${this.generateRulesList('instruction')}
                         </div>
                     </div>
-					
-					<div class="rules-sections">
+                    <div class="rules-sections">
                         <h3>ПРАВИЛА</h3>
-						<div class="section-divider"></div>
+                        <div class="section-divider"></div>
                         <div class="rules-list" id="rulesList">
                             ${this.generateRulesList('rule')}
                         </div>
                     </div>
-					
-					<div class="rules-sections">
+                    <div class="rules-sections">
                         <h3>ГЛОСАРИЙ</h3>
-						<div class="section-divider"></div>
+                        <div class="section-divider"></div>
                         <div class="rules-list" id="glossary">
                             ${this.generateRulesList('glossary')}
                         </div>
                     </div>
-                    
                 </div>
-                
                 <div class="rules-content" id="rulesContent">
                     <div class="no-content-selected">
                         <div>Выберите раздел для просмотра информации</div>
@@ -662,19 +667,25 @@ const rulesModule = {
             });
             
             backButton.addEventListener('mouseenter', () => {
-                audioManager.playSound('touch');
+                if (audioManager && audioManager.soundEnabled) {
+                    audioManager.playSound('touch');
+                }
             });
         }
-		
+        
         document.querySelectorAll('.rule-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const ruleTitle = e.currentTarget.dataset.rule;
                 this.showContent(ruleTitle);
-                audioManager.playSound('button');
+                if (audioManager && audioManager.soundEnabled) {
+                    audioManager.playSound('button');
+                }
             });
             
             item.addEventListener('mouseenter', () => {
-                audioManager.playSound('touch');
+                if (audioManager && audioManager.soundEnabled) {
+                    audioManager.playSound('touch');
+                }
             });
         });
 
@@ -690,153 +701,63 @@ const rulesModule = {
     setupEscapeHandler: function() {
         if (this.escapeHandler) {
             document.removeEventListener('keydown', this.escapeHandler);
-        }  
+        }
+        
         this.escapeHandler = (e) => {
             if (e.key === 'Escape') {
                 this.handleEscape();
             }
-        };   
+        };
+        
         document.addEventListener('keydown', this.escapeHandler);
     },
 
     handleEscape: function() {
         if (this.isRuleModalOpen()) {
             this.hideRuleModal();
-        } 
-        else {
+        } else {
             this.hideRulesPage();
         }
     },
 
-    isRuleModalOpen: function() {
-        const modalOverlay = document.querySelector('.rule-modal-overlay');
-        return modalOverlay && modalOverlay.classList.contains('active');
-    },
-
     showContent: function(ruleTitle) {
-		document.querySelectorAll('.rule-item').forEach(item => {
-			item.classList.remove('active');
-		});
-		const activeItem = document.querySelector(`.rule-item[data-rule="${ruleTitle}"]`);
-		if (activeItem) {
-			activeItem.classList.add('active');
-		}
-		document.querySelectorAll('.content-section').forEach(section => {
-			section.classList.remove('active');
-		});
-		const contentSection = document.getElementById(`content-${ruleTitle}`);
-		if (contentSection) {
-			contentSection.classList.add('active');
-		}
-		const noContent = document.querySelector('.no-content-selected');
-		if (noContent) {
-			noContent.style.display = 'none';
-		}
-		
-		this.currentSection = ruleTitle;
-		this.scrollToTop();
-	},
-
-	scrollToTop: function() {
-		const rulesContent = document.getElementById('rulesContent');
-		if (!rulesContent) return;
-		
-		rulesContent.scrollTo({
-			top: 0,
-			behavior: 'smooth'
-		});
-	},
-
-    showRulesPage: function() {
-		const logo = document.querySelector('.logo');
-		const menuButtons = document.querySelector('.main-menu-buttons');
-		
-		if (logo) logo.style.animation = 'fadeOutUp 0.5s ease forwards';
-		if (menuButtons) menuButtons.style.animation = 'fadeOutDown 0.5s ease forwards';
-		
-		setTimeout(() => {
-			const startPage = document.querySelector('.start-page');
-			if (startPage) {
-				startPage.style.opacity = '0';
-				setTimeout(() => {
-					startPage.style.display = 'none';
-				}, 300);
-			}
-			
-			const rulesPage = document.querySelector('.rules-page');
-			rulesPage.style.display = 'flex';
-			
-			setTimeout(() => {
-				rulesPage.classList.remove('hiding');
-				rulesPage.classList.add('active');
-				rulesPage.style.opacity = '1';
-			}, 50);
-			
-			this.setupEscapeHandler();
-			
-		}, 500);
-	},
-
-	hideRulesPage: function() {
-		const rulesPage = document.querySelector('.rules-page');
-		const rulesTitle = document.querySelector('.rules-title');
-		const rulesContainer = document.querySelector('.rules-container');
-		
-		if (rulesTitle) rulesTitle.style.animation = 'fadeOutUp 0.5s ease forwards';
-		if (rulesContainer) rulesContainer.style.animation = 'fadeOutDown 0.5s ease forwards';
-		
-		setTimeout(() => {
-			rulesPage.style.opacity = '0';
-			
-			setTimeout(() => {
-				rulesPage.remove();
-				
-				const modalOverlay = document.querySelector('.rule-modal-overlay');
-				if (modalOverlay) modalOverlay.remove();
-				
-				const startPage = document.querySelector('.start-page');
-				if (startPage) {
-					startPage.style.display = 'flex';
-					setTimeout(() => {
-						startPage.style.opacity = '1';
-						
-						const logo = startPage.querySelector('.logo');
-						const menuButtons = startPage.querySelector('.main-menu-buttons');
-						
-						if (logo) {
-							logo.style.animation = 'none';
-							void logo.offsetWidth; 
-							logo.style.animation = 'fadeInDown 0.5s ease forwards';
-						}
-						
-						if (menuButtons) {
-							menuButtons.style.animation = 'none';
-							void menuButtons.offsetWidth; 
-							menuButtons.style.animation = 'fadeInUp 0.5s ease forwards';
-						}
-					}, 100);
-				}
-				
-				if (this.escapeHandler) {
-					document.removeEventListener('keydown', this.escapeHandler);
-					this.escapeHandler = null;
-				}
-				
-				this.currentSection = null;
-				
-			});
-			
-		}, 300);
-		
-		audioManager.playSound('button');
-	},
+        document.querySelectorAll('.rule-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        const activeItem = document.querySelector(`.rule-item[data-rule="${ruleTitle}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
+        
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        const contentSection = document.getElementById(`content-${ruleTitle}`);
+        if (contentSection) {
+            contentSection.classList.add('active');
+        }
+        
+        const noContent = document.querySelector('.no-content-selected');
+        if (noContent) {
+            noContent.style.display = 'none';
+        }
+        
+        this.currentSection = ruleTitle;
+        this.scrollToTop();
+    },
 
     showRuleModal: function(ruleTitle) {
         const rule = Object.values(rulesData).find(r => r.title === ruleTitle);
         if (!rule || !rule.content) return;
+        
         const modalOverlay = document.querySelector('.rule-modal-overlay');
         const titleElement = document.getElementById('ruleModalTitle');
         const contentElement = document.getElementById('ruleModalContent');
+        
+        if (!modalOverlay || !titleElement || !contentElement) return;
+        
         titleElement.textContent = rule.title;
         contentElement.innerHTML = rule.content;
         modalOverlay.classList.add('active');
@@ -845,9 +766,124 @@ const rulesModule = {
 
     hideRuleModal: function() {
         const modalOverlay = document.querySelector('.rule-modal-overlay');
-        modalOverlay.classList.remove('active');
-        audioManager.playSound('button');
-    }
+        if (modalOverlay) {
+            modalOverlay.classList.remove('active');
+        }
+        
+        if (audioManager && audioManager.soundEnabled) {
+            audioManager.playSound('button');
+        }
+    },
+
+    scrollToTop: function() {
+        const rulesContent = document.getElementById('rulesContent');
+        if (!rulesContent) return;
+        
+        rulesContent.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    },
+
+    showRulesPage: function() {
+        const logo = document.querySelector('.logo');
+        const menuButtons = document.querySelector('.main-menu-buttons');
+        
+        if (logo) logo.style.animation = 'fadeOutUp 0.5s ease forwards';
+        if (menuButtons) menuButtons.style.animation = 'fadeOutDown 0.5s ease forwards';
+        
+        setTimeout(() => {
+            const startPage = document.querySelector('.start-page');
+            if (startPage) {
+                startPage.style.opacity = '0';
+                setTimeout(() => {
+                    startPage.style.display = 'none';
+                }, 300);
+            }
+            
+            const rulesPage = document.querySelector('.rules-page');
+            if (rulesPage) {
+                rulesPage.style.display = 'flex';
+                
+                setTimeout(() => {
+                    rulesPage.classList.add('active');
+                    rulesPage.style.opacity = '1';
+                }, 50);
+            }
+            
+            this.setupEscapeHandler();
+            
+        }, 500);
+    },
+
+    hideRulesPage: function() {
+        const rulesPage = document.querySelector('.rules-page');
+        const rulesTitle = document.querySelector('.rules-title');
+        const rulesContainer = document.querySelector('.rules-container');
+        
+        if (!rulesPage) return;
+        
+        if (rulesTitle) rulesTitle.style.animation = 'fadeOutUp 0.5s ease forwards';
+        if (rulesContainer) rulesContainer.style.animation = 'fadeOutDown 0.5s ease forwards';
+        
+        setTimeout(() => {
+            rulesPage.style.opacity = '0';
+            
+            setTimeout(() => {
+                rulesPage.remove();
+                
+                const modalOverlay = document.querySelector('.rule-modal-overlay');
+                if (modalOverlay) modalOverlay.remove();
+                
+                this.restoreMainMenu();
+                
+                if (this.escapeHandler) {
+                    document.removeEventListener('keydown', this.escapeHandler);
+                    this.escapeHandler = null;
+                }
+                
+                this.currentSection = null;
+                
+            }, 300);
+            
+        }, 300);
+        
+        if (audioManager && audioManager.soundEnabled) {
+            audioManager.playSound('button');
+        }
+    },
+
+    restoreMainMenu: function() {
+        const startPage = document.querySelector('.start-page');
+        if (!startPage) return;
+        
+        startPage.style.display = 'flex';
+        
+        setTimeout(() => {
+            startPage.style.opacity = '1';
+            
+            const logo = startPage.querySelector('.logo');
+            const menuButtons = startPage.querySelector('.main-menu-buttons');
+            
+            if (logo) {
+                logo.style.animation = 'none';
+                void logo.offsetWidth;
+                logo.style.animation = 'fadeInDown 0.5s ease forwards';
+            }
+            
+            if (menuButtons) {
+                menuButtons.style.animation = 'none';
+                void menuButtons.offsetWidth;
+                menuButtons.style.animation = 'fadeInUp 0.5s ease forwards';
+            }
+        }, 100);
+    },
+
+    isRuleModalOpen: function() {
+        const modalOverlay = document.querySelector('.rule-modal-overlay');
+        return modalOverlay && modalOverlay.classList.contains('active');
+    },
+	
 };
 
 window.rulesModule = rulesModule;

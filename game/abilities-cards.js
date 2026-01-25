@@ -614,61 +614,61 @@ const skillSystem = {
 	},
 
 	applySwapEffect: function(effect, context) {
-    if (context.decoyState && context.decoyState.awaitingSelection) {
-        if (context.decoyState.selectedCard && context.decoyState.selectedCard.type === 'unit') {
-            const cardToSwap = context.decoyState.selectedCard;
-            
-            const decoyCard = context.playerHand.find(card => 
-                card.ability === 'decoy' || card.id === 'neutral_special_5'
-            );
-            
-            if (!decoyCard) {
-                return { success: false, message: 'Чучело не найдено в руке' };
-            }
-            
-            const decoyIndex = context.playerHand.indexOf(decoyCard);
-            if (decoyIndex !== -1) {
-                context.playerHand.splice(decoyIndex, 1);
-            }
-            
-            if (window.gameModule && window.gameModule.removeCardFromBoard) {
-                window.gameModule.removeCardFromBoard(cardToSwap);
-            }
-            
-            const cardCopy = { ...cardToSwap };
-            cardCopy.playedThisRound = false;
-            context.playerHand.push(cardCopy);
-            
-            decoyCard.owner = 'player';
-            decoyCard.row = cardToSwap.row;
-            decoyCard.positionInRow = cardToSwap.positionInRow;
-            
-            if (window.gameModule && window.gameModule.placeCardOnBoard) {
-                window.gameModule.placeCardOnBoard(decoyCard, decoyCard.row, decoyCard.positionInRow);
-            }
-            
-            if (window.gameModule) {
-                window.gameModule.displayPlayerHand();
-                window.gameModule.updateRowStrength(cardToSwap.row);
-            }
-            
-            context.decoyState = null;
-            
-            return { 
-                success: true, 
-                message: `Карта ${cardToSwap.name} заменена на Чучело`,
-                swappedCard: cardToSwap
-            };
-        }
-    }
-    
-    return { 
-        success: true, 
-        message: 'Выберите карту на поле для замены на Чучело',
-        requiresSelection: true,
-        selectionType: 'unit_on_board'
-    };
-},
+		if (context.decoyState && context.decoyState.awaitingSelection) {
+			if (context.decoyState.selectedCard && context.decoyState.selectedCard.type === 'unit') {
+				const cardToSwap = context.decoyState.selectedCard;
+				
+				const decoyCard = context.playerHand.find(card => 
+					card.ability === 'decoy' || card.id === 'neutral_special_5'
+				);
+				
+				if (!decoyCard) {
+					return { success: false, message: 'Чучело не найдено в руке' };
+				}
+				
+				const decoyIndex = context.playerHand.indexOf(decoyCard);
+				if (decoyIndex !== -1) {
+					context.playerHand.splice(decoyIndex, 1);
+				}
+				
+				if (window.gameModule && window.gameModule.removeCardFromBoard) {
+					window.gameModule.removeCardFromBoard(cardToSwap);
+				}
+				
+				const cardCopy = { ...cardToSwap };
+				cardCopy.playedThisRound = false;
+				context.playerHand.push(cardCopy);
+				
+				decoyCard.owner = 'player';
+				decoyCard.row = cardToSwap.row;
+				decoyCard.positionInRow = cardToSwap.positionInRow;
+				
+				if (window.gameModule && window.gameModule.placeCardOnBoard) {
+					window.gameModule.placeCardOnBoard(decoyCard, decoyCard.row, decoyCard.positionInRow);
+				}
+				
+				if (window.gameModule) {
+					window.gameModule.displayPlayerHand();
+					window.gameModule.updateRowStrength(cardToSwap.row);
+				}
+				
+				context.decoyState = null;
+				
+				return { 
+					success: true, 
+					message: `Карта ${cardToSwap.name} заменена на Чучело`,
+					swappedCard: cardToSwap
+				};
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: 'Выберите карту на поле для замены на Чучело',
+			requiresSelection: true,
+			selectionType: 'unit_on_board'
+		};
+	},
 
     applyBoostEffect: function(effect, context) {
         const targets = this.findTargets(effect, context);
