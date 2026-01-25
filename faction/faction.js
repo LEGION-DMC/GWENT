@@ -1,5 +1,5 @@
-const factionsData = {
-    scoiatael: {
+const factionsData = {  
+	scoiatael: {
         id: 'scoiatael',
         name: 'Скоя\'таэли',
         leaderName: 'Францеска Финдабаир',
@@ -59,6 +59,7 @@ const factionsData = {
 		logo: 'faction/syndicate/logo_faction.png',
         background: 'faction/syndicate/fon_faction.jpg',
     },
+	
 };
 
 let selectedFaction = null;
@@ -180,6 +181,35 @@ function setupFactionEventListeners() {
     }
 }
 
+function cleanupFactionSelection() {
+    document.removeEventListener('keydown', handleKeyPress);
+    selectedFaction = null;
+    isHovering = false;
+    isFactionSectionCreated = false;
+}
+
+function selectFaction(faction) {
+    const factionCards = document.querySelectorAll('.faction-card');
+    factionCards.forEach(card => {
+        card.classList.remove('faction-card--selected');
+    });
+    
+    const selectedCard = document.querySelector(`[data-faction="${faction.id}"]`);
+    if (selectedCard) {
+        selectedCard.classList.add('faction-card--selected');
+    }
+    selectedFaction = faction;
+    
+    showFactionDescription(faction);
+    
+    const confirmBtn = document.getElementById('confirmFactionBtn');
+    if (confirmBtn) {
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.transform = 'translateY(0)';
+        confirmBtn.style.pointerEvents = 'auto';
+    }
+}
+
 function showFactionDescription(faction) {
     const description = document.querySelector('.faction-description');
     if (!description) return;
@@ -212,35 +242,6 @@ function hideFactionDescription() {
     }
 }
 
-function selectFaction(faction) {
-    const factionCards = document.querySelectorAll('.faction-card');
-    factionCards.forEach(card => {
-        card.classList.remove('faction-card--selected');
-    });
-    
-    const selectedCard = document.querySelector(`[data-faction="${faction.id}"]`);
-    if (selectedCard) {
-        selectedCard.classList.add('faction-card--selected');
-    }
-    selectedFaction = faction;
-    
-    showFactionDescription(faction);
-    
-    const confirmBtn = document.getElementById('confirmFactionBtn');
-    if (confirmBtn) {
-        confirmBtn.style.opacity = '1';
-        confirmBtn.style.transform = 'translateY(0)';
-        confirmBtn.style.pointerEvents = 'auto';
-    }
-}
-
-function hideStartPage() {
-    const startPage = document.querySelector('.start-page');
-    if (startPage) {
-        startPage.style.display = 'none';
-    }
-}
-
 function proceedToDeckBuilding(faction) {
     window.selectedFaction = faction;
     cleanupFactionSelection();
@@ -248,26 +249,6 @@ function proceedToDeckBuilding(faction) {
     if (window.deckModule && window.deckModule.initDeckBuilding) {
         window.deckModule.initDeckBuilding(faction);
     }
-}
-
-function cleanupFactionSelection() {
-    document.removeEventListener('keydown', handleKeyPress);
-    
-    const factionCards = document.querySelectorAll('.faction-card');
-    factionCards.forEach(card => {
-        const newCard = card.cloneNode(true);
-        card.parentNode.replaceChild(newCard, card);
-    });
-    
-    const confirmBtn = document.getElementById('confirmFactionBtn');
-    if (confirmBtn) {
-        const newBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
-    }
-    
-    selectedFaction = null;
-    isHovering = false;
-    isFactionSectionCreated = false;
 }
 
 function handleKeyPress(event) {
