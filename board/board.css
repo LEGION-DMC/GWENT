@@ -152,7 +152,7 @@
 	font-family: 'Gwent', sans-serif;
 	text-transform: uppercase;
 	letter-spacing: 2px;
-	cursor: url('../ui/cursor_hover.png'), pointer;
+	cursor: url('../ui/cursor_hover.png'), pointer !important;
 	transition: all 0.3s ease;
 	border-radius: 5px;
 	box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
