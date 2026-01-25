@@ -1442,40 +1442,30 @@ const cardsData = {
                 banner: 'faction/syndicate/banner_bronze.png'
             },]
     },
+
 };
 
-function normalizeCardPositions(cards) {
-    return cards.map(card => {
-        if (card.position && Array.isArray(card.position) && card.position.length > 1) {
-            return {
-                ...card,
-                position: ['any-row']
-            };
-        }
-        return card;
-    });
-}
-
-Object.keys(cardsData).forEach(faction => {
-    Object.keys(cardsData[faction]).forEach(type => {
-        if (Array.isArray(cardsData[faction][type])) {
-            cardsData[faction][type] = normalizeCardPositions(cardsData[faction][type]);
-        }
-    });
-});
-
 function getFactionCards(factionId) {
+    if (!cardsData[factionId]) {
+        return {
+            units: [],
+            specials: [],
+            artifacts: [],
+            tactics: []
+        };
+    }
+
     const factionCards = {
-        units: [...cardsData[factionId].units],
-        specials: [...cardsData[factionId].specials],
-        artifacts: [...cardsData[factionId].artifacts],
-        tactics: [...cardsData[factionId].tactics] 
+        units: [...(cardsData[factionId].units || [])],
+        specials: [...(cardsData[factionId].specials || [])],
+        artifacts: [...(cardsData[factionId].artifacts || [])],
+        tactics: [...(cardsData[factionId].tactics || [])]
     };
 
-    factionCards.units.push(...cardsData.neutral.units);
-    factionCards.specials.push(...cardsData.neutral.specials);
-    factionCards.artifacts.push(...cardsData.neutral.artifacts);
-    factionCards.tactics.push(...cardsData.neutral.tactics || []);
+    factionCards.units.push(...(cardsData.neutral.units || []));
+    factionCards.specials.push(...(cardsData.neutral.specials || []));
+    factionCards.artifacts.push(...(cardsData.neutral.artifacts || []));
+    factionCards.tactics.push(...(cardsData.neutral.tactics || []));
 
     return factionCards;
 }
@@ -1483,8 +1473,10 @@ function getFactionCards(factionId) {
 function getCardById(cardId) {
     for (const faction in cardsData) {
         for (const type in cardsData[faction]) {
-            const card = cardsData[faction][type].find(c => c.id === cardId);
-            if (card) return card;
+            if (Array.isArray(cardsData[faction][type])) {
+                const card = cardsData[faction][type].find(c => c.id === cardId);
+                if (card) return card;
+            }
         }
     }
     return null;
@@ -1494,16 +1486,19 @@ function getCardsByTag(tag) {
     const result = {
         units: [],
         specials: [],
-        artifacts: []
+        artifacts: [],
+        tactics: []
     };
 
     for (const faction in cardsData) {
         for (const type in cardsData[faction]) {
-            cardsData[faction][type].forEach(card => {
-                if (card.tags && card.tags.includes(tag)) {
-                    result[type].push(card);
-                }
-            });
+            if (Array.isArray(cardsData[faction][type])) {
+                cardsData[faction][type].forEach(card => {
+                    if (card.tags && card.tags.includes(tag)) {
+                        result[type].push(card);
+                    }
+                });
+            }
         }
     }
 
@@ -1514,10 +1509,25 @@ function getAllCards() {
     return cardsData;
 }
 
+function getAllCardsFlat() {
+    const allCards = [];
+    
+    for (const faction in cardsData) {
+        for (const type in cardsData[faction]) {
+            if (Array.isArray(cardsData[faction][type])) {
+                allCards.push(...cardsData[faction][type]);
+            }
+        }
+    }
+    
+    return allCards;
+}
+
 window.cardsModule = {
     getFactionCards,
     getCardById,
     getCardsByTag,
     getAllCards,
+    getAllCardsFlat,
     cardsData
 };
