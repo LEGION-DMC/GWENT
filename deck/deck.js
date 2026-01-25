@@ -242,22 +242,6 @@ const defaultAbilities = {
     syndicate: 'syndicate_ability_1',
 };
 
-function localizeFaction(factionId) {
-    return localization.factions[factionId] || factionId;
-}
-
-function localizeCardType(type) {
-    return localization.cardTypes[type] || type;
-}
-
-function localizeRarity(rarity) {
-    return localization.rarities[rarity] || rarity;
-}
-
-function localizeTags(tags) {
-    return tags ? tags.map(tag => localization.tags[tag] || tag) : [];
-}
-
 let currentDeck = {
     faction: null,
     leader: null,
@@ -279,6 +263,22 @@ let availableCards = {
 };
 
 let displayedCollectionCards = [];
+
+function localizeFaction(factionId) {
+    return localization.factions[factionId] || factionId;
+}
+
+function localizeCardType(type) {
+    return localization.cardTypes[type] || type;
+}
+
+function localizeRarity(rarity) {
+    return localization.rarities[rarity] || rarity;
+}
+
+function localizeTags(tags) {
+    return tags ? tags.map(tag => localization.tags[tag] || tag) : [];
+}
 
 function initDeckBuilding(faction) {
     window.selectedFaction = faction;
@@ -524,228 +524,99 @@ function createDeckBuildingHTML() {
     setupDeckBuildingEventListeners();
 }             
 
-function setupFactionAbilityControls(faction) {
-    const factionLogo = document.getElementById('factionLogo');
-    if (factionLogo) {
-        factionLogo.style.cursor = 'pointer';
-        factionLogo.addEventListener('click', () => {
-            showAbilitiesModal(faction);
+function setupDeckBuildingEventListeners() {
+    const collectionSortButtons = document.querySelectorAll('.cards-collection .sort-btn');
+    const deckSortButtons = document.querySelectorAll('.deck-cards .sort-btn');
+	
+    collectionSortButtons.forEach(btn => {
+        if (btn.dataset.type === 'all') {
+            btn.classList.add('active');
+        }
+    });
+    
+    deckSortButtons.forEach(btn => {
+        if (btn.dataset.type === 'all') {
+            btn.classList.add('active');
+        }
+    });
+    
+    collectionSortButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
             audioManager.playSound('button');
+            const type = e.currentTarget.dataset.type;
+            collectionSortButtons.forEach(btn => btn.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            sortCollection(type);
         });
         
-        factionLogo.addEventListener('mouseenter', () => {
-            audioManager.playSound('touch');
-        });
-    }
-}
-
-function showAbilitiesModal(faction) {
-    const abilities = factionAbilities[faction.id] || [];
-    const currentAbility = currentDeck.ability || defaultAbilities[faction.id];
-    
-    const modalOverlay = document.createElement('div');
-    modalOverlay.className = 'abilities-modal-overlay';
-    modalOverlay.innerHTML = `
-        <div class="abilities-modal">
-            <div class="abilities-modal__title">ВЫБЕРИТЕ СПОСОБНОСТЬ ЛИДЕРА</div>
-            <div class="abilities-list">
-                ${abilities.map(ability => `
-                    <div class="ability-option ${ability.id === currentAbility ? 'selected' : ''}" 
-                         data-ability-id="${ability.id}">
-                        <div class="ability-option__icon">
-                            <img src="${ability.icon}" alt="${ability.name}">
-                        </div>
-                        <div class="ability-option__info">
-                            <div class="ability-option__name">${ability.name}</div>
-                            <div class="ability-option__description">${ability.description}</div>
-                        </div>
-                        ${ability.id === currentAbility ? '<div class="ability-option__check"><img src="deck/activ.png" alt="Выбрано"></div>' : ''}
-                    </div>
-                `).join('')}
-            </div>
-            <button class="abilities-confirm-btn" id="confirmAbilityBtn">ПОДТВЕРДИТЬ ВЫБОР</button>
-        </div>
-    `;
-    
-    document.body.appendChild(modalOverlay);
-    
-    setTimeout(() => {
-        modalOverlay.classList.add('active');
-    }, 10);
-    
-    setupAbilitiesModalEventListeners(modalOverlay, faction, abilities);
-}
-
-function setupAbilitiesModalEventListeners(modalOverlay, faction, abilities) {
-    const abilityOptions = modalOverlay.querySelectorAll('.ability-option');
-    let selectedAbility = currentDeck.ability || defaultAbilities[faction.id];
-    
-    abilityOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            abilityOptions.forEach(opt => opt.classList.remove('selected'));
-            option.classList.add('selected');
-            selectedAbility = option.dataset.abilityId;
-            audioManager.playSound('touch');
-        });
-        
-        option.addEventListener('mouseenter', () => {
+        button.addEventListener('mouseenter', () => {
             audioManager.playSound('touch');
         });
     });
     
-    const confirmBtn = modalOverlay.querySelector('#confirmAbilityBtn');
-    confirmBtn.addEventListener('click', () => {
-        currentDeck.ability = selectedAbility;
-        updateFactionAbilityDisplay(faction);
-        closeAbilitiesModal(modalOverlay);
+    deckSortButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            audioManager.playSound('button');
+            const type = e.currentTarget.dataset.type;
+            deckSortButtons.forEach(btn => btn.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            sortDeck(type);
+        });
+        
+        button.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+    });
+    
+    const startGameBtn = document.getElementById('startGameBtn');
+    startGameBtn.addEventListener('click', () => {
+        validateDeckAndStartGame();
+    });
+    
+    startGameBtn.addEventListener('mouseenter', () => {
+        audioManager.playSound('touch');
+    });
+
+    const backToFactionBtn = document.getElementById('backToFactionBtn');
+    backToFactionBtn.addEventListener('click', () => {
         audioManager.playSound('button');
+        backToFactionSelection();
     });
     
-    confirmBtn.addEventListener('mouseenter', () => {
+    backToFactionBtn.addEventListener('mouseenter', () => {
         audioManager.playSound('touch');
     });
     
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) {
-            closeAbilitiesModal(modalOverlay);
-        }
+    const autoBuildBtn = document.getElementById('autoBuildBtn');
+    const saveDeckBtn = document.getElementById('saveDeckBtn');
+    const loadDeckBtn = document.getElementById('loadDeckBtn');
+    const clearDeckBtn = document.getElementById('clearDeckBtn');
+    
+    autoBuildBtn.addEventListener('click', () => {
+        audioManager.playSound('button');
+        autoBuildDeck();
     });
     
-    const escapeHandler = (e) => {
-        if (e.key === 'Escape') {
-            closeAbilitiesModal(modalOverlay);
-            document.removeEventListener('keydown', escapeHandler);
-        }
-    };
-    document.addEventListener('keydown', escapeHandler);
-}
-
-function updateFactionAbilityDisplay(faction) {
-    const abilityData = factionAbilities[faction.id].find(a => a.id === currentDeck.ability);
-    if (!abilityData) return;
+    saveDeckBtn.addEventListener('click', () => {
+        audioManager.playSound('button');
+        saveDeckToFile();
+    });
     
-    const abilitySection = document.querySelector('.faction-ability__content');
-    if (abilitySection) {
-        abilitySection.innerHTML = `
-            <div class="ability-icon">
-                <img src="${abilityData.icon}" alt="${abilityData.name}">
-            </div>
-            <div class="ability-info">
-                <div class="ability-name">${abilityData.name}</div>
-                <div class="ability-description">${abilityData.description}</div>
-            </div>
-        `;
-    }
-}
-
-function closeAbilitiesModal(modalOverlay) {
-    modalOverlay.classList.remove('active');
-    setTimeout(() => {
-        if (modalOverlay.parentNode) {
-            modalOverlay.parentNode.removeChild(modalOverlay);
-        }
-    }, 300);
-    audioManager.playSound('button');
-}
-
-function setupLeaderVideoControls() {
-    const leaderCard = document.querySelector('.leader-card');
-    const video = leaderCard.querySelector('video');
-    const factionLogo = document.getElementById('factionLogo');
-    const cardDisplayMode = window.settingsModule ? window.settingsModule.getCardDisplayMode() : 'animated';
+    loadDeckBtn.addEventListener('click', () => {
+        audioManager.playSound('button');
+        loadDeckFromFile();
+    });
     
-    if (cardDisplayMode === 'static' && video) {
-        const leaderImage = `faction/${window.selectedFaction.id}/leader.jpg`;
-        const imgElement = document.createElement('img');
-        imgElement.src = leaderImage;
-        imgElement.alt = `Лидер ${window.selectedFaction.name}`;
-        imgElement.className = 'leader-card__media';
-        
-        video.parentNode.replaceChild(imgElement, video);
-    }
-    if (factionLogo) {
-        factionLogo.style.cursor = 'pointer';
-        factionLogo.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const faction = window.selectedFaction;
-            if (faction) {
-                showAbilitiesModal(faction);
-                audioManager.playSound('button');
-            }
-        });
-        
-        factionLogo.addEventListener('mouseenter', () => {
+    clearDeckBtn.addEventListener('click', () => {
+        audioManager.playSound('button');
+        clearDeck();
+    });
+    
+    [autoBuildBtn, saveDeckBtn, loadDeckBtn, clearDeckBtn].forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
             audioManager.playSound('touch');
         });
-    }
-    leaderCard.addEventListener('click', () => {
-        const faction = window.selectedFaction;
-        if (faction) {
-            const leaderCardData = {
-                id: `${faction.id}_leader`,
-                name: faction.leaderName.split(' ')[0],
-                namefull: faction.leaderName, 
-                type: 'leader',
-                faction: faction.id,
-                image: `leader.mp4`,
-                description: `${faction.description}`,
-                descriptionfull: `${faction.descriptionfull}`,
-                ability: `${faction.id}_ability`,
-                rarity: 'gold',
-                tags: ['leader'],
-                border: 'deck/bord_gold.png',
-                banner: `faction/${faction.id}/banner_gold.png`
-            };
-            showCardModal(leaderCardData);
-        }
     });
-    if (video) {
-        leaderCard.addEventListener('mouseenter', () => {
-            video.play().catch(e => {});
-        });
-    }
-}
-
-function setFactionBackground(faction) {
-    document.body.style.background = `url('${faction.background}') no-repeat center center fixed`;
-    document.body.style.backgroundSize = 'cover';
-}
-
-function setFactionHeadersBackground(factionId) {
-    const deckHeader = document.getElementById('deckHeader');
-    if (deckHeader) {
-        const backgroundImage = `faction/${factionId}/border_faction.png`;
-        setHeaderBackground(deckHeader, backgroundImage);
-    }
-    
-    const collectionHeader = document.getElementById('collectionHeader');
-    if (collectionHeader) {
-        const backgroundImage = `faction/${factionId}/border_faction.png`;
-        setHeaderBackground(collectionHeader, backgroundImage);
-    }
-}
-
-function setHeaderBackground(headerElement, backgroundImage) {
-    headerElement.style.background = `url('${backgroundImage}')`;
-    const img = new Image();
-    img.src = backgroundImage;
-}
-
-function loadFactionCards(faction) {
-    displayedCollectionCards = [];
-    if (window.cardsModule && window.cardsModule.getFactionCards) {
-        availableCards = window.cardsModule.getFactionCards(faction.id);
-        displayedCollectionCards = [
-            ...availableCards.units,
-            ...availableCards.specials,
-            ...availableCards.artifacts,
-            ...availableCards.tactics 
-        ];
-        sortCollectionCards();
-    }
-    setTimeout(() => {
-        displayCollectionCards();
-    }, 10);
 }
 
 function backToFactionSelection() {
@@ -781,6 +652,23 @@ function backToFactionSelection() {
     }
 }
 
+function loadFactionCards(faction) {
+    displayedCollectionCards = [];
+    if (window.cardsModule && window.cardsModule.getFactionCards) {
+        availableCards = window.cardsModule.getFactionCards(faction.id);
+        displayedCollectionCards = [
+            ...availableCards.units,
+            ...availableCards.specials,
+            ...availableCards.artifacts,
+            ...availableCards.tactics 
+        ];
+        sortCollectionCards();
+    }
+    setTimeout(() => {
+        displayCollectionCards();
+    }, 10);
+}
+
 function displayCollectionCards() {
     const collectionGrid = document.getElementById('collectionGrid');
     const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
@@ -793,44 +681,25 @@ function displayCollectionCards() {
     sortCollection(filterType);
 }
 
-function getCardCopyCountInDeck(cardId) {
-    return currentDeck.cards.filter(card => card.id === cardId).length;
-}
-
-function getAvailableCopies(card) {
-    if (!card.copy || card.copy <= 1) return 1;
-    const inDeck = getCardCopyCountInDeck(card.id);
-    return Math.max(0, card.copy - inDeck);
-}
-
-function updateCardCopyIndicator(cardElement, card) {
-    const availableCopies = getAvailableCopies(card);
-    const oldIndicator = cardElement.querySelector('.card__copy-indicator');
-    const oldBanner = cardElement.querySelector('.card__copy-banner');
-    
-    if (oldIndicator) {
-        oldIndicator.remove();
-    }
-    if (oldBanner) {
-        oldBanner.remove();
-    }
-    
-    if (card.copy && card.copy > 1 && availableCopies > 1) {
-        const copyBanner = document.createElement('img');
-        copyBanner.className = 'card__copy-banner';
-        copyBanner.src = `faction/${card.faction}/banner_position.png`;
-        copyBanner.alt = 'Копия';
-		
-        const copyIndicator = document.createElement('div');
-        copyIndicator.className = 'card__copy-indicator';
-        copyIndicator.textContent = `×${availableCopies}`;
-        
-        const cardContainer = cardElement.querySelector('.card__container');
-        if (cardContainer) {
-            cardContainer.appendChild(copyBanner);
-            cardContainer.appendChild(copyIndicator);
+function sortCollectionCards() {
+    displayedCollectionCards.sort((a, b) => {
+        const rarityOrder = { 'gold': 1, 'silver': 2, 'bronze': 3 };
+        const rarityA = rarityOrder[a.rarity] || 4;
+        const rarityB = rarityOrder[b.rarity] || 4;
+        if (rarityA !== rarityB) {
+            return rarityA - rarityB;
         }
-    }
+        const typeOrder = { 'unit': 1, 'special': 2, 'artifact': 3, 'tactic': 4 };
+        const typeA = typeOrder[a.type] || 5;
+        const typeB = typeOrder[b.type] || 5;
+        if (typeA !== typeB) {
+            return typeA - typeB;
+        }
+        if (a.type === 'unit' && b.type === 'unit') {
+            return (b.strength || 0) - (a.strength || 0);
+        }
+        return a.name.localeCompare(b.name);
+    });
 }
 
 function createCardElement(card, context) {
@@ -919,6 +788,52 @@ function createCardElement(card, context) {
     return cardElement;
 }
 
+function sortDeckCards() {
+    currentDeck.cards.sort((a, b) => {
+        const rarityOrder = { 'gold': 1, 'silver': 2, 'bronze': 3 };
+        const rarityA = rarityOrder[a.rarity] || 4;
+        const rarityB = rarityOrder[b.rarity] || 4;
+        if (rarityA !== rarityB) {
+            return rarityA - rarityB;
+        }
+        const typeOrder = { 'unit': 1, 'special': 2, 'artifact': 3, 'tactic': 4 };
+        const typeA = typeOrder[a.type] || 5;
+        const typeB = typeOrder[b.type] || 5;
+        if (typeA !== typeB) {
+            return typeA - typeB;
+        }
+        if (a.type === 'unit' && b.type === 'unit') {
+            return (b.strength || 0) - (a.strength || 0);
+        }
+        return a.name.localeCompare(b.name);
+    });
+}
+
+function setFactionBackground(faction) {
+    document.body.style.background = `url('${faction.background}') no-repeat center center fixed`;
+    document.body.style.backgroundSize = 'cover';
+}
+
+function setFactionHeadersBackground(factionId) {
+    const deckHeader = document.getElementById('deckHeader');
+    if (deckHeader) {
+        const backgroundImage = `faction/${factionId}/border_faction.png`;
+        setHeaderBackground(deckHeader, backgroundImage);
+    }
+    
+    const collectionHeader = document.getElementById('collectionHeader');
+    if (collectionHeader) {
+        const backgroundImage = `faction/${factionId}/border_faction.png`;
+        setHeaderBackground(collectionHeader, backgroundImage);
+    }
+}
+
+function setHeaderBackground(headerElement, backgroundImage) {
+    headerElement.style.background = `url('${backgroundImage}')`;
+    const img = new Image();
+    img.src = backgroundImage;
+}
+
 function getPositionIconPath(position) {
     const positionIcons = {
         'close-row': 'deck/close-row.png',
@@ -947,6 +862,46 @@ function getPositionName(position) {
     };
     
     return positionNames[position] || position;
+}
+
+function getTypeIconPath(cardType) {
+    const typeIcons = {
+        'special': 'deck/type_special.png',
+        'artifact': 'deck/type_artifact.png',
+        'tactic': 'deck/type_tactic.png'
+    };
+    
+    return typeIcons[cardType] || 'deck/type_unknown.png';
+}
+
+function setupVideoControls(cardElement) {
+    const video = cardElement.querySelector('video');
+    if (!video) return;
+    
+    video.removeAttribute('autoplay');
+    video.removeAttribute('loop');
+    
+    cardElement.addEventListener('mouseenter', () => {
+        video.currentTime = 0; 
+        video.play().catch(e => {});
+        video.loop = true; 
+    });
+    
+    cardElement.addEventListener('mouseleave', () => {
+        video.pause();
+        video.currentTime = 0; 
+        video.loop = false; 
+    });
+    
+    cardElement.addEventListener('click', () => {
+        video.pause();
+        video.currentTime = 0;
+    });
+    
+    cardElement.addEventListener('contextmenu', () => {
+        video.pause();
+        video.currentTime = 0;
+    });
 }
 
 function handleCardClick(card, context, event) {
@@ -1151,67 +1106,6 @@ function setupModalVideoControls(modalOverlay) {
     video.loop = true;
 }
 
-function getTypeIconPath(cardType) {
-    const typeIcons = {
-        'special': 'deck/type_special.png',
-        'artifact': 'deck/type_artifact.png',
-        'tactic': 'deck/type_tactic.png'
-    };
-    
-    return typeIcons[cardType] || 'deck/type_unknown.png';
-}
-
-function setupVideoControls(cardElement) {
-    const video = cardElement.querySelector('video');
-    if (!video) return;
-    
-    video.removeAttribute('autoplay');
-    video.removeAttribute('loop');
-    
-    cardElement.addEventListener('mouseenter', () => {
-        video.currentTime = 0; 
-        video.play().catch(e => {});
-        video.loop = true; 
-    });
-    
-    cardElement.addEventListener('mouseleave', () => {
-        video.pause();
-        video.currentTime = 0; 
-        video.loop = false; 
-    });
-    
-    cardElement.addEventListener('click', () => {
-        video.pause();
-        video.currentTime = 0;
-    });
-    
-    cardElement.addEventListener('contextmenu', () => {
-        video.pause();
-        video.currentTime = 0;
-    });
-}
-
-function sortDeckCards() {
-    currentDeck.cards.sort((a, b) => {
-        const rarityOrder = { 'gold': 1, 'silver': 2, 'bronze': 3 };
-        const rarityA = rarityOrder[a.rarity] || 4;
-        const rarityB = rarityOrder[b.rarity] || 4;
-        if (rarityA !== rarityB) {
-            return rarityA - rarityB;
-        }
-        const typeOrder = { 'unit': 1, 'special': 2, 'artifact': 3, 'tactic': 4 };
-        const typeA = typeOrder[a.type] || 5;
-        const typeB = typeOrder[b.type] || 5;
-        if (typeA !== typeB) {
-            return typeA - typeB;
-        }
-        if (a.type === 'unit' && b.type === 'unit') {
-            return (b.strength || 0) - (a.strength || 0);
-        }
-        return a.name.localeCompare(b.name);
-    });
-}
-
 function addCardToDeck(card) {
     if (currentDeck.cards.length >= 40) {
         showMessage('Максимальный размер колоды - 40 карт');
@@ -1266,294 +1160,29 @@ function removeCardFromDeck(card) {
     }
 }
 
-function updateCollectionCardDisplay(cardId) {
-    const card = displayedCollectionCards.find(c => c.id === cardId);
-    if (!card) return;
-    
-    const collectionCardElement = document.querySelector(`.collection-card[data-card-id="${cardId}"]`);
-    
-    if (card.copy && card.copy > 1) {
-        if (collectionCardElement) {
-            updateCardCopyIndicator(collectionCardElement, card);
-            
-            const availableCopies = getAvailableCopies(card);
-            if (availableCopies <= 0) {
-                removeCardFromCollectionCompletely(cardId);
-            } else {
-                collectionCardElement.style.display = 'block';
-            }
-        }
-    } else {
-        if (collectionCardElement) {
-            collectionCardElement.remove();
-        }
-    }
-}
-
-function removeCardFromCollection(cardId) {
-    const card = displayedCollectionCards.find(c => c.id === cardId);
-    if (!card) return;
-    
-    if (card.copy && card.copy > 1) {
-        const availableCopies = getAvailableCopies(card);
-        if (availableCopies > 0) {
-            updateCollectionCardDisplay(cardId);
-        } else {
-            removeCardFromCollectionCompletely(cardId);
-        }
-    } else {
-        removeCardFromCollectionCompletely(cardId);
-    }
-}
-
-function removeCardFromCollectionCompletely(cardId) {
-    const index = displayedCollectionCards.findIndex(c => c.id === cardId);
-    if (index !== -1) {
-        displayedCollectionCards.splice(index, 1);
-    }
-    
-    const cardElement = document.querySelector(`.collection-card[data-card-id="${cardId}"]`);
-    if (cardElement) {
-        cardElement.remove();
-    }
-}
-
-function addCardToCollection(card) {
-    const existingCard = displayedCollectionCards.find(c => c.id === card.id);
-    if (!existingCard) {
-        displayedCollectionCards.push(card);
-        sortCollectionCards();
-    }
-    
-    const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
-    if (activeFilter) {
-        const filterType = activeFilter.dataset.type;
-        sortCollection(filterType);
-    } else {
-        displayCollectionCards();
-    }
-}
-
-function sortCollectionCards() {
-    displayedCollectionCards.sort((a, b) => {
-        const rarityOrder = { 'gold': 1, 'silver': 2, 'bronze': 3 };
-        const rarityA = rarityOrder[a.rarity] || 4;
-        const rarityB = rarityOrder[b.rarity] || 4;
-        if (rarityA !== rarityB) {
-            return rarityA - rarityB;
-        }
-        const typeOrder = { 'unit': 1, 'special': 2, 'artifact': 3, 'tactic': 4 };
-        const typeA = typeOrder[a.type] || 5;
-        const typeB = typeOrder[b.type] || 5;
-        if (typeA !== typeB) {
-            return typeA - typeB;
-        }
-        if (a.type === 'unit' && b.type === 'unit') {
-            return (b.strength || 0) - (a.strength || 0);
-        }
-        return a.name.localeCompare(b.name);
-    });
-}
-
-function animateCardAddition(card) {
-    const deckCards = document.querySelectorAll('.deck-card');
-    const lastDeckCard = deckCards[deckCards.length - 1];
-    
-    if (lastDeckCard) {
-        lastDeckCard.style.animation = 'cardAddition 0.5s ease';
-        setTimeout(() => {
-            lastDeckCard.style.animation = '';
-        }, 500);
-    }
-    
-    if (card.copy && card.copy > 1) {
-        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
-        if (collectionCard) {
-            const copyIndicator = collectionCard.querySelector('.card__copy-indicator');
-            if (copyIndicator) {
-                copyIndicator.style.animation = 'copyIndicatorPulse 0.5s ease';
-                setTimeout(() => {
-                    copyIndicator.style.animation = '';
-                }, 500);
-            }
-        }
-    }
-    
-    else {
-        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
-        if (collectionCard) {
-            collectionCard.style.animation = 'cardRemoval 0.5s ease';
-            setTimeout(() => {
-                collectionCard.style.animation = '';
-            }, 500);
-        }
-    }
-}
-
-function animateCardRemoval(card) {
-    if (card.copy && card.copy > 1) {
-        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
-        if (collectionCard) {
-            collectionCard.style.animation = 'cardAddition 0.5s ease';
-            setTimeout(() => {
-                collectionCard.style.animation = '';
-            }, 500);
-            
-            const copyIndicator = collectionCard.querySelector('.card__copy-indicator');
-            if (copyIndicator) {
-                copyIndicator.style.animation = 'copyIndicatorPulse 0.5s ease';
-                setTimeout(() => {
-                    copyIndicator.style.animation = '';
-                }, 500);
-            }
-        }
-    }
-    else {
-        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
-        if (collectionCard) {
-            collectionCard.style.animation = 'cardAddition 0.5s ease';
-            setTimeout(() => {
-                collectionCard.style.animation = '';
-            }, 500);
-        }
-    }
-}
-
-function updateDeckStats() {
-    const specialCardsCount = currentDeck.cards.filter(card => 
-        card.type === 'special' || card.type === 'tactic' || card.type === 'artifact'
-    ).length;
-    
-    const stats = {
-        total: currentDeck.cards.length,
-        units: currentDeck.cards.filter(card => card.type === 'unit').length,
-        specials: specialCardsCount,
-        totalStrength: currentDeck.cards.reduce((sum, card) => sum + (card.strength || 0), 0)
-    };
-    
-    currentDeck.stats = stats;
-    
-    document.getElementById('totalCards').textContent = stats.total;
-    document.getElementById('unitCards').textContent = stats.units;
-    document.getElementById('specialCards').textContent = stats.specials;
-    document.getElementById('totalStrength').textContent = stats.totalStrength;
-}
-
-function updateDeckDisplay() {
-    const deckGrid = document.getElementById('deckGrid');
-    
+function clearDeck() {
     if (currentDeck.cards.length === 0) {
-        deckGrid.innerHTML = `
-            <div class="empty-deck-message">
-                <p>Колода пуста</p>
-                <p>Добавьте карты из коллекции</p>
-			    <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
-            </div>
-        `;
-    } else {
-        const activeFilter = document.querySelector('.deck-cards .sort-btn.active');
-        if (activeFilter) {
-            const filterType = activeFilter.dataset.type;
-            sortDeck(filterType);
-        } else {
-            sortDeck('all');
-        }
+        return;
     }
+    currentDeck.cards.forEach(card => {
+        addCardToCollection(card);
+    });
+    currentDeck.cards = [];
+    sortCollectionCards();
+    updateDeckStats();
+    updateDeckDisplay();
+    loadFactionCards(window.selectedFaction);
 }
 
-function setupDeckBuildingEventListeners() {
-    const collectionSortButtons = document.querySelectorAll('.cards-collection .sort-btn');
-    const deckSortButtons = document.querySelectorAll('.deck-cards .sort-btn');
-	
-    collectionSortButtons.forEach(btn => {
-        if (btn.dataset.type === 'all') {
-            btn.classList.add('active');
-        }
+function clearDeckSilent() {
+    currentDeck.cards.forEach(card => {
+        addCardToCollection(card);
     });
-    
-    deckSortButtons.forEach(btn => {
-        if (btn.dataset.type === 'all') {
-            btn.classList.add('active');
-        }
-    });
-    
-    collectionSortButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            audioManager.playSound('button');
-            const type = e.currentTarget.dataset.type;
-            collectionSortButtons.forEach(btn => btn.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            sortCollection(type);
-        });
-        
-        button.addEventListener('mouseenter', () => {
-            audioManager.playSound('touch');
-        });
-    });
-    
-    deckSortButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            audioManager.playSound('button');
-            const type = e.currentTarget.dataset.type;
-            deckSortButtons.forEach(btn => btn.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            sortDeck(type);
-        });
-        
-        button.addEventListener('mouseenter', () => {
-            audioManager.playSound('touch');
-        });
-    });
-    
-    const startGameBtn = document.getElementById('startGameBtn');
-    startGameBtn.addEventListener('click', () => {
-        validateDeckAndStartGame();
-    });
-    
-    startGameBtn.addEventListener('mouseenter', () => {
-        audioManager.playSound('touch');
-    });
-
-    const backToFactionBtn = document.getElementById('backToFactionBtn');
-    backToFactionBtn.addEventListener('click', () => {
-        audioManager.playSound('button');
-        backToFactionSelection();
-    });
-    
-    backToFactionBtn.addEventListener('mouseenter', () => {
-        audioManager.playSound('touch');
-    });
-    
-    const autoBuildBtn = document.getElementById('autoBuildBtn');
-    const saveDeckBtn = document.getElementById('saveDeckBtn');
-    const loadDeckBtn = document.getElementById('loadDeckBtn');
-    const clearDeckBtn = document.getElementById('clearDeckBtn');
-    
-    autoBuildBtn.addEventListener('click', () => {
-        audioManager.playSound('button');
-        autoBuildDeck();
-    });
-    
-    saveDeckBtn.addEventListener('click', () => {
-        audioManager.playSound('button');
-        saveDeckToFile();
-    });
-    
-    loadDeckBtn.addEventListener('click', () => {
-        audioManager.playSound('button');
-        loadDeckFromFile();
-    });
-    
-    clearDeckBtn.addEventListener('click', () => {
-        audioManager.playSound('button');
-        clearDeck();
-    });
-    
-    [autoBuildBtn, saveDeckBtn, loadDeckBtn, clearDeckBtn].forEach(btn => {
-        btn.addEventListener('mouseenter', () => {
-            audioManager.playSound('touch');
-        });
-    });
+    currentDeck.cards = [];
+    sortCollectionCards();
+    updateDeckStats();
+    updateDeckDisplay();
+    displayCollectionCards();
 }
 
 function autoBuildDeck() {
@@ -1660,198 +1289,218 @@ function autoBuildDeck() {
     audioManager.playSound('button');
 }
 
-function clearDeckSilent() {
-    currentDeck.cards.forEach(card => {
-        addCardToCollection(card);
-    });
-    currentDeck.cards = [];
-    sortCollectionCards();
-    updateDeckStats();
-    updateDeckDisplay();
-    displayCollectionCards();
-}
-
-function saveDeckToFile() {
-    if (currentDeck.cards.length === 0) {
-        return;
-    }
-    
-    const deckData = {
-        faction: currentDeck.faction,
-        ability: currentDeck.ability,
-        cards: currentDeck.cards.map(card => card.id),
-        timestamp: new Date().toISOString(),
-        version: '1.0'
-    };
-    
-    const blob = new Blob([JSON.stringify(deckData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gwent_deck_${currentDeck.faction}_${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-function loadDeckFromFile() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const reader = new FileReader();
-        reader.onload = event => {
-            try {
-                const deckData = JSON.parse(event.target.result);
-                
-                if (deckData.faction !== currentDeck.faction) {
-                    showMessage(`Колода предназначена для фракции "${localizeFaction(deckData.faction)}"!`);
-                    return;
-                }
-                
-                if (!deckData.version) {
-                    showMessage('Неверный формат файла колоды!');
-                    return;
-                }
-                
-                clearDeckSilent();
-                
-                currentDeck.ability = deckData.ability || defaultAbilities[currentDeck.faction];
-                
-                const factionCards = window.cardsModule.getFactionCards(currentDeck.faction);
-                const allCards = [
-                    ...factionCards.units,
-                    ...factionCards.specials,
-                    ...factionCards.artifacts,
-                    ...factionCards.tactics
-                ];
-                
-                const cardsToAdd = [];
-                
-                for (const cardId of deckData.cards) {
-                    const card = allCards.find(c => c.id === cardId);
-                    if (card && cardsToAdd.length < 40) {
-                        cardsToAdd.push(card);
-                    }
-                }
-                
-                cardsToAdd.forEach(card => {
-                    currentDeck.cards.push(card);
-                    removeCardFromCollection(card.id);
-                });
-                
-                updateDeckStats();
-                updateDeckDisplay();
-                displayCollectionCards();
-                updateFactionAbilityDisplay(window.selectedFaction);
-                
-                showMessage(`Колода загружена! ${currentDeck.cards.length} карт.`);
-                
-            } catch (error) {
-                showMessage('Неверный формат файла колоды!');
-            }
-        };
-        reader.readAsText(file);
-		setFactionHeadersBackground(currentDeck.faction);
-    };
-    
-    input.click();
-}
-
-function clearDeck() {
-    if (currentDeck.cards.length === 0) {
-        return;
-    }
-    currentDeck.cards.forEach(card => {
-        addCardToCollection(card);
-    });
-    currentDeck.cards = [];
-    sortCollectionCards();
-    updateDeckStats();
-    updateDeckDisplay();
-    loadFactionCards(window.selectedFaction);
-}
-
-function validateDeckAndStartGame() {
-    const totalCards = currentDeck.cards.length;
-    const unitCardsCount = currentDeck.cards.filter(card => card.type === 'unit').length;
+function updateDeckStats() {
     const specialCardsCount = currentDeck.cards.filter(card => 
         card.type === 'special' || card.type === 'tactic' || card.type === 'artifact'
     ).length;
     
-    const errors = [];
+    const stats = {
+        total: currentDeck.cards.length,
+        units: currentDeck.cards.filter(card => card.type === 'unit').length,
+        specials: specialCardsCount,
+        totalStrength: currentDeck.cards.reduce((sum, card) => sum + (card.strength || 0), 0)
+    };
     
-    if (totalCards < 15) {
-        errors.push(`Минимальный размер колоды: 15 карт`);
-    }
+    currentDeck.stats = stats;
     
-    if (totalCards > 25) {
-        errors.push(`Максимальный размер колоды: 25 карт`);
-    }
-    
-    if (unitCardsCount < 10) {
-        errors.push(`Минимальное количество карт отрядов: 10`);
-    }
-    
-    if (specialCardsCount < 3) {
-        errors.push(`Обязательное количество специальных карт: 3`);
-    }
-    
-    if (specialCardsCount > 5) {
-        errors.push(`Максимальное количество специальных карт: 5`);
-    }
-    
-    if (errors.length > 0) {
-        showMessage(errors.join('\n\n'));
-        return;
-    }
-    
-    audioManager.playSound('button');
-    startGame();
+    document.getElementById('totalCards').textContent = stats.total;
+    document.getElementById('unitCards').textContent = stats.units;
+    document.getElementById('specialCards').textContent = stats.specials;
+    document.getElementById('totalStrength').textContent = stats.totalStrength;
 }
 
-function showMessage(text) {
-    const overlay = document.createElement('div');
-    overlay.className = 'message-overlay';
+function updateDeckDisplay() {
+    const deckGrid = document.getElementById('deckGrid');
     
-    const messageBox = document.createElement('div');
-    messageBox.className = 'message-box';
-    
-    const title = document.createElement('h3');
-    title.textContent = 'ВНИМАНИЕ';
-    
-    const messageText = document.createElement('div');
-    messageText.className = 'message-text';
-    messageText.innerHTML = text.replace(/\n\n/g, '<br><br>');
-    
-    messageBox.appendChild(title);
-    messageBox.appendChild(messageText);
-    overlay.appendChild(messageBox);
-    document.body.appendChild(overlay);
-    
-    setTimeout(() => {
-        messageBox.classList.add('active');
-    }, 10);
-    
-    audioManager.playSound('button');
-    audioManager.playSound('warning');
-    
-    setTimeout(() => {
-        if (document.body.contains(overlay)) {
-            messageBox.classList.remove('active');
-            setTimeout(() => {
-                if (document.body.contains(overlay)) {
-                    document.body.removeChild(overlay);
-                }
-            }, 100);
+    if (currentDeck.cards.length === 0) {
+        deckGrid.innerHTML = `
+            <div class="empty-deck-message">
+                <p>Колода пуста</p>
+                <p>Добавьте карты из коллекции</p>
+			    <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
+            </div>
+        `;
+    } else {
+        const activeFilter = document.querySelector('.deck-cards .sort-btn.active');
+        if (activeFilter) {
+            const filterType = activeFilter.dataset.type;
+            sortDeck(filterType);
+        } else {
+            sortDeck('all');
         }
-    }, 3000);
+    }
+}
+
+function getCardCopyCountInDeck(cardId) {
+    return currentDeck.cards.filter(card => card.id === cardId).length;
+}
+
+function getAvailableCopies(card) {
+    if (!card.copy || card.copy <= 1) return 1;
+    const inDeck = getCardCopyCountInDeck(card.id);
+    return Math.max(0, card.copy - inDeck);
+}
+
+function updateCardCopyIndicator(cardElement, card) {
+    const availableCopies = getAvailableCopies(card);
+    const oldIndicator = cardElement.querySelector('.card__copy-indicator');
+    const oldBanner = cardElement.querySelector('.card__copy-banner');
+    
+    if (oldIndicator) {
+        oldIndicator.remove();
+    }
+    if (oldBanner) {
+        oldBanner.remove();
+    }
+    
+    if (card.copy && card.copy > 1 && availableCopies > 1) {
+        const copyBanner = document.createElement('img');
+        copyBanner.className = 'card__copy-banner';
+        copyBanner.src = `faction/${card.faction}/banner_position.png`;
+        copyBanner.alt = 'Копия';
+		
+        const copyIndicator = document.createElement('div');
+        copyIndicator.className = 'card__copy-indicator';
+        copyIndicator.textContent = `×${availableCopies}`;
+        
+        const cardContainer = cardElement.querySelector('.card__container');
+        if (cardContainer) {
+            cardContainer.appendChild(copyBanner);
+            cardContainer.appendChild(copyIndicator);
+        }
+    }
+}
+
+function updateCollectionCardDisplay(cardId) {
+    const card = displayedCollectionCards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    const collectionCardElement = document.querySelector(`.collection-card[data-card-id="${cardId}"]`);
+    
+    if (card.copy && card.copy > 1) {
+        if (collectionCardElement) {
+            updateCardCopyIndicator(collectionCardElement, card);
+            
+            const availableCopies = getAvailableCopies(card);
+            if (availableCopies <= 0) {
+                removeCardFromCollectionCompletely(cardId);
+            } else {
+                collectionCardElement.style.display = 'block';
+            }
+        }
+    } else {
+        if (collectionCardElement) {
+            collectionCardElement.remove();
+        }
+    }
+}
+
+function removeCardFromCollection(cardId) {
+    const card = displayedCollectionCards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    if (card.copy && card.copy > 1) {
+        const availableCopies = getAvailableCopies(card);
+        if (availableCopies > 0) {
+            updateCollectionCardDisplay(cardId);
+        } else {
+            removeCardFromCollectionCompletely(cardId);
+        }
+    } else {
+        removeCardFromCollectionCompletely(cardId);
+    }
+}
+
+function removeCardFromCollectionCompletely(cardId) {
+    const index = displayedCollectionCards.findIndex(c => c.id === cardId);
+    if (index !== -1) {
+        displayedCollectionCards.splice(index, 1);
+    }
+    
+    const cardElement = document.querySelector(`.collection-card[data-card-id="${cardId}"]`);
+    if (cardElement) {
+        cardElement.remove();
+    }
+}
+
+function addCardToCollection(card) {
+    const existingCard = displayedCollectionCards.find(c => c.id === card.id);
+    if (!existingCard) {
+        displayedCollectionCards.push(card);
+        sortCollectionCards();
+    }
+    
+    const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
+    if (activeFilter) {
+        const filterType = activeFilter.dataset.type;
+        sortCollection(filterType);
+    } else {
+        displayCollectionCards();
+    }
+}
+
+function animateCardAddition(card) {
+    const deckCards = document.querySelectorAll('.deck-card');
+    const lastDeckCard = deckCards[deckCards.length - 1];
+    
+    if (lastDeckCard) {
+        lastDeckCard.style.animation = 'cardAddition 0.5s ease';
+        setTimeout(() => {
+            lastDeckCard.style.animation = '';
+        }, 500);
+    }
+    
+    if (card.copy && card.copy > 1) {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            const copyIndicator = collectionCard.querySelector('.card__copy-indicator');
+            if (copyIndicator) {
+                copyIndicator.style.animation = 'copyIndicatorPulse 0.5s ease';
+                setTimeout(() => {
+                    copyIndicator.style.animation = '';
+                }, 500);
+            }
+        }
+    }
+    
+    else {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            collectionCard.style.animation = 'cardRemoval 0.5s ease';
+            setTimeout(() => {
+                collectionCard.style.animation = '';
+            }, 500);
+        }
+    }
+}
+
+function animateCardRemoval(card) {
+    if (card.copy && card.copy > 1) {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            collectionCard.style.animation = 'cardAddition 0.5s ease';
+            setTimeout(() => {
+                collectionCard.style.animation = '';
+            }, 500);
+            
+            const copyIndicator = collectionCard.querySelector('.card__copy-indicator');
+            if (copyIndicator) {
+                copyIndicator.style.animation = 'copyIndicatorPulse 0.5s ease';
+                setTimeout(() => {
+                    copyIndicator.style.animation = '';
+                }, 500);
+            }
+        }
+    }
+    else {
+        const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
+        if (collectionCard) {
+            collectionCard.style.animation = 'cardAddition 0.5s ease';
+            setTimeout(() => {
+                collectionCard.style.animation = '';
+            }, 500);
+        }
+    }
 }
 
 function sortCollection(type) {
@@ -1982,6 +1631,350 @@ function sortDeck(type) {
             deckGrid.appendChild(cardElement);
         });
     }
+}
+
+function saveDeckToFile() {
+    if (currentDeck.cards.length === 0) {
+        return;
+    }
+    
+    const deckData = {
+        faction: currentDeck.faction,
+        ability: currentDeck.ability,
+        cards: currentDeck.cards.map(card => card.id),
+        timestamp: new Date().toISOString(),
+        version: '1.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(deckData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentDeck.faction}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function loadDeckFromFile() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = event => {
+            try {
+                const deckData = JSON.parse(event.target.result);
+                
+                if (deckData.faction !== currentDeck.faction) {
+                    showMessage(`Колода предназначена для фракции "${localizeFaction(deckData.faction)}"!`);
+                    return;
+                }
+                
+                clearDeckSilent();
+                
+                currentDeck.ability = deckData.ability || defaultAbilities[currentDeck.faction];
+                
+                const factionCards = window.cardsModule.getFactionCards(currentDeck.faction);
+                const allCards = [
+                    ...factionCards.units,
+                    ...factionCards.specials,
+                    ...factionCards.artifacts,
+                    ...factionCards.tactics
+                ];
+                
+                const cardsToAdd = [];
+                
+                for (const cardId of deckData.cards) {
+                    const card = allCards.find(c => c.id === cardId);
+                    if (card && cardsToAdd.length < 40) {
+                        cardsToAdd.push(card);
+                    }
+                }
+                
+                cardsToAdd.forEach(card => {
+                    currentDeck.cards.push(card);
+                    removeCardFromCollection(card.id);
+                });
+                
+                updateDeckStats();
+                updateDeckDisplay();
+                displayCollectionCards();
+                updateFactionAbilityDisplay(window.selectedFaction);
+                
+            } catch (error) {
+                showMessage('Неверный формат файла колоды!');
+            }
+        };
+        reader.readAsText(file);
+		setFactionHeadersBackground(currentDeck.faction);
+    };
+    
+    input.click();
+}
+
+function setupFactionAbilityControls(faction) {
+    const factionLogo = document.getElementById('factionLogo');
+    if (factionLogo) {
+        factionLogo.style.cursor = 'pointer';
+        factionLogo.addEventListener('click', () => {
+            showAbilitiesModal(faction);
+            audioManager.playSound('button');
+        });
+        
+        factionLogo.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+    }
+}
+
+function showAbilitiesModal(faction) {
+    const abilities = factionAbilities[faction.id] || [];
+    const currentAbility = currentDeck.ability || defaultAbilities[faction.id];
+    
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'abilities-modal-overlay';
+    modalOverlay.innerHTML = `
+        <div class="abilities-modal">
+            <div class="abilities-modal__title">ВЫБЕРИТЕ СПОСОБНОСТЬ ЛИДЕРА</div>
+            <div class="abilities-list">
+                ${abilities.map(ability => `
+                    <div class="ability-option ${ability.id === currentAbility ? 'selected' : ''}" 
+                         data-ability-id="${ability.id}">
+                        <div class="ability-option__icon">
+                            <img src="${ability.icon}" alt="${ability.name}">
+                        </div>
+                        <div class="ability-option__info">
+                            <div class="ability-option__name">${ability.name}</div>
+                            <div class="ability-option__description">${ability.description}</div>
+                        </div>
+                        ${ability.id === currentAbility ? '<div class="ability-option__check"><img src="deck/activ.png" alt="Выбрано"></div>' : ''}
+                    </div>
+                `).join('')}
+            </div>
+            <button class="abilities-confirm-btn" id="confirmAbilityBtn">ПОДТВЕРДИТЬ ВЫБОР</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modalOverlay);
+    
+    setTimeout(() => {
+        modalOverlay.classList.add('active');
+    }, 10);
+    
+    setupAbilitiesModalEventListeners(modalOverlay, faction, abilities);
+}
+
+function setupAbilitiesModalEventListeners(modalOverlay, faction, abilities) {
+    const abilityOptions = modalOverlay.querySelectorAll('.ability-option');
+    let selectedAbility = currentDeck.ability || defaultAbilities[faction.id];
+    
+    abilityOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            abilityOptions.forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            selectedAbility = option.dataset.abilityId;
+            audioManager.playSound('touch');
+        });
+        
+        option.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+    });
+    
+    const confirmBtn = modalOverlay.querySelector('#confirmAbilityBtn');
+    confirmBtn.addEventListener('click', () => {
+        currentDeck.ability = selectedAbility;
+        updateFactionAbilityDisplay(faction);
+        closeAbilitiesModal(modalOverlay);
+        audioManager.playSound('button');
+    });
+    
+    confirmBtn.addEventListener('mouseenter', () => {
+        audioManager.playSound('touch');
+    });
+    
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeAbilitiesModal(modalOverlay);
+        }
+    });
+    
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            closeAbilitiesModal(modalOverlay);
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
+function updateFactionAbilityDisplay(faction) {
+    const abilityData = factionAbilities[faction.id].find(a => a.id === currentDeck.ability);
+    if (!abilityData) return;
+    
+    const abilitySection = document.querySelector('.faction-ability__content');
+    if (abilitySection) {
+        abilitySection.innerHTML = `
+            <div class="ability-icon">
+                <img src="${abilityData.icon}" alt="${abilityData.name}">
+            </div>
+            <div class="ability-info">
+                <div class="ability-name">${abilityData.name}</div>
+                <div class="ability-description">${abilityData.description}</div>
+            </div>
+        `;
+    }
+}
+
+function closeAbilitiesModal(modalOverlay) {
+    modalOverlay.classList.remove('active');
+    setTimeout(() => {
+        if (modalOverlay.parentNode) {
+            modalOverlay.parentNode.removeChild(modalOverlay);
+        }
+    }, 300);
+    audioManager.playSound('button');
+}
+
+function setupLeaderVideoControls() {
+    const leaderCard = document.querySelector('.leader-card');
+    const video = leaderCard.querySelector('video');
+    const factionLogo = document.getElementById('factionLogo');
+    const cardDisplayMode = window.settingsModule ? window.settingsModule.getCardDisplayMode() : 'animated';
+    
+    if (cardDisplayMode === 'static' && video) {
+        const leaderImage = `faction/${window.selectedFaction.id}/leader.jpg`;
+        const imgElement = document.createElement('img');
+        imgElement.src = leaderImage;
+        imgElement.alt = `Лидер ${window.selectedFaction.name}`;
+        imgElement.className = 'leader-card__media';
+        
+        video.parentNode.replaceChild(imgElement, video);
+    }
+    if (factionLogo) {
+        factionLogo.style.cursor = 'pointer';
+        factionLogo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const faction = window.selectedFaction;
+            if (faction) {
+                showAbilitiesModal(faction);
+                audioManager.playSound('button');
+            }
+        });
+        
+        factionLogo.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+    }
+    leaderCard.addEventListener('click', () => {
+        const faction = window.selectedFaction;
+        if (faction) {
+            const leaderCardData = {
+                id: `${faction.id}_leader`,
+                name: faction.leaderName.split(' ')[0],
+                namefull: faction.leaderName, 
+                type: 'leader',
+                faction: faction.id,
+                image: `leader.mp4`,
+                description: `${faction.description}`,
+                descriptionfull: `${faction.descriptionfull}`,
+                ability: `${faction.id}_ability`,
+                rarity: 'gold',
+                tags: ['leader'],
+                border: 'deck/bord_gold.png',
+                banner: `faction/${faction.id}/banner_gold.png`
+            };
+            showCardModal(leaderCardData);
+        }
+    });
+    if (video) {
+        leaderCard.addEventListener('mouseenter', () => {
+            video.play().catch(e => {});
+        });
+    }
+}
+
+function validateDeckAndStartGame() {
+    const totalCards = currentDeck.cards.length;
+    const unitCardsCount = currentDeck.cards.filter(card => card.type === 'unit').length;
+    const specialCardsCount = currentDeck.cards.filter(card => 
+        card.type === 'special' || card.type === 'tactic' || card.type === 'artifact'
+    ).length;
+    
+    const errors = [];
+    
+    if (totalCards < 15) {
+        errors.push(`Минимальный размер колоды: 15 карт`);
+    }
+    
+    if (totalCards > 25) {
+        errors.push(`Максимальный размер колоды: 25 карт`);
+    }
+    
+    if (unitCardsCount < 10) {
+        errors.push(`Минимальное количество карт отрядов: 10`);
+    }
+    
+    if (specialCardsCount < 3) {
+        errors.push(`Обязательное количество специальных карт: 3`);
+    }
+    
+    if (specialCardsCount > 5) {
+        errors.push(`Максимальное количество специальных карт: 5`);
+    }
+    
+    if (errors.length > 0) {
+        showMessage(errors.join('\n\n'));
+        return;
+    }
+    
+    audioManager.playSound('button');
+    startGame();
+}
+
+function showMessage(text) {
+    const overlay = document.createElement('div');
+    overlay.className = 'message-overlay';
+    
+    const messageBox = document.createElement('div');
+    messageBox.className = 'message-box';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'ВНИМАНИЕ';
+    
+    const messageText = document.createElement('div');
+    messageText.className = 'message-text';
+    messageText.innerHTML = text.replace(/\n\n/g, '<br><br>');
+    
+    messageBox.appendChild(title);
+    messageBox.appendChild(messageText);
+    overlay.appendChild(messageBox);
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        messageBox.classList.add('active');
+    }, 10);
+    
+    audioManager.playSound('button');
+    audioManager.playSound('warning');
+    
+    setTimeout(() => {
+        if (document.body.contains(overlay)) {
+            messageBox.classList.remove('active');
+            setTimeout(() => {
+                if (document.body.contains(overlay)) {
+                    document.body.removeChild(overlay);
+                }
+            }, 100);
+        }
+    }, 3000);
 }
 
 function startGame() {
