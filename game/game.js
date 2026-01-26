@@ -1338,24 +1338,24 @@ const gameModule = {
         }, 1000);
     },
 
-    handleTurnEnd: function() {
-        this.stopTurnTimer();
-        
-        const currentPlayer = this.gameState.currentPlayer;
-        this.gameState.cardsPlayedThisTurn = 0;
-        this.gameState.selectingRow = false;
-        this.gameState.selectedCard = null;
-        
-        if (this.gameState[currentPlayer].passed) {
-            this.checkRoundEnd();
-        } else {
-            if (currentPlayer === 'player') {
-                this.startOpponentTurn();
-            } else {
-                this.startPlayerTurn();
-            }
-        }
-    },
+	handleTurnEnd: function() {
+		this.stopTurnTimer();
+		
+		const currentPlayer = this.gameState.currentPlayer;
+		this.gameState.cardsPlayedThisTurn = 0;
+		this.gameState.selectingRow = false;
+		this.gameState.selectedCard = null;
+		
+		if (this.gameState[currentPlayer].passed) {
+			this.checkRoundEnd();
+		} else {
+			if (currentPlayer === 'player') {
+				this.startOpponentTurn();
+			} else {
+				this.startPlayerTurn();
+			}
+		}
+	},
 
 	createCrownIndicators: function() {
         const playerLeaderArea = document.querySelector('.player-leader-area');
@@ -2091,25 +2091,29 @@ const gameModule = {
         }
     },
 
-    completeCardPlay: function() {
-        this.gameState.selectedCard = null;
-        this.gameState.selectingRow = false;
-        this.gameState.cardsPlayedThisTurn++;
-        this.updateTotalScoreDisplays();
-        this.resetTimeoutCounter();
-        
-        if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
-            setTimeout(() => {
-                this.handleTurnEnd();
-            }, 800);
-        } else {
-            this.updateControlButtons();
-        }
-        
-        if (window.playerModule && window.playerModule.cancelRowSelection) {
-            window.playerModule.cancelRowSelection();
-        }
-    },
+	completeCardPlay: function() {
+		this.gameState.selectedCard = null;
+		this.gameState.selectingRow = false;
+		this.gameState.cardsPlayedThisTurn++;
+		this.updateTotalScoreDisplays();
+		this.resetTimeoutCounter();
+		
+		if (this.gameState.cardsPlayedThisTurn >= this.gameState.maxCardsPerTurn) {
+			setTimeout(() => {
+				const otherPlayer = this.gameState.currentPlayer === 'player' ? 'opponent' : 'player';
+				if (this.gameState[otherPlayer].passed) {
+					this.gameState[this.gameState.currentPlayer].passed = true;
+				}
+				this.handleTurnEnd();
+			}, 800);
+		} else {
+			this.updateControlButtons();
+		}
+		
+		if (window.playerModule && window.playerModule.cancelRowSelection) {
+			window.playerModule.cancelRowSelection();
+		}
+	},
 
     endTurn: function() {
         this.gameState.cardsPlayedThisTurn = 0;
@@ -2185,21 +2189,23 @@ const gameModule = {
 		if (this.gameState.player.passed && this.gameState.opponent.passed) {
 			this.gameState.gamePhase = 'roundEnd';
 			setTimeout(() => this.endRound(), 1000);
+			return;
+		}
+		
+		let nextPlayer;
+		
+		if (this.gameState.player.passed && !this.gameState.opponent.passed) {
+			nextPlayer = 'opponent';
+		} else if (!this.gameState.player.passed && this.gameState.opponent.passed) {
+			nextPlayer = 'player';
 		} else {
-			let nextPlayer;
-			if (this.gameState.player.passed && !this.gameState.opponent.passed) {
-				nextPlayer = 'opponent';
-			} else if (!this.gameState.player.passed && this.gameState.opponent.passed) {
-				nextPlayer = 'player';
-			} else {
-				nextPlayer = this.gameState.currentPlayer === 'player' ? 'opponent' : 'player';
-			}
-			
-			if (nextPlayer === 'player') {
-				this.startPlayerTurn();
-			} else {
-				this.startOpponentTurn();
-			}
+			nextPlayer = this.gameState.currentPlayer === 'player' ? 'opponent' : 'player';
+		}
+		
+		if (nextPlayer === 'player') {
+			this.startPlayerTurn();
+		} else {
+			this.startOpponentTurn();
 		}
 	},
 
@@ -3661,34 +3667,30 @@ const gameModule = {
         opponentEffects.forEach(effect => effect.remove());
     },
 
-    updateCardStrengthDisplay: function(card, row, player) {
+	updateCardStrengthDisplay: function(card, row, player) {
 		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
 		if (!rowElement) return;
 		
-		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
-		if (cardElement) {
+		const cardElements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+		
+		cardElements.forEach(cardElement => {
 			const strengthElement = cardElement.querySelector('.board-card-strength');
 			if (strengthElement) {
-				// Определяем какое значение силы показывать
 				let displayValue;
 				let isDamaged = false;
 				
-				// Если есть displayStrength (урон)
 				if (card._displayStrength !== undefined) {
 					displayValue = card._displayStrength;
-					// Проверяем, была ли карта повреждена
 					if (card.originalStrength !== undefined && card._displayStrength < card.originalStrength) {
 						isDamaged = true;
 					}
 				}
-				// Иначе оригинальную силу
 				else {
 					displayValue = card.strength || 0;
 				}
 				
 				strengthElement.textContent = displayValue;
 				
-				// Визуальное выделение для поврежденных карт
 				if (isDamaged) {
 					cardElement.dataset.strengthReduced = 'true';
 					strengthElement.style.color = '#ff4444';
@@ -3699,7 +3701,7 @@ const gameModule = {
 					strengthElement.style.animation = 'none';
 				}
 			}
-		}
+		});
 	},
 
     updateWeatherCounter: function() {
