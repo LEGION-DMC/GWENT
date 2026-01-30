@@ -4,7 +4,11 @@ const playerModule = {
     init: function(gameState) {
         this.gameState = gameState;
     },
-    
+
+	isHeroCard: function(card) {
+		return card.tags && (card.tags.includes('hero') || card.tags.includes('герой'));
+	},
+ 
     handleCardSelection: function(card, cardElement) {
     if (this.gameState.mulligan.phase === 'player') {
         return;
@@ -97,6 +101,10 @@ const playerModule = {
 			const rowCards = this.gameState.opponent.rows[row].cards;
 			
 			rowCards.forEach((unitCard, index) => {
+				if (unitCard.tags && (unitCard.tags.includes('hero') || unitCard.tags.includes('герой'))) {
+					return;
+				}
+				
 				if (unitCard.type === 'unit' && unitCard.strength > 0) {
 					const cardElement = this.getCardElementOnBoard(unitCard, row, 'opponent');
 					if (cardElement) {
@@ -123,11 +131,13 @@ const playerModule = {
 		rows.forEach(row => {
 			const rowElement = document.getElementById(`opponent${this.capitalizeFirst(row)}Row`);
 			if (rowElement) {
-				const hasUnits = this.gameState.opponent.rows[row].cards.some(card => 
-					card.type === 'unit' && card.strength > 0
+				const hasNonHeroUnits = this.gameState.opponent.rows[row].cards.some(card => 
+					card.type === 'unit' && 
+					card.strength > 0 && 
+					!(card.tags && (card.tags.includes('hero') || card.tags.includes('герой')))
 				);
 				
-				if (hasUnits) {
+				if (hasNonHeroUnits) {
 					rowElement.classList.add('row-damage-target');
 					rowElement.dataset.damageValue = damageValue;
 					this.setupRowDamageSelectionHandler(rowElement, damageCard, row);
@@ -268,6 +278,10 @@ const playerModule = {
 		let destroyedCards = [];
 		
 		rowState.cards.forEach(card => {
+			if (this.isHeroCard(card)) {
+				return;
+			}
+			
 			if (card.type === 'unit') {
 				const currentDisplayStrength = card._displayStrength !== undefined ? 
 					card._displayStrength : card.strength;
@@ -420,7 +434,6 @@ const playerModule = {
 	highlightEnemyArtifacts: function() {
 		const rows = ['close', 'ranged', 'siege'];
 		
-		// Подсвечиваем тактические карты
 		rows.forEach(row => {
 			const tacticCard = this.gameState.opponent.rows[row].tactic;
 			if (tacticCard) {
@@ -432,7 +445,6 @@ const playerModule = {
 			}
 		});
 		
-		// Подсвечиваем артефакты в рядах
 		rows.forEach(row => {
 			const rowCards = this.gameState.opponent.rows[row].cards;
 			
@@ -447,10 +459,8 @@ const playerModule = {
 			});
 		});
 		
-		// Если нет артефактов для уничтожения
 		const hasArtifacts = document.querySelectorAll('.artifact-target').length > 0;
 		if (!hasArtifacts) {
-			this.showMessage('У противника нет артефактов для уничтожения!');
 			this.cancelCardSelection();
 		}
 	},
@@ -635,6 +645,10 @@ const playerModule = {
 		rows.forEach(row => {
 			const rowCards = this.gameState.opponent.rows[row].cards;
 			rowCards.forEach(card => {
+				if (this.isHeroCard(card)) {
+					return;
+				}
+				
 				if (card.type === 'unit') {
 					const strength = card.strength || 0;
 					if (strength > maxStrength) {
@@ -749,6 +763,10 @@ const playerModule = {
 			const rowCards = this.gameState.player.rows[row].cards;
 			
 			rowCards.forEach((unitCard, index) => {
+				if (unitCard.tags && (unitCard.tags.includes('hero') || unitCard.tags.includes('герой'))) {
+					return;
+				}
+				
 				if (unitCard.type === 'unit') {
 					const cardKey = unitCard.uniqueId || `${unitCard.id}_${row}_${index}`;
 					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player', cardKey);

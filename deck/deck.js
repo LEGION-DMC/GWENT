@@ -22,6 +22,7 @@ const localization = {
     },
     tags: {
         leader: 'Лидер',
+        hero: 'Герой',
         wild_hunt: 'Дикая Охота',
         emperor: 'Император',
         king: 'Король',
@@ -251,6 +252,7 @@ let currentDeck = {
         total: 0,
         units: 0,
         specials: 0,
+        heroes: 0,
         totalStrength: 0
     }
 };
@@ -263,6 +265,8 @@ let availableCards = {
 };
 
 let displayedCollectionCards = [];
+let lastCollectionFilter = 'all';
+let lastDeckFilter = 'all';
 
 function localizeFaction(factionId) {
     return localization.factions[factionId] || factionId;
@@ -447,6 +451,13 @@ function createDeckBuildingHTML() {
                             <span class="stat-value" id="specialCards">0</span>
                         </div>
                     </div>
+					<div class="stat-group">
+						<span class="stat-label">Карт героев</span>
+						<div class="stat-item">
+							<img src="deck/stats_hero.png" alt="Герои">
+							<span class="stat-value" id="heroCards">0</span>
+						</div>
+					</div>
                     <div class="stat-group">
                         <span class="stat-label">Общая сила колоды</span>
                         <div class="stat-item">
@@ -1164,14 +1175,41 @@ function clearDeck() {
     if (currentDeck.cards.length === 0) {
         return;
     }
-    currentDeck.cards.forEach(card => {
-        addCardToCollection(card);
+    
+    const cardsToClear = [...currentDeck.cards];
+    
+    const deckCards = document.querySelectorAll('.deck-card');
+    deckCards.forEach((cardElement, index) => {
+        cardElement.style.animation = `cardRemoval 0.2s ease ${index * 0.02}s both`;
     });
-    currentDeck.cards = [];
-    sortCollectionCards();
-    updateDeckStats();
-    updateDeckDisplay();
-    loadFactionCards(window.selectedFaction);
+    
+    setTimeout(() => {
+        currentDeck.cards.forEach(card => {
+            addCardToCollection(card);
+        });
+        currentDeck.cards = [];
+        sortCollectionCards();
+        updateDeckStats();
+        updateDeckDisplay();
+        
+        loadFactionCards(window.selectedFaction);
+        
+        setTimeout(() => {
+            const collectionGrid = document.getElementById('collectionGrid');
+            if (collectionGrid) {
+                const collectionCards = collectionGrid.querySelectorAll('.collection-card');
+                collectionCards.forEach((cardElement, index) => {
+                    const cardId = cardElement.dataset.cardId;
+                    const wasInDeck = cardsToClear.some(card => card.id === cardId);
+                    
+                    if (wasInDeck) {
+                        cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
+                    }
+                });
+            }
+        }, 10);
+        
+    }, deckCards.length * 10);
 }
 
 function clearDeckSilent() {
@@ -1189,6 +1227,11 @@ function autoBuildDeck() {
     const faction = window.selectedFaction;
     if (!faction) return;
     
+    audioManager.playSound('button');
+    
+    const collectionGrid = document.getElementById('collectionGrid');
+    if (!collectionGrid) return;
+    
     clearDeckSilent();
     
     const factionCards = window.cardsModule.getFactionCards(faction.id);
@@ -1199,94 +1242,160 @@ function autoBuildDeck() {
         ...factionCards.tactics
     ];
     
-    const uniqueCards = allCards.filter((card, index, self) => 
-        index === self.findIndex(c => c.id === card.id)
-    );
+    if (allCards.length === 0) {
+        showMessage('Нет доступных карт для этой фракции');
+        return;
+    }
     
-    const sortedCards = uniqueCards.sort((a, b) => {
-        if (a.rarity === 'gold' && b.rarity !== 'gold') return -1;
-        if (a.rarity !== 'gold' && b.rarity === 'gold') return 1;
-        
-        if (a.type === 'unit' && b.type === 'unit') {
-            return (b.strength || 0) - (a.strength || 0);
-        }
-        
-        if (a.type === 'unit' && b.type !== 'unit') return -1;
-        if (a.type !== 'unit' && b.type === 'unit') return 1;
-        
-        const typeOrder = { 'special': 1, 'tactic': 2, 'artifact': 3 };
-        const typeA = typeOrder[a.type] || 4;
-        const typeB = typeOrder[b.type] || 4;
-        return typeA - typeB;
+    const MIN_TOTAL_CARDS = 15;
+    const MAX_TOTAL_CARDS = 25;
+    const MIN_UNIT_CARDS = 10;
+    const MIN_SPECIAL_CARDS = 3;
+    const MAX_SPECIAL_CARDS = 5;
+    
+    const unitCards = allCards.filter(card => card.type === 'unit');
+    const specialCards = allCards.filter(card => card.type === 'special');
+    const artifactCards = allCards.filter(card => card.type === 'artifact');
+    const tacticCards = allCards.filter(card => card.type === 'tactic');
+    
+    const allSpecialCards = [...specialCards, ...artifactCards, ...tacticCards];
+    
+    if (unitCards.length < MIN_UNIT_CARDS) {
+        showMessage(`Недостаточно карт отрядов для фракции ${faction.name}. Требуется минимум ${MIN_UNIT_CARDS}, доступно: ${unitCards.length}`);
+        return;
+    }
+    
+    if (allSpecialCards.length < MIN_SPECIAL_CARDS) {
+        showMessage(`Недостаточно специальных карт для фракции ${faction.name}. Требуется минимум ${MIN_SPECIAL_CARDS}, доступно: ${allSpecialCards.length}`);
+        return;
+    }
+    
+    const collectionCards = collectionGrid.querySelectorAll('.collection-card');
+    collectionCards.forEach((cardElement, index) => {
+        cardElement.style.animation = `cardRemoval 0.2s ease ${index * 0.02}s both`;
     });
     
-    let unitsCount = 0;
-    let specialsCount = 0;
-    const cardsToAdd = [];
-    const usedCardIds = new Set();
-    
-    const targetTotalCards = 25;
-    const targetUnitCards = 22;
-    const targetSpecialCards = 5;
-    
-    for (const card of sortedCards) {
-        if (cardsToAdd.length >= targetTotalCards) break;
+    setTimeout(() => {
+        displayedCollectionCards = [];
+        collectionGrid.innerHTML = '';
         
-        if (card.rarity === 'gold') {
-            if (card.type === 'unit') {
-                if (unitsCount >= targetUnitCards) continue;
-                unitsCount++;
-            } else {
-                if (specialsCount >= targetSpecialCards) continue;
-                specialsCount++;
+        function selectRandomCards(cardPool, count) {
+            const selected = [];
+            const availableCards = [...cardPool];
+            const usedCardIds = new Set();
+            
+            while (selected.length < count && availableCards.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableCards.length);
+                const card = availableCards[randomIndex];
+                
+                if (card.copy && card.copy > 1) {
+                    const copiesAlreadySelected = selected.filter(c => c.id === card.id).length;
+                    if (copiesAlreadySelected < card.copy) {
+                        selected.push(card);
+                        if (copiesAlreadySelected + 1 >= card.copy) {
+                            availableCards.splice(randomIndex, 1);
+                        }
+                    } else {
+                        availableCards.splice(randomIndex, 1);
+                    }
+                } else {
+                    if (!usedCardIds.has(card.id)) {
+                        selected.push(card);
+                        usedCardIds.add(card.id);
+                        availableCards.splice(randomIndex, 1);
+                    } else {
+                        availableCards.splice(randomIndex, 1);
+                    }
+                }
             }
             
-            if (card.copy && card.copy > 1) {
-                const maxCopies = Math.min(card.copy, targetTotalCards - cardsToAdd.length);
-                for (let i = 0; i < maxCopies; i++) {
-                    cardsToAdd.push(card);
-                    usedCardIds.add(card.id);
+            return selected;
+        }
+        
+        const specialCount = Math.min(
+            MAX_SPECIAL_CARDS,
+            Math.max(MIN_SPECIAL_CARDS, Math.floor(Math.random() * 3) + MIN_SPECIAL_CARDS)
+        );
+        const selectedSpecialCards = selectRandomCards(allSpecialCards, specialCount);
+        
+        const remainingSlots = MAX_TOTAL_CARDS - specialCount;
+        const minUnitCount = Math.max(MIN_UNIT_CARDS, MIN_TOTAL_CARDS - specialCount);
+        const maxUnitCount = Math.min(22, remainingSlots); 
+        const unitCount = Math.min(
+            maxUnitCount,
+            Math.max(minUnitCount, Math.floor(Math.random() * (maxUnitCount - minUnitCount + 1)) + minUnitCount)
+        );
+        const selectedUnitCards = selectRandomCards(unitCards, unitCount);
+        
+        const allSelectedCards = [...selectedUnitCards, ...selectedSpecialCards];
+        
+        if (allSelectedCards.length < MIN_TOTAL_CARDS) {
+            const neededCards = MIN_TOTAL_CARDS - allSelectedCards.length;
+            const additionalUnits = selectRandomCards(
+                unitCards.filter(card => !allSelectedCards.some(selected => selected.id === card.id)),
+                neededCards
+            );
+            allSelectedCards.push(...additionalUnits);
+        }
+        
+        const finalSelectedCards = allSelectedCards.slice(0, MAX_TOTAL_CARDS);
+        
+        finalSelectedCards.forEach(card => {
+            currentDeck.cards.push(card);
+        });
+		
+		sortDeckCards();
+        
+        if (window.cardsModule && window.cardsModule.getFactionCards) {
+            availableCards = window.cardsModule.getFactionCards(faction.id);
+            displayedCollectionCards = [
+                ...availableCards.units,
+                ...availableCards.specials,
+                ...availableCards.artifacts,
+                ...availableCards.tactics 
+            ];
+            
+            displayedCollectionCards = displayedCollectionCards.filter(card => {
+                if (card.copy && card.copy > 1) {
+                    const copiesInDeck = finalSelectedCards.filter(c => c.id === card.id).length;
+                    return copiesInDeck < card.copy;
+                } else {
+                    return !finalSelectedCards.some(c => c.id === card.id);
                 }
-            } else {
-                cardsToAdd.push(card);
-                usedCardIds.add(card.id);
-            }
-        }
-    }
-    
-    for (const card of sortedCards) {
-        if (cardsToAdd.length >= targetTotalCards) break;
-        if (usedCardIds.has(card.id)) continue;
-        
-        if (card.type === 'unit') {
-            if (unitsCount >= targetUnitCards) continue;
-            unitsCount++;
-        } else {
-            if (specialsCount >= targetSpecialCards) continue;
-            specialsCount++;
+            });
+            
+            sortCollectionCards();
         }
         
-        if (card.copy && card.copy > 1) {
-            const maxCopies = Math.min(card.copy, targetTotalCards - cardsToAdd.length);
-            for (let i = 0; i < maxCopies; i++) {
-                cardsToAdd.push(card);
-                usedCardIds.add(card.id);
+        updateDeckStats();
+        updateDeckDisplay();
+        
+        setTimeout(() => {
+            const deckGrid = document.getElementById('deckGrid');
+            if (deckGrid) {
+                const deckCards = deckGrid.querySelectorAll('.deck-card');
+                deckCards.forEach((cardElement, index) => {
+                    cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
+                });
             }
-        } else {
-            cardsToAdd.push(card);
-            usedCardIds.add(card.id);
-        }
-    }
-    
-    cardsToAdd.forEach(card => {
-        currentDeck.cards.push(card);
-    });
-    
-    sortDeckCards();
-    updateDeckStats();
-    updateDeckDisplay();
-    loadFactionCards(faction);
-    audioManager.playSound('button');
+        }, 10);
+        
+        setTimeout(() => {
+            const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
+            if (activeFilter) {
+                const filterType = activeFilter.dataset.type;
+                sortCollection(filterType);
+                
+                setTimeout(() => {
+                    const newCollectionCards = collectionGrid.querySelectorAll('.collection-card');
+                    newCollectionCards.forEach((cardElement, index) => {
+                        cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
+                    });
+                }, 10);
+            }
+        }, 10);
+        
+    }, collectionCards.length * 10);
 }
 
 function updateDeckStats() {
@@ -1294,10 +1403,15 @@ function updateDeckStats() {
         card.type === 'special' || card.type === 'tactic' || card.type === 'artifact'
     ).length;
     
+	const heroesCount = currentDeck.cards.filter(card => 
+        card.tags && (card.tags.includes('герой') || card.tags.includes('hero'))
+    ).length;
+	
     const stats = {
         total: currentDeck.cards.length,
         units: currentDeck.cards.filter(card => card.type === 'unit').length,
         specials: specialCardsCount,
+        heroes: heroesCount,
         totalStrength: currentDeck.cards.reduce((sum, card) => sum + (card.strength || 0), 0)
     };
     
@@ -1307,6 +1421,11 @@ function updateDeckStats() {
     document.getElementById('unitCards').textContent = stats.units;
     document.getElementById('specialCards').textContent = stats.specials;
     document.getElementById('totalStrength').textContent = stats.totalStrength;
+	
+	const heroCardsElement = document.getElementById('heroCards');
+    if (heroCardsElement) {
+        heroCardsElement.textContent = stats.heroes;
+    }
 }
 
 function updateDeckDisplay() {
@@ -1505,6 +1624,10 @@ function animateCardRemoval(card) {
 
 function sortCollection(type) {
     const collectionGrid = document.getElementById('collectionGrid');
+	
+	const isFilterChanged = lastCollectionFilter !== type;
+    lastCollectionFilter = type;
+	
     let sortedCards = [];
     
     switch (type) {
@@ -1544,9 +1667,14 @@ function sortCollection(type) {
             </div>
         `;
     } else {
-        filteredCards.forEach(card => {
+        filteredCards.forEach((card, index) => {
             const cardElement = createCardElement(card, 'collection');
             cardElement.classList.add('collection-card');
+            
+            if (isFilterChanged) {
+                cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
+            }
+            
             collectionGrid.appendChild(cardElement);
         });
     }
@@ -1584,6 +1712,9 @@ function sortDeck(type) {
         return;
     }
     
+	const isFilterChanged = lastDeckFilter !== type;
+    lastDeckFilter = type;
+	
     let sortedCards = [];
     
     switch (type) {
@@ -1626,8 +1757,13 @@ function sortDeck(type) {
             cardCounts[card.id]++;
         });
         
-        uniqueCards.forEach(card => {
+        uniqueCards.forEach((card, index) => {
             const cardElement = createDeckCardElement(card);
+            
+            if (isFilterChanged) {
+                cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
+            }
+            
             deckGrid.appendChild(cardElement);
         });
     }

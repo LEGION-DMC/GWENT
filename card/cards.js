@@ -15,7 +15,7 @@ const cardsData = {
                 position: 'any-row',
                 positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
-                tags: ['witcher'],
+                tags: ['witcher', 'hero'],
                 border: 'deck/bord_gold.png',
                 banner: 'faction/neutral/banner_gold.png'
             },
@@ -51,7 +51,7 @@ const cardsData = {
                 position: 'ranged-row',
                 positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
-                tags: ['witcher'],
+                tags: ['witcher', 'hero'],
                 border: 'deck/bord_gold.png',
                 banner: 'faction/neutral/banner_gold.png'
             },
@@ -69,7 +69,7 @@ const cardsData = {
                 position: 'siege-row',
                 positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
-                tags: ['mage'],
+                tags: ['mage', 'hero'],
                 border: 'deck/bord_gold.png',
                 banner: 'faction/neutral/banner_gold.png'
             },
@@ -87,7 +87,7 @@ const cardsData = {
                 position: 'ranged-row',
                 positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
-                tags: ['mage'],
+                tags: ['mage', 'hero'],
                 border: 'deck/bord_gold.png',
                 banner: 'faction/neutral/banner_gold.png'
             },
@@ -939,7 +939,7 @@ const cardsData = {
             },
 			{
                 id: 'scoiatael_unit_6',
-                name: 'Эльфская разведчица',
+                name: 'Разведчица',
 				namefull: 'Эльфская разведчица',
                 strength: 2,
                 type: 'unit',
@@ -951,7 +951,7 @@ const cardsData = {
 				copy: 3,
                 position: 'close-row',
                 positionBanner: 'faction/scoiatael/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['soldier'],
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/scoiatael/banner_bronze.png'

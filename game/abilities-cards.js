@@ -364,8 +364,7 @@ const skillSystem = {
 		
 		if (enemyArtifacts.length === 0) {
 			return { 
-				success: false, 
-				message: 'У противника нет артефактов для уничтожения',
+				success: false,
 				requiresSelection: true,
 				selectionType: 'artifact_on_board'
 			};
@@ -523,6 +522,18 @@ const skillSystem = {
 	},
 
 	findStrongestEnemyCards: function(context) {
+		const strongestCards = this.findStrongestEnemyCards(context);
+		
+		const nonHeroCards = strongestCards.filter(cardData => 
+			!(cardData.card.tags && (cardData.card.tags.includes('hero') || cardData.card.tags.includes('герой')))
+		);
+		
+		if (nonHeroCards.length === 0) {
+			return { success: false, message: 'Нет подходящих целей у противника (герои не могут быть уничтожены)' };
+		}
+		
+		const targetCard = nonHeroCards[0];
+		
 		if (!context.gameBoard || !context.gameState) return [];
 		
 		const enemyCards = [];
@@ -690,25 +701,28 @@ const skillSystem = {
         };
     },
 
-    applyDamageEffect: function(effect, context) {
-        const targets = this.findTargets(effect, context);
-        
-        if (targets.length === 0) {
-            return { success: false, message: 'Нет подходящих целей' };
-        }
+	applyDamageEffect: function(effect, context) {
+		const targets = this.findTargets(effect, context);
+		const nonHeroTargets = targets.filter(card => 
+			!(card.tags && (card.tags.includes('hero') || card.tags.includes('герой')))
+		);
+		
+		if (nonHeroTargets.length === 0) {
+			return { success: false, message: 'Нет подходящих целей (герои не могут быть повреждены)' };
+		}
 
-        targets.forEach(target => {
-            const damageValue = effect.value || 1;
-            this.damageCard(target, damageValue);
-            this.createVisualEffect(target, 'damage', damageValue);
-        });
+		nonHeroTargets.forEach(target => {
+			const damageValue = effect.value || 1;
+			this.damageCard(target, damageValue);
+			this.createVisualEffect(target, 'damage', damageValue);
+		});
 
-        return { 
-            success: true, 
-            message: `Нанесен урон ${targets.length} целям`,
-            targets: targets.length
-        };
-    },
+		return { 
+			success: true, 
+			message: `Нанесен урон ${nonHeroTargets.length} целям`,
+			targets: nonHeroTargets.length
+		};
+	},
 
     applyConditionalDamageEffect: function(effect, context) {
         const target = this.findSingleTarget(effect, context);
@@ -809,33 +823,39 @@ const skillSystem = {
         };
     },
 
-    findTargets: function(effect, context) {
-        const { target, condition, row, count } = effect;
-        let targets = [];
+	findTargets: function(effect, context) {
+		const { target, condition, row, count } = effect;
+		let targets = [];
 
-        if (!context.gameBoard) return targets;
+		if (!context.gameBoard) return targets;
 
-        switch (target) {
-            case 'row':
-                targets = context.gameBoard.getCardsInRow(row, condition);
-                break;
-            case 'random':
-                targets = context.gameBoard.getRandomCards(condition, count || 1);
-                break;
-            case 'strongest':
-                targets = context.gameBoard.getStrongestCards(condition);
-                break;
-            case 'unit':
-                targets = context.gameBoard.getCardsByCondition(card => 
-                    card.type === 'unit' && this.checkCardCondition(card, condition)
-                );
-                break;
-            default:
-                targets = context.gameBoard.getAllCards(condition);
-        }
+		switch (target) {
+			case 'row':
+				targets = context.gameBoard.getCardsInRow(row, condition);
+				break;
+			case 'random':
+				targets = context.gameBoard.getRandomCards(condition, count || 1);
+				break;
+			case 'strongest':
+				targets = context.gameBoard.getStrongestCards(condition);
+				break;
+			case 'unit':
+				targets = context.gameBoard.getCardsByCondition(card => 
+					card.type === 'unit' && 
+					this.checkCardCondition(card, condition) &&
+					!(card.tags && (card.tags.includes('hero') || card.tags.includes('герой')))
+				);
+				break;
+			default:
+				targets = context.gameBoard.getAllCards(condition);
+		}
 
-        return targets.slice(0, count || targets.length);
-    },
+		targets = targets.filter(card => 
+			!(card.tags && (card.tags.includes('hero') || card.tags.includes('герой')))
+		);
+
+		return targets.slice(0, count || targets.length);
+	},
 
     findSingleTarget: function(effect, context) {
         const targets = this.findTargets(effect, context);

@@ -8,7 +8,11 @@ const aiModule = {
         this.usedCardIds.clear();
 		this.isMakingMove = false;
     },
-    
+ 
+	isHeroCard: function(card) {
+		return card.tags && (card.tags.includes('hero') || card.tags.includes('герой'));
+	},
+ 
 	reset: function() {
 		this.usedCardIds.clear();
 		this.gameState = null;
@@ -417,35 +421,31 @@ const aiModule = {
 			const rowCards = this.gameState.player.rows[row].cards;
 			
 			rowCards.forEach(card => {
+				if (this.isHeroCard(card)) {
+					return;
+				}
+				
 				if (card.type === 'unit') {
-					// Используем displayStrength если есть, иначе оригинальную
 					const currentStrength = card._displayStrength !== undefined ? 
 						card._displayStrength : (card.strength || 0);
 					
 					if (currentStrength > 0) {
 						let score = 0;
 						
-						// Оценка цели
 						score += currentStrength * 2;
 						
-						// Бонус за возможность уничтожения
 						if (currentStrength <= damageValue) {
 							score += 20;
 							
-							// Дополнительный бонус за сильные карты
 							if (currentStrength >= 8) {
 								score += 15;
 							}
 						}
-					
-						// Бонус за редкие карты
 						if (card.rarity === 'gold') {
 							score += 25;
 						} else if (card.rarity === 'silver') {
 							score += 10;
 						}
-						
-						// Бонус за карты с тегами (особые способности)
 						if (card.tags && card.tags.length > 0) {
 							score += card.tags.length * 5;
 						}
@@ -469,27 +469,28 @@ const aiModule = {
 		
 		rows.forEach(row => {
 			const rowState = this.gameState.player.rows[row];
-			const unitCards = rowState.cards.filter(c => c.type === 'unit' && c.strength > 0);
 			
-			if (unitCards.length === 0) return;
+			const nonHeroUnitCards = rowState.cards.filter(c => 
+				c.type === 'unit' && 
+				c.strength > 0 && 
+				!(c.tags && (c.tags.includes('hero') || c.tags.includes('герой')))
+			);
+			
+			if (nonHeroUnitCards.length === 0) return;
 			
 			let score = 0;
 			
-			// Оценка ряда
-			score += unitCards.length * 3;
+			score += nonHeroUnitCards.length * 3;
 			
-			// Бонус за общую силу ряда
-			const rowStrength = unitCards.reduce((sum, card) => sum + card.strength, 0);
+			const rowStrength = nonHeroUnitCards.reduce((sum, card) => sum + card.strength, 0);
 			score += rowStrength * 0.5;
 			
-			// Бонус за потенциальные уничтожения
 			let potentialDestroys = 0;
-			unitCards.forEach(card => {
+			nonHeroUnitCards.forEach(card => {
 				if (card.strength <= damageValue) {
 					potentialDestroys++;
 					score += 15;
 					
-					// Дополнительный бонус за сильные карты
 					if (card.strength >= 8) {
 						score += 10;
 					}
@@ -624,6 +625,10 @@ const aiModule = {
 		let destroyedCards = [];
 		
 		rowState.cards.forEach(card => {
+			if (this.isHeroCard(card)) {
+				return;
+			}
+			
 			if (card.type === 'unit') {
 				const currentDisplayStrength = card._displayStrength !== undefined ? 
 					card._displayStrength : card.strength;
@@ -786,6 +791,10 @@ const aiModule = {
 		rows.forEach(row => {
 			const rowCards = this.gameState.player.rows[row].cards;
 			rowCards.forEach(card => {
+				if (this.isHeroCard(card)) {
+					return;
+				}
+				
 				if (card.type === 'unit') {
 					const strength = card.strength || 0;
 					if (strength > maxStrength) {
@@ -1054,11 +1063,15 @@ const aiModule = {
 		
 		rows.forEach(row => {
 			this.gameState.opponent.rows[row].cards.forEach(card => {
+				if (this.isHeroCard(card)) {
+					return;
+				}
+				
 				if (card.type === 'unit' && card.strength < 4) {
 					weakCards.push({
 						card: card,
 						row: row,
-						score: 10 - card.strength // Чем слабее карта, тем выше приоритет
+						score: 10 - card.strength
 					});
 				}
 			});

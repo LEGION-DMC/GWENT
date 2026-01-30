@@ -1751,11 +1751,10 @@ const gameModule = {
         });
     },
 
-    handleRegularWeather: function(card) {
+	handleRegularWeather: function(card) {
 		const isClearWeather = this.isClearWeatherCard(card);
 		
 		if (isClearWeather) {
-			// Если это "Чистое небо", обрабатываем отдельно
 			this.handleClearWeather(card);
 			return;
 		}
@@ -1796,17 +1795,16 @@ const gameModule = {
         }
     },
 
-    handleClearWeather: function(card) {
+	handleClearWeather: function(card) {
 		this.playWeatherSound('clear');
 		
-		// Сначала сохраняем карты, которые будут сброшены
 		const weatherCardsToDiscard = [...this.gameState.weather.cards];
 		
-		// Очищаем погодные эффекты
 		this.gameState.weather.cards = [];
-		this.gameState.weather.cards.push(card);
 		
-		// Восстанавливаем силу карт на всех рядах
+		const cardOwner = this.getWeatherCardOwner(card);
+		this.addCardToDiscard(card, cardOwner);
+		
 		const rows = ['close', 'ranged', 'siege'];
 		const players = ['player', 'opponent'];
 		
@@ -1814,14 +1812,11 @@ const gameModule = {
 			players.forEach(player => {
 				this.gameState[player].rows[row].cards.forEach(card => {
 					if (card.originalStrength !== undefined) {
-						// Восстанавливаем оригинальную силу
 						card.strength = card.originalStrength;
-						// Удаляем временные свойства погоды
 						delete card.originalStrength;
-						delete card._displayStrength; // Важно: удаляем displayStrength
+						delete card._displayStrength;
 						this.updateCardStrengthDisplay(card, row, player);
 					} else if (card._displayStrength !== undefined) {
-						// Если есть только displayStrength (от урона)
 						card.strength = card._displayStrength;
 						delete card._displayStrength;
 						this.updateCardStrengthDisplay(card, row, player);
@@ -1831,7 +1826,6 @@ const gameModule = {
 			});
 		});
 		
-		// Сбрасываем погодные карты
 		weatherCardsToDiscard.forEach(weatherCard => {
 			const cardOwner = this.getWeatherCardOwner(weatherCard);
 			const isAlreadyInDiscard = this.gameState[cardOwner].discard.some(
@@ -1842,10 +1836,8 @@ const gameModule = {
 			}
 		});
 		
-		// Очищаем визуальные эффекты
 		this.clearAllWeatherEffects();
 		
-		// Обновляем отображение
 		this.displayWeatherCards();
 		this.updateTotalScoreDisplays();
 	},
@@ -1916,15 +1908,16 @@ const gameModule = {
 		this.updateTotalScoreDisplays();
 	},
 
-    reduceRowStrengthTo1: function(row, player) {
+	reduceRowStrengthTo1: function(row, player) {
 		this.gameState[player].rows[row].cards.forEach(card => {
+			if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) {
+				return;
+			}
+			
 			if (card.strength > 1) {
-				// Используем локальную копию силы, не затрагивая оригинальный объект
 				if (card.originalStrength === undefined) {
-					// Сохраняем оригинальную силу как локальное свойство
 					card.originalStrength = card.strength;
 				}
-				// Меняем только отображаемую силу
 				card._displayStrength = 1;
 				this.updateCardStrengthDisplay(card, row, player);
 			}
