@@ -4398,11 +4398,30 @@ const gameModule = {
     getPositionIconPath: function(position) {
         const positionIcons = {
             'close-row': 'deck/close-row.png',
-            'ranged-row': 'deck/ranged-row.png',
-            'siege-row': 'deck/siege-row.png'
+			'ranged-row': 'deck/ranged-row.png',
+			'siege-row': 'deck/siege-row.png',
+			'any-row': 'deck/any-row.png',
+			'hidden-close-row': 'deck/hidden-close-row.png',
+			'hidden-ranged-row': 'deck/hidden-ranged-row.png',
+			'hidden-siege-row': 'deck/hidden-siege-row.png',
+			'hidden-any-row': 'deck/hidden-any-row.png'
         };
         return positionIcons[position] || 'deck/any-row.png';
     },
+	
+	getPositionName: function(position) {
+		const positionNames = {
+			'close-row': 'Ближний бой',
+			'ranged-row': 'Дальний бой',
+			'siege-row': 'Осадный ряд',
+			'any-row': 'Все ряды',
+			'hidden-close-row': 'Ближний бой',
+			'hidden-ranged-row': 'Дальний бой',
+			'hidden-siege-row': 'Осадный ряд',
+			'hidden-any-row': 'Все ряды'
+		};
+		return positionNames[position] || position;
+	},
 
     capitalizeFirst: function(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);

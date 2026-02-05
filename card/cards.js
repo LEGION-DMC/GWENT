@@ -32,9 +32,9 @@ const cardsData = {
 				ability: ' ',
                 position: 'ranged-row',
                 positionBanner: 'faction/neutral/banner_position.png',
-                rarity: 'silver',
+                rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_silver.png',
+                border: 'deck/bord_bronze.png',
                 banner: 'faction/neutral/banner_bronze.png'
             },
             {
@@ -104,10 +104,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/neutral/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['witcher'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/neutral/banner_bronze.png'
             },
 			{
                 id: 'neutral_unit_7',
@@ -122,10 +122,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'ranged-row',
                 positionBanner: 'faction/neutral/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['witcher'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/neutral/banner_bronze.png'
             },
 			{
                 id: 'neutral_unit_8',
@@ -140,10 +140,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/neutral/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['witcher'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/neutral/banner_bronze.png'
             },
 			{
                 id: 'neutral_unit_9',
@@ -158,10 +158,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'ranged-row',
                 positionBanner: 'faction/neutral/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['witcher'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/neutral/banner_bronze.png'
             },
 			{
                 id: 'neutral_unit_10',
@@ -176,10 +176,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'siege-row',
                 positionBanner: 'faction/neutral/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/neutral/banner_bronze.png'
             },
         ],
         specials: [
@@ -262,9 +262,9 @@ const cardsData = {
                 description: 'Заклятие',
 				descriptionfull: '',
 				ability: 'destroy',
-                rarity: 'bronze',
+                rarity: 'silver',
                 tags: ['spell'],
-                border: 'deck/bord_bronze.png',
+                border: 'deck/bord_silver.png',
                 banner: 'faction/neutral/banner_bronze.png'
             },
 			{
@@ -319,16 +319,16 @@ const cardsData = {
 				ability: 'eredin_ability',
                 position: 'close-row',
                 positionBanner: 'faction/monsters/banner_position.png',
-				rarity: 'gold',
+				rarity: 'silver',
                 tags: ['wild_hunt'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/monsters/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/monsters/banner_bronze.png'
             },
             {
                 id: 'monsters_unit_3',
                 name: 'Карантир',
 				namefull: 'Карантир Ар-Фейниэль',
-                strength: 7,
+                strength: 8,
                 type: 'unit',
                 faction: 'monsters',
                 image: 'karantir.mp4',
@@ -337,10 +337,10 @@ const cardsData = {
 				ability: 'eredin_ability',
                 position: 'close-row',
                 positionBanner: 'faction/monsters/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['wild_hunt'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/monsters/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/monsters/banner_bronze.png'
             },
             {
                 id: 'monsters_unit_4',
@@ -355,16 +355,16 @@ const cardsData = {
 				ability: 'eredin_ability',
                 position: 'close-row',
                 positionBanner: 'faction/monsters/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['wild_hunt'],
-                border: 'deck/bord_bronze.png',
+                border: 'deck/bord_silver.png',
                 banner: 'faction/monsters/banner_bronze.png'
             },
 			{
                 id: 'monsters_unit_5',
                 name: 'Хим',
 				namefull: 'Хим',
-                strength: 4,
+                strength: 5,
                 type: 'unit',
                 faction: 'monsters',
                 image: 'hym.mp4',
@@ -414,6 +414,25 @@ const cardsData = {
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/monsters/banner_bronze.png'
             },
+			{
+                id: 'monsters_unit_8',
+                name: 'Гуль',
+				namefull: 'Гуль',
+                strength: 1,
+                type: 'unit',
+                faction: 'monsters',
+                image: 'gool.mp4',
+                description: 'Трупоед',
+				descriptionfull: 'Ходят гули вдоль дороги, съели руки, съели ноги.',
+				ability: ' ',
+				copy: 3,
+                position: 'close-row',
+                positionBanner: 'faction/monsters/banner_position.png',
+                rarity: 'bronze',
+                tags: ['soldier'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/monsters/banner_bronze.png'
+            },
         ],
         specials: [
             {
@@ -425,8 +444,22 @@ const cardsData = {
                 description: 'Природа',
 				descriptionfull: 'Это Час Конца. Мир, уничтоженный Белым Хладом.',
 				ability: 'biting_frost',
-                rarity: 'bronze',
+                rarity: 'silver',
                 tags: ['weather'],
+                border: 'deck/bord_silver.png',
+                banner: 'faction/monsters/banner_bronze.png'
+            },
+			{
+                id: 'monsters_special_2',
+                name: 'Шабаш ведьм',
+                type: 'special',
+                faction: 'monsters',
+                image: 'sabbath.mp4',
+                description: 'Ритуал',
+				descriptionfull: 'Для шабаша надо по меньшей мере три ведьмы. Меж двух будет только ругань.',
+				ability: 'damage_row_1',
+                rarity: 'bronze',
+                tags: ['ritual'],
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/monsters/banner_bronze.png'
             },
@@ -511,16 +544,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/nilfgaard/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['emperor'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/nilfgaard/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
                 id: 'nilfgaard_unit_3',
                 name: 'Ян Кальвейт',
 				namefull: 'Ян Кальвейт',
-                strength: 7,
+                strength: 8,
                 type: 'unit',
                 faction: 'nilfgaard',
                 image: 'yan.mp4',
@@ -529,16 +562,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/nilfgaard/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['emperor'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/nilfgaard/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
                 id: 'nilfgaard_unit_4',
                 name: 'Узурпатор',
 				namefull: 'Узурпатор',
-                strength: 3,
+                strength: 4,
                 type: 'unit',
                 faction: 'nilfgaard',
                 image: 'usurper.mp4',
@@ -547,7 +580,7 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/nilfgaard/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['emperor'],
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/nilfgaard/banner_bronze.png'
@@ -568,13 +601,13 @@ const cardsData = {
                 rarity: 'silver',
                 tags: ['mage'],
                 border: 'deck/bord_silver.png',
-                banner: 'faction/nilfgaard/banner_gold.png'
+                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
                 id: 'nilfgaard_unit_6',
                 name: 'Иоахим',
 				namefull: 'Иоахим де Ветт',
-                strength: 5,
+                strength: 6,
                 type: 'unit',
                 faction: 'nilfgaard',
                 image: 'wett.mp4',
@@ -583,16 +616,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/nilfgaard/banner_position.png',
-                rarity: 'silver',
+                rarity: 'bronze',
                 tags: ['soldier'],
-                border: 'deck/bord_silver.png',
+                border: 'deck/bord_bronze.png',
                 banner: 'faction/nilfgaard/banner_bronze.png'
             },
 			{
                 id: 'nilfgaard_unit_7',
                 name: 'Лето',
 				namefull: 'Лето из Гулеты',
-                strength: 8,
+                strength: 9,
                 type: 'unit',
                 faction: 'nilfgaard',
                 image: 'leto.mp4',
@@ -617,7 +650,7 @@ const cardsData = {
                 description: 'Солдат',
 				descriptionfull: 'Кто-то же должен чистить картошку, чтоб остальные могли сражаться.',
 				ability: ' ',
-				copy: 2,
+				copy: 3,
                 position: 'close-row',
                 positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'bronze',
@@ -626,7 +659,36 @@ const cardsData = {
                 banner: 'faction/nilfgaard/banner_bronze.png'
             },
         ],
-        specials: [],
+        specials: [
+			{
+                id: 'nilfgaard_special_1',
+                name: 'Вечное затмение',
+                type: 'special',
+                faction: 'nilfgaard',
+                image: 'eclipse.mp4',
+                description: 'Ритуал',
+				descriptionfull: 'Взгляду непосвященного План предстает лавиной: последовательностью будто бы незначительных происшествий, которые приводят в движение весь склон горы и хоронят под собой старый мир. Только безумцы и дотошные историки, которые будут изучать события этих дней десятки лет спустя, увидят правду: тонкий механизм, работающий как часы и отсчитывающий время до установления нового мирового порядка.',
+				ability: 'damage_row_1',
+                rarity: 'bronze',
+                tags: ['ritual'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/nilfgaard/banner_bronze.png'
+            },
+			{
+                id: 'nilfgaard_special_2',
+                name: 'Измена',
+                type: 'special',
+                faction: 'nilfgaard',
+                image: 'treason.mp4',
+                description: 'Военное искусство',
+				descriptionfull: 'Доверчивые люди — вымирающий вид в Нильфгаарде.',
+				ability: 'damage_2',
+                rarity: 'bronze',
+                tags: ['tactic'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/nilfgaard/banner_bronze.png'
+            },
+			],
         tactics: [],
         artifacts: [
             {
@@ -707,16 +769,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/realms/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/realms/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/realms/banner_bronze.png'
             },
             {
                 id: 'realms_unit_3',
                 name: 'Хенсельт',
 				namefull: 'Хенсельт из Ард Каррайга',
-                strength: 9,
+                strength: 8,
                 type: 'unit',
                 faction: 'realms',
                 image: 'henselt.mp4',
@@ -725,10 +787,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'any-row',
                 positionBanner: 'faction/realms/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/realms/banner_gold.png'
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/realms/banner_bronze.png'
             },
             {
                 id: 'realms_unit_4',
@@ -761,9 +823,9 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/realms/banner_position.png',
-                rarity: 'bronze',
+                rarity: 'silver',
                 tags: ['soldier'],
-                border: 'deck/bord_bronze.png',
+                border: 'deck/bord_silver.png',
                 banner: 'faction/realms/banner_bronze.png'
             },
             {
@@ -784,6 +846,25 @@ const cardsData = {
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/realms/banner_bronze.png'
             },
+			{
+                id: 'realms_unit_7',
+                name: 'Пехотинец',
+				namefull: 'Темерийский пехотинец',
+                strength: 2,
+                type: 'unit',
+                faction: 'realms',
+                image: 'infantry.mp4',
+                description: ' ',
+				descriptionfull: 'Темерия! Судьба к тебе щедра! Ты сокрушишь врагов своих величием добра!',
+				ability: ' ',
+				copy: 3,
+                position: 'close-row',
+                positionBanner: 'faction/realms/banner_position.png',
+                rarity: 'bronze',
+                tags: ['soldier'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/realms/banner_bronze.png'
+            },
         ],
         specials: [
             {
@@ -795,6 +876,20 @@ const cardsData = {
                 description: 'Заклинание',
 				descriptionfull: 'Лучше не произносить его вслух.',
 				ability: 'damage_row_2',
+                rarity: 'silver',
+                tags: ['spell'],
+                border: 'deck/bord_silver.png',
+                banner: 'faction/realms/banner_bronze.png'
+            },
+			{
+                id: 'realms_special_2',
+                name: 'Кипящее масло',
+                type: 'special',
+                faction: 'realms',
+                image: 'oil.mp4',
+                description: 'Военное искусство',
+				descriptionfull: 'Не очень полезно для вашей кожи. ',
+				ability: 'damage_3',
                 rarity: 'bronze',
                 tags: ['spell'],
                 border: 'deck/bord_bronze.png',
@@ -896,10 +991,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/scoiatael/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/scoiatael/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
                 id: 'scoiatael_unit_3',
@@ -914,10 +1009,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/scoiatael/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/scoiatael/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
                 id: 'scoiatael_unit_4',
@@ -932,10 +1027,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/scoiatael/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/scoiatael/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/scoiatael/banner_bronze.png'
             },
 			{
                 id: 'scoiatael_unit_6',
@@ -969,10 +1064,28 @@ const cardsData = {
 				ability: ' ',
                 position: 'ranged-row',
                 positionBanner: 'faction/scoiatael/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['soldier'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/scoiatael/banner_gold.png'
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/scoiatael/banner_bronze.png'
+            },
+			{
+                id: 'scoiatael_unit_8',
+                name: 'Иорвет',
+				namefull: 'Иорвет',
+                strength: 5,
+                type: 'unit',
+                faction: 'scoiatael',
+                image: 'yorvet.mp4',
+                description: 'Командир отряда Скоя\'таэлей',
+				descriptionfull: 'Он чертовски меток для парня с одним глазом. ',
+				ability: ' ',
+                position: 'ranged-row',
+                positionBanner: 'faction/scoiatael/banner_position.png',
+                rarity: 'bronze',
+                tags: ['soldier'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/scoiatael/banner_bronze.png'
             },
         ],
         specials: [
@@ -1049,6 +1162,20 @@ const cardsData = {
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/scoiatael/banner_bronze.png'
             },
+            {
+                id: 'scoiatael_artifact_4',
+                name: 'Призматический кулон',
+                type: 'artifact',
+                faction: 'scoiatael',
+                image: 'prism.mp4',
+                description: 'Артефакт',
+				descriptionfull: 'Его создатель искал вдохновения в простом чуде природы. Черпать магическую энергию с ним проще, чем дышать.',
+				ability: ' ',
+                rarity: 'bronze',
+                tags: ['artifact'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/scoiatael/banner_bronze.png'
+            },
 		]
     },
 
@@ -1076,7 +1203,7 @@ const cardsData = {
                 id: 'skellige_unit_2',
                 name: 'Эйст',
 				namefull: 'Эйст Тиршах',
-                strength: 8,
+                strength: 7,
                 type: 'unit',
                 faction: 'skellige',
                 image: 'eist.mp4',
@@ -1085,16 +1212,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/skellige/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/skellige/banner_gold.png'
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/skellige/banner_bronze.png'
             },
             {
                 id: 'skellige_unit_3',
                 name: 'Крах',
 				namefull: 'Крах ан Крайт',
-                strength: 9,
+                strength: 8,
                 type: 'unit',
                 faction: 'skellige',
                 image: 'krah.mp4',
@@ -1103,16 +1230,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/skellige/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/skellige/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/skellige/banner_bronze.png'
             },
             {
                 id: 'skellige_unit_4',
                 name: 'Харальд Хромой',
 				namefull: 'Харальд Хромой',
-                strength: 8,
+                strength: 7,
                 type: 'unit',
                 faction: 'skellige',
                 image: 'harald.mp4',
@@ -1121,10 +1248,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/skellige/banner_position.png',
-                rarity: 'gold',
+                rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/skellige/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/skellige/banner_bronze.png'
             },
 			{
                 id: 'skellige_unit_5',
@@ -1139,7 +1266,7 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/skellige/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['soldier', 'mage'],
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/skellige/banner_bronze.png'
@@ -1157,16 +1284,16 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/skellige/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['kingser'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/skellige/banner_gold.png'
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/skellige/banner_bronze.png'
             },
 			{
                 id: 'skellige_unit_7',
                 name: 'Хольгер',
 				namefull: 'Хольгер Чернорукий',
-                strength: 5,
+                strength: 4,
                 type: 'unit',
                 faction: 'skellige',
                 image: 'blackhand.mp4',
@@ -1175,8 +1302,27 @@ const cardsData = {
 				ability: ' ',
                 position: 'ranged-row',
                 positionBanner: 'faction/skellige/banner_position.png',
-                rarity: 'gold',
+                rarity: 'bronze',
                 tags: ['kingser'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/skellige/banner_bronze.png'
+            },
+			{
+                id: 'skellige_unit_8',
+                name: 'Берсерк',
+				namefull: 'Берсерк',
+                strength: 3,
+                type: 'unit',
+                faction: 'skellige',
+                image: 'berserk.mp4',
+                description: 'Воин клана Друммонд',
+				descriptionfull: 'Это всего лишь царапина!',
+				ability: ' ',
+				copy: 3,
+                position: 'close-row',
+                positionBanner: 'faction/skellige/banner_position.png',
+                rarity: 'bronze',
+                tags: ['soldier'],
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/skellige/banner_bronze.png'
             },
@@ -1191,8 +1337,22 @@ const cardsData = {
                 description: 'Природа',
 				descriptionfull: 'Это не простая буря. Это гнев богов.',
 				ability: 'storm',
-                rarity: 'bronze',
+                rarity: 'silver',
                 tags: ['weather'],
+                border: 'deck/bord_silver.png',
+                banner: 'faction/skellige/banner_bronze.png'
+            },
+			{
+                id: 'skellige_special_2',
+                name: 'Кровавый орел',
+                type: 'special',
+                faction: 'skellige',
+                image: 'eagle.mp4',
+                description: 'Наказание',
+				descriptionfull: 'Эти крылья унесут тебя далеко-далеко! ',
+				ability: 'damage_3',
+                rarity: 'bronze',
+                tags: ['execution'],
                 border: 'deck/bord_bronze.png',
                 banner: 'faction/skellige/banner_bronze.png'
             },
@@ -1277,10 +1437,10 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/syndicate/banner_position.png',
-                rarity: 'silver',
+                rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/syndicate/banner_gold.png'
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/syndicate/banner_bronze.png'
             },
             {
                 id: 'syndicate_unit_3',
@@ -1297,8 +1457,8 @@ const cardsData = {
                 positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/syndicate/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/syndicate/banner_bronze.png'
             },
             {
                 id: 'syndicate_unit_4',
@@ -1310,13 +1470,13 @@ const cardsData = {
                 image: 'dijkstra.mp4',
                 description: 'Лидер группировки «Сиги Ройвена»',
 				descriptionfull: 'Член правления Синдиката. Бывший шеф реданской разведки. Именуется графом, дабы не вызывать у окружения подозрений и недоброжелательности',
-				ability: ' ',
+				ability: '',
                 position: 'close-row',
                 positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/syndicate/banner_gold.png'
+                border: 'deck/bord_silver.png',
+                banner: 'faction/syndicate/banner_bronze.png'
             },
 			{
                 id: 'syndicate_unit_5',
@@ -1331,9 +1491,9 @@ const cardsData = {
 				ability: ' ',
                 position: 'ranged-row',
                 positionBanner: 'faction/syndicate/banner_position.png',
-                rarity: 'silver',
+                rarity: 'bronze',
                 tags: ['leader'],
-                border: 'deck/bord_silver.png',
+                border: 'deck/bord_bronze.png',
                 banner: 'faction/syndicate/banner_bronze.png'
             },
 			{
@@ -1358,7 +1518,7 @@ const cardsData = {
                 id: 'syndicate_unit_7',
                 name: 'Клоук-фрик',
 				namefull: 'Клоук-фрик',
-                strength: 1,
+                strength: 2,
                 type: 'unit',
                 faction: 'syndicate',
                 image: 'freak.mp4',
@@ -1394,7 +1554,7 @@ const cardsData = {
                 id: 'syndicate_unit_9',
                 name: 'Гвитр и Аэлидия',
 				namefull: 'Гвитр и Аэлидия',
-                strength: 4,
+                strength: 5,
                 type: 'unit',
                 faction: 'syndicate',
                 image: 'hvitr_and_aelydia.mp4',
@@ -1403,13 +1563,47 @@ const cardsData = {
 				ability: ' ',
                 position: 'close-row',
                 positionBanner: 'faction/syndicate/banner_position.png',
-                rarity: 'silver',
+                rarity: 'bronze',
                 tags: ['soldier'],
-                border: 'deck/bord_silver.png',
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/syndicate/banner_bronze.png'
+            },
+			{
+                id: 'syndicate_unit_10',
+                name: 'Приспешница',
+				namefull: 'Приспешница',
+                strength: 1,
+                type: 'unit',
+                faction: 'syndicate',
+                image: 'thife.mp4',
+                description: 'Воровка из организация «Саламандры»',
+				descriptionfull: 'По традиции первые пять заданий приспешники выполняют бесплатно. Так они демонстрируют приверженность делу.',
+				ability: ' ',
+				copy: 3,
+                position: 'close-row',
+                positionBanner: 'faction/syndicate/banner_position.png',
+                rarity: 'bronze',
+                tags: ['soldier'],
+                border: 'deck/bord_bronze.png',
                 banner: 'faction/syndicate/banner_bronze.png'
             },
         ],
-        specials: [],
+        specials: [
+			{
+                id: 'syndicate_special_1',
+                name: 'Вечные муки',
+                type: 'special',
+                faction: 'syndicate',
+                image: 'damnation.mp4',
+                description: 'Наказание',
+				descriptionfull: 'Из-за этих костров в Новиграде дышать невозможно! Почему нельзя сжигать грешников где-нибудь на окраине?',
+				ability: 'damage_3',
+                rarity: 'bronze',
+                tags: ['execution'],
+                border: 'deck/bord_bronze.png',
+                banner: 'faction/syndicate/banner_bronze.png'
+            },
+			],
         tactics: [
             {
                 id: 'syndicate_tactic_1',
@@ -1440,7 +1634,8 @@ const cardsData = {
                 tags: ['artifact'],
                 border: 'deck/bord_silver.png',
                 banner: 'faction/syndicate/banner_bronze.png'
-            },]
+            },
+			]
     },
 
 };

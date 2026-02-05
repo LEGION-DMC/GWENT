@@ -36,6 +36,7 @@ const localization = {
         spell: 'Заклятие',
         hazard: 'Бедствие',
         ritual: 'Ритуал',
+        execution: 'Наказание',
     }
 };
 
@@ -694,21 +695,46 @@ function displayCollectionCards() {
 
 function sortCollectionCards() {
     displayedCollectionCards.sort((a, b) => {
-        const rarityOrder = { 'gold': 1, 'silver': 2, 'bronze': 3 };
-        const rarityA = rarityOrder[a.rarity] || 4;
-        const rarityB = rarityOrder[b.rarity] || 4;
-        if (rarityA !== rarityB) {
-            return rarityA - rarityB;
-        }
-        const typeOrder = { 'unit': 1, 'special': 2, 'artifact': 3, 'tactic': 4 };
+        const typeOrder = { 
+            'unit': 1, 
+            'special': 2, 
+            'artifact': 3, 
+            'tactic': 4 
+        };
+        
         const typeA = typeOrder[a.type] || 5;
         const typeB = typeOrder[b.type] || 5;
+        
         if (typeA !== typeB) {
             return typeA - typeB;
         }
-        if (a.type === 'unit' && b.type === 'unit') {
-            return (b.strength || 0) - (a.strength || 0);
+        
+        const rarityOrder = { 
+            'gold': 1, 
+            'silver': 2, 
+            'bronze': 3 
+        };
+        const rarityA = rarityOrder[a.rarity] || 4;
+        const rarityB = rarityOrder[b.rarity] || 4;
+        
+        if (rarityA !== rarityB) {
+            return rarityA - rarityB;
         }
+        if (a.type === 'unit' && b.type === 'unit') {
+            const strengthDiff = (b.strength || 0) - (a.strength || 0);
+            if (strengthDiff !== 0) {
+                return strengthDiff;
+            }
+        }
+        if (a.faction !== b.faction) {
+            if (a.faction === window.selectedFaction?.id && b.faction === 'neutral') {
+                return -1;
+            }
+            if (a.faction === 'neutral' && b.faction === window.selectedFaction?.id) {
+                return 1;
+            }
+        }
+        
         return a.name.localeCompare(b.name);
     });
 }
@@ -801,21 +827,46 @@ function createCardElement(card, context) {
 
 function sortDeckCards() {
     currentDeck.cards.sort((a, b) => {
-        const rarityOrder = { 'gold': 1, 'silver': 2, 'bronze': 3 };
-        const rarityA = rarityOrder[a.rarity] || 4;
-        const rarityB = rarityOrder[b.rarity] || 4;
-        if (rarityA !== rarityB) {
-            return rarityA - rarityB;
-        }
-        const typeOrder = { 'unit': 1, 'special': 2, 'artifact': 3, 'tactic': 4 };
+        const typeOrder = { 
+            'unit': 1, 
+            'special': 2, 
+            'artifact': 3, 
+            'tactic': 4 
+        };
+        
         const typeA = typeOrder[a.type] || 5;
         const typeB = typeOrder[b.type] || 5;
+        
         if (typeA !== typeB) {
             return typeA - typeB;
         }
-        if (a.type === 'unit' && b.type === 'unit') {
-            return (b.strength || 0) - (a.strength || 0);
+        
+        const rarityOrder = { 
+            'gold': 1, 
+            'silver': 2, 
+            'bronze': 3 
+        };
+        const rarityA = rarityOrder[a.rarity] || 4;
+        const rarityB = rarityOrder[b.rarity] || 4;
+        
+        if (rarityA !== rarityB) {
+            return rarityA - rarityB;
         }
+        if (a.type === 'unit' && b.type === 'unit') {
+            const strengthDiff = (b.strength || 0) - (a.strength || 0);
+            if (strengthDiff !== 0) {
+                return strengthDiff;
+            }
+        }
+        if (a.faction !== b.faction) {
+            if (a.faction === window.selectedFaction?.id && b.faction === 'neutral') {
+                return -1;
+            }
+            if (a.faction === 'neutral' && b.faction === window.selectedFaction?.id) {
+                return 1;
+            }
+        }
+        
         return a.name.localeCompare(b.name);
     });
 }
@@ -1560,12 +1611,14 @@ function addCardToCollection(card) {
 
 function animateCardAddition(card) {
     const deckCards = document.querySelectorAll('.deck-card');
-    const lastDeckCard = deckCards[deckCards.length - 1];
+    const addedCardElement = Array.from(deckCards).find(cardElement => 
+        cardElement.dataset.cardId === card.id
+    );
     
-    if (lastDeckCard) {
-        lastDeckCard.style.animation = 'cardAddition 0.5s ease';
+    if (addedCardElement) {
+        addedCardElement.style.animation = 'cardAddition 0.5s ease';
         setTimeout(() => {
-            lastDeckCard.style.animation = '';
+            addedCardElement.style.animation = '';
         }, 500);
     }
     
@@ -1580,17 +1633,18 @@ function animateCardAddition(card) {
                 }, 500);
             }
         }
-    }
-    
-    else {
+    } else {
         const collectionCard = document.querySelector(`.collection-card[data-card-id="${card.id}"]`);
         if (collectionCard) {
             collectionCard.style.animation = 'cardRemoval 0.5s ease';
             setTimeout(() => {
                 collectionCard.style.animation = '';
+                collectionCard.remove();
             }, 500);
         }
     }
+    
+    audioManager.playSound('cardAdd');
 }
 
 function animateCardRemoval(card) {

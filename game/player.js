@@ -10,69 +10,69 @@ const playerModule = {
 	},
  
     handleCardSelection: function(card, cardElement) {
-    if (this.gameState.mulligan.phase === 'player') {
-        return;
-    }
-    
-    if (this.gameState.gamePhase !== 'playerTurn') {
-        return;
-    }
-    
-    if (this.gameState.selectingRow) {
-        this.cancelRowSelection();
-        return;
-    }
-    
-    if (this.gameState.selectedCardElement && this.gameState.selectedCardElement !== cardElement) {
-        this.gameState.selectedCardElement.classList.remove('card-selected');
-    }
-    
-    if (this.gameState.selectedCard === card) {
-        this.cancelCardSelection();
-        this.cancelRowSelection();
-        return;
-    }
-    
-    this.gameState.selectedCard = card;
-    this.gameState.selectedCardElement = cardElement;
-    
-    if (cardElement) {
-        cardElement.classList.add('card-selected');
-    }
-    
-    audioManager.playSound('card_selected');
+		if (this.gameState.mulligan.phase === 'player') {
+			return;
+		}
+		
+		if (this.gameState.gamePhase !== 'playerTurn') {
+			return;
+		}
+		
+		if (this.gameState.selectingRow) {
+			this.cancelRowSelection();
+			return;
+		}
+		
+		if (this.gameState.selectedCardElement && this.gameState.selectedCardElement !== cardElement) {
+			this.gameState.selectedCardElement.classList.remove('card-selected');
+		}
+		
+		if (this.gameState.selectedCard === card) {
+			this.cancelCardSelection();
+			this.cancelRowSelection();
+			return;
+		}
+		
+		this.gameState.selectedCard = card;
+		this.gameState.selectedCardElement = cardElement;
+		
+		if (cardElement) {
+			cardElement.classList.add('card-selected');
+		}
+		
+		audioManager.playSound('card_selected');
 
-    if (this.isWeatherCard(card)) {
-        this.playWeatherCard(card);
-    } else {
-        switch (card.type) {
-            case 'tactic':
-                this.startTacticCardPlacement(card);
-                break;
-            case 'unit':
-                this.startUnitCardPlacement(card);
-                break;
-            case 'special':
-				if (card.ability === 'decoy') {
-					this.startDecoyCardPlacement(card);
-				} else if (card.ability === 'destroy') {
-					this.startDestroyCardPlacement(card);
-				} else if (card.ability === 'destroy_artf') {
-					this.startDestroyArtifactPlacement(card);
-				} else if (card.ability && card.ability.startsWith('damage_')) {
-					this.startDamageCardPlacement(card); // Новая функция
-				} else {
+		if (this.isWeatherCard(card)) {
+			this.playWeatherCard(card);
+		} else {
+			switch (card.type) {
+				case 'tactic':
+					this.startTacticCardPlacement(card);
+					break;
+				case 'unit':
 					this.startUnitCardPlacement(card);
-				}
-				break;
-            case 'artifact':
-                this.startUnitCardPlacement(card);
-                break;
-            default:
-                this.cancelCardSelection();
-        }
-    }
-},
+					break;
+				case 'special':
+					if (card.ability === 'decoy') {
+						this.startDecoyCardPlacement(card);
+					} else if (card.ability === 'destroy') {
+						this.startDestroyCardPlacement(card);
+					} else if (card.ability === 'destroy_artf') {
+						this.startDestroyArtifactPlacement(card);
+					} else if (card.ability && card.ability.startsWith('damage_')) {
+						this.startDamageCardPlacement(card); // Новая функция
+					} else {
+						this.startUnitCardPlacement(card);
+					}
+					break;
+				case 'artifact':
+					this.startUnitCardPlacement(card);
+					break;
+				default:
+					this.cancelCardSelection();
+			}
+		}
+	},
 
 	startDamageCardPlacement: function(card) {
 		const ability = card.ability;
