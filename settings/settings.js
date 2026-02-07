@@ -6,9 +6,12 @@ const settingsModule = {
         gameMode: 'classic'
     },
 
+    _musicFirstInit: true,
+
     init: function() {
         this.loadSettings();
         this.applyAudioSettings();
+        this._musicFirstInit = false;
     },
 
     loadSettings: function() {
@@ -30,8 +33,15 @@ const settingsModule = {
             audioManager.musicEnabled = this.settings.musicEnabled;
             
             if (this.settings.musicEnabled) {
-                audioManager.playBackgroundMusic();
-            } else {
+                if (this._musicFirstInit) {
+                    audioManager.playBackgroundMusic();
+                }
+                else if (!audioManager._wasMusicPlaying) {
+                    audioManager.resumeBackgroundMusic();
+                }
+            } 
+            else {
+                audioManager._wasMusicPlaying = audioManager.isMusicPlaying();
                 audioManager.stopBackgroundMusic();
             }
         }
@@ -66,6 +76,47 @@ const settingsModule = {
 };
 
 window.settingsModule = settingsModule;
+
+if (window.audioManager) {
+    if (!audioManager._originalPlayBackgroundMusic) {
+        audioManager._originalPlayBackgroundMusic = audioManager.playBackgroundMusic;
+    }
+    
+    audioManager.resumeBackgroundMusic = function() {
+        if (this.isMusicPlaying && this.isMusicPlaying()) {
+            return;
+        }
+        
+        if (this._originalPlayBackgroundMusic) {
+            this._originalPlayBackgroundMusic();
+        } else if (this.playBackgroundMusic) {
+            this.playBackgroundMusic();
+        }
+    };
+    
+    audioManager.isMusicPlaying = function() {
+        return this.musicEnabled && this._musicPlaying;
+    };
+    
+    audioManager._wasMusicPlaying = false;
+    audioManager._musicPlaying = false;
+    
+    const originalPlay = audioManager.playBackgroundMusic;
+    audioManager.playBackgroundMusic = function() {
+        this._musicPlaying = true;
+        if (originalPlay) {
+            originalPlay.call(this);
+        }
+    };
+    
+    const originalStop = audioManager.stopBackgroundMusic;
+    audioManager.stopBackgroundMusic = function() {
+        this._musicPlaying = false;
+        if (originalStop) {
+            originalStop.call(this);
+        }
+    };
+}
 
 function showSettingsModal() {
     const modalOverlay = document.createElement('div');

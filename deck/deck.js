@@ -37,6 +37,7 @@ const localization = {
         hazard: 'Бедствие',
         ritual: 'Ритуал',
         execution: 'Наказание',
+		criminal: 'Преступник',
     }
 };
 

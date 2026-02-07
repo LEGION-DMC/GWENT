@@ -1,3 +1,12 @@
+const tagTranslations = {
+    'criminal': 'Преступник',
+    'witcher': 'Ведьмак',
+};
+
+function getRussianTagName(englishTag) {
+    return tagTranslations[englishTag] || englishTag;
+}
+
 const skillSystem = {
     abilityTypes: {
         COMBAT: 'combat',
@@ -92,18 +101,8 @@ const skillSystem = {
                 type: 'clear_weather'
             }
         },
-        'morale_boost': {
-            name: 'Боевой дух',
-            type: 'combat',
-            description: 'Усилить все ваши карты в этом ряду на 1',
-            effect: {
-                type: 'boost',
-                target: 'row',
-                value: 1,
-                condition: 'ally'
-            }
-        },
-        'destroy': {
+        
+		'destroy': {
 			name: 'Казнь',
 			type: 'special',
 			description: 'Уничтожает самую сильную карту отряда противника',
@@ -123,6 +122,7 @@ const skillSystem = {
 				condition: 'enemy'
 			}
 		},
+		
 		'decoy': {
 			name: 'Чучело',
 			type: 'special',
@@ -133,6 +133,7 @@ const skillSystem = {
 				condition: 'ally'
 			}
 		},
+		
 		'damage_1': {
 			name: 'Нанесение урона 1',
 			type: 'special',
@@ -145,7 +146,6 @@ const skillSystem = {
 				requiresSelection: true
 			}
 		},
-		
 		'damage_2': {
 			name: 'Нанесение урона 2',
 			type: 'special',
@@ -158,7 +158,6 @@ const skillSystem = {
 				requiresSelection: true
 			}
 		},
-		
 		'damage_3': {
 			name: 'Нанесение урона 3',
 			type: 'special',
@@ -171,7 +170,6 @@ const skillSystem = {
 				requiresSelection: true
 			}
 		},
-		
 		'damage_row_1': {
 			name: 'Урон по ряду 1',
 			type: 'special',
@@ -184,7 +182,6 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		},
-		
 		'damage_row_2': {
 			name: 'Урон по ряду 2',
 			type: 'special',
@@ -197,7 +194,6 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		},
-		
 		'damage_row_3': {
 			name: 'Урон по ряду 3',
 			type: 'special',
@@ -209,7 +205,369 @@ const skillSystem = {
 				value: 3,
 				requiresRowSelection: true
 			}
+		},
+	
+		'boost_1': {
+			name: 'Усиление карты',
+			type: 'artifact',
+			description: 'Усиливает выбранную карту на 1 ед. силы',
+			effect: {
+				type: 'boost_card',
+				target: 'unit',
+				condition: 'ally',
+				value: 1,
+				requiresSelection: true
+			}
+		},
+		'boost_2': {
+			name: 'Усиление карты',
+			type: 'artifact',
+			description: 'Усиливает выбранную карту на 2 ед. силы',
+			effect: {
+				type: 'boost_card',
+				target: 'unit',
+				condition: 'ally',
+				value: 2,
+				requiresSelection: true
+			}
+		},
+		'boost_3': {
+			name: 'Усиление карты',
+			type: 'artifact',
+			description: 'Усиливает выбранную карту на 3 ед. силы',
+			effect: {
+				type: 'boost_card',
+				target: 'unit',
+				condition: 'ally',
+				value: 3,
+				requiresSelection: true
+			}
+		},
+		'boost_4': {
+			name: 'Усиление карты',
+			type: 'artifact',
+			description: 'Усиливает выбранную карту на 4 ед. силы',
+			effect: {
+				type: 'boost_card',
+				target: 'unit',
+				condition: 'ally',
+				value: 4,
+				requiresSelection: true
+			}
+		},
+		'boost_5': {
+			name: 'Усиление карты',
+			type: 'artifact',
+			description: 'Усиливает выбранную карту на 5 ед. силы',
+			effect: {
+				type: 'boost_card',
+				target: 'unit',
+				condition: 'ally',
+				value: 5,
+				requiresSelection: true
+			}
+		},
+		'boost_near_1': {
+			name: 'Усиление соседей',
+			type: 'artifact',
+			description: 'Усиливает соседние карты на 1 ед. силы',
+			effect: {
+				type: 'boost_near',
+				target: 'unit',
+				condition: 'ally',
+				value: 1,
+				requiresSelection: true
+			}
+		},
+		'boost_near_2': {
+			name: 'Усиление соседей',
+			type: 'artifact',
+			description: 'Усиливает соседние карты на 2 ед. силы',
+			effect: {
+				type: 'boost_near',
+				target: 'unit',
+				condition: 'ally',
+				value: 2,
+				requiresSelection: true
+			}
+		},
+		'boost_near_3': {
+			name: 'Усиление соседей',
+			type: 'artifact',
+			description: 'Усиливает соседние карты на 3 ед. силы',
+			effect: {
+				type: 'boost_near',
+				target: 'unit',
+				condition: 'ally',
+				value: 3,
+				requiresSelection: true
+			}
+		},
+		'boost_near_4': {
+			name: 'Усиление соседей',
+			type: 'artifact',
+			description: 'Усиливает соседние карты на 4 ед. силы',
+			effect: {
+				type: 'boost_near',
+				target: 'unit',
+				condition: 'ally',
+				value: 4,
+				requiresSelection: true
+			}
+		},
+		'boost_near_5': {
+			name: 'Усиление соседей',
+			type: 'artifact',
+			description: 'Усиливает соседние карты на 5 ед. силы',
+			effect: {
+				type: 'boost_near',
+				target: 'unit',
+				condition: 'ally',
+				value: 5,
+				requiresSelection: true
+			}
+		},
+		'boost_row_1': {
+			name: 'Усиление ряда 1',
+			type: 'tactic',
+			description: 'Усиливает все карты в выбранном ряду на 1 ед. силы',
+			effect: {
+				type: 'boost_row',
+				target: 'row',
+				condition: 'ally',
+				value: 1,
+				requiresRowSelection: true
+			}
+		},
+		'boost_row_2': {
+			name: 'Усиление ряда 2',
+			type: 'tactic',
+			description: 'Усиливает все карты в выбранном ряду на 2 ед. силы',
+			effect: {
+				type: 'boost_row',
+				target: 'row',
+				condition: 'ally',
+				value: 2,
+				requiresRowSelection: true
+			}
+		},
+		'boost_row_3': {
+			name: 'Усиление ряда 3',
+			type: 'tactic',
+			description: 'Усиливает все карты в выбранном ряду на 3 ед. силы',
+			effect: {
+				type: 'boost_row',
+				target: 'row',
+				condition: 'ally',
+				value: 3,
+				requiresRowSelection: true
+			}
+		},
+		'boost_row_4': {
+			name: 'Усиление ряда 4',
+			type: 'tactic',
+			description: 'Усиливает все карты в выбранном ряду на 4 ед. силы',
+			effect: {
+				type: 'boost_row',
+				target: 'row',
+				condition: 'ally',
+				value: 4,
+				requiresRowSelection: true
+			}
+		},
+		'boost_row_5': {
+			name: 'Усиление ряда 5',
+			type: 'tactic',
+			description: 'Усиливает все карты в выбранном ряду на 5 ед. силы',
+			effect: {
+				type: 'boost_row',
+				target: 'row',
+				condition: 'ally',
+				value: 5,
+				requiresRowSelection: true
+			}
+		},
+		'boost_tag_witcher': {
+			name: 'Усиление ведьмаков',
+			type: 'tactic',
+			description: 'Усиливает все карты с тегом "Ведьмак" на 3 ед. силы',
+			effect: {
+				type: 'boost_tag',
+				target: 'unit',
+				condition: 'ally',
+				value: 3,
+				tag: 'witcher',
+				requiresRowSelection: true
+			}
+		},
+		'boost_tag_criminal': {
+			name: 'Усиление Преступников',
+			type: 'tactic',
+			description: 'Усиливает все карты с тегом "Преступник" на 2 ед. силы',
+			effect: {
+				type: 'boost_tag',
+				target: 'unit',
+				condition: 'ally',
+				value: 2,
+				tag: 'criminal',
+				requiresRowSelection: true
+			}
+		}, 	
+	},
+
+	applyBoostCardEffect: function(effect, context) {
+		if (!context.gameState || !context.boostCardState) {
+			return { 
+				success: false, 
+				message: 'Требуется выбор карты',
+				requiresSelection: true,
+				selectionType: 'boost_card'
+			};
 		}
+		
+		if (context.boostCardState && context.boostCardState.awaitingSelection) {
+			const selectedCard = context.boostCardState.selectedCard;
+			if (selectedCard) {
+				return this.executeCardBoost(selectedCard, effect.value, context);
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: 'Выберите карту для усиления',
+			requiresSelection: true,
+			selectionType: 'boost_card'
+		};
+	},
+
+	applyBoostNearEffect: function(effect, context) {
+		if (!context.gameState || !context.boostNearState) {
+			return { 
+				success: false, 
+				message: 'Требуется выбор позиции',
+				requiresSelection: true,
+				selectionType: 'boost_near'
+			};
+		}
+		
+		if (context.boostNearState && context.boostNearState.awaitingSelection) {
+			const selectedData = context.boostNearState.selectedData;
+			if (selectedData) {
+				return this.executeNearBoost(selectedData, effect.value, context);
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: 'Выберите позицию для усиления соседних карт',
+			requiresSelection: true,
+			selectionType: 'boost_near'
+		};
+	},
+
+	executeCardBoost: function(cardData, boostValue, context) {
+		const { card, row, position } = cardData;
+		
+		if (!card || !row) {
+			return { success: false, message: 'Ошибка: карта не найдена' };
+		}
+		
+		if (card.type !== 'unit' || this.isHeroCard(card)) {
+			return { success: false, message: 'Можно усиливать только обычные карты отрядов' };
+		}
+		
+		if (card.originalStrength === undefined) {
+			card.originalStrength = card.strength;
+		}
+		
+		const currentStrength = card._displayStrength !== undefined ? 
+			card._displayStrength : card.strength;
+		
+		card.strength = currentStrength + boostValue;
+		card._displayStrength = card.strength;
+		
+		if (context.gameState) {
+			context.gameState.player.rows[row].strength = 
+				context.gameState.player.rows[row].cards.reduce((sum, c) => 
+					sum + (c._displayStrength || c.strength || 0), 0
+				);
+		}
+		
+		if (window.gameModule) {
+			window.gameModule.updateCardStrengthDisplay(card, row, 'player');
+			window.gameModule.updateRowStrength(row, 'player');
+		}
+		
+		return {
+			success: true,
+			message: `Карта "${card.name}" усилена на ${boostValue} ед. силы`,
+			boostedCard: card,
+			boostValue: boostValue
+		};
+	},
+
+	executeNearBoost: function(selectedData, boostValue, context) {
+		const { row, position } = selectedData;
+		const rowState = context.gameState.player.rows[row];
+		let boostedCards = 0;
+		
+		// Усиливаем карту слева
+		if (position > 0) {
+			const leftCard = rowState.cards[position - 1];
+			if (leftCard.type === 'unit' && !this.isHeroCard(leftCard)) {
+				if (leftCard.originalStrength === undefined) {
+					leftCard.originalStrength = leftCard.strength;
+				}
+				
+				const currentStrength = leftCard._displayStrength !== undefined ? 
+					leftCard._displayStrength : leftCard.strength;
+				
+				leftCard.strength = currentStrength + boostValue;
+				leftCard._displayStrength = leftCard.strength;
+				boostedCards++;
+				
+				this.createVisualEffect(leftCard, 'boost', boostValue);
+				this.updateCardDisplay(leftCard);
+			}
+		}
+		
+		// Усиливаем карту справа
+		if (position < rowState.cards.length - 1) {
+			const rightCard = rowState.cards[position + 1];
+			if (rightCard.type === 'unit' && !this.isHeroCard(rightCard)) {
+				if (rightCard.originalStrength === undefined) {
+					rightCard.originalStrength = rightCard.strength;
+				}
+				
+				const currentStrength = rightCard._displayStrength !== undefined ? 
+					rightCard._displayStrength : rightCard.strength;
+				
+				rightCard.strength = currentStrength + boostValue;
+				rightCard._displayStrength = rightCard.strength;
+				boostedCards++;
+				
+				this.createVisualEffect(rightCard, 'boost', boostValue);
+				this.updateCardDisplay(rightCard);
+			}
+		}
+		
+		if (context.gameState) {
+			context.gameState.player.rows[row].strength = 
+				rowState.cards.reduce((sum, card) => 
+					sum + (card._displayStrength || card.strength || 0), 0
+				);
+		}
+		
+		if (window.gameModule) {
+			window.gameModule.updateRowStrength(row, 'player');
+		}
+		
+		return {
+			success: true,
+			message: `Усилено ${boostedCards} соседних карт на ${boostValue} ед. силы`,
+			boostedCount: boostedCards,
+			boostValue: boostValue
+		};
 	},
 
 	applyEffect: function(effect, context) {
@@ -235,14 +593,158 @@ const skillSystem = {
 					return this.applyRevealEffect(effect, context);
 				case 'swap_with_hand':
 					return this.applySwapEffect(effect, context);
-				case 'damage_row': // Добавляем обработку урона по ряду
+				case 'damage_row': 
 					return this.applyDamageRowEffect(effect, context);
+				case 'boost_row':
+					return this.applyBoostRowEffect(effect, context);
+				case 'boost_tag':
+					return this.applyBoostTagEffect(effect, context);
+				case 'boost_card':
+					return this.applyBoostCardEffect(effect, context);
+				case 'boost_near':
+					return this.applyBoostNearEffect(effect, context);
 				default:
 					return { success: false, message: 'Неизвестный тип эффекта' };
 			}
 		} catch (error) {
 			return { success: false, message: 'Ошибка применения способности' };
 		}
+	},
+
+	applyBoostRowEffect: function(effect, context) {
+		if (!context.gameState || !context.boostRowState) {
+			return { 
+				success: false, 
+				message: 'Требуется выбор ряда',
+				requiresRowSelection: true,
+				selectionType: 'boost_row'
+			};
+		}
+		
+		if (context.boostRowState && context.boostRowState.awaitingSelection) {
+			const selectedRow = context.boostRowState.selectedRow;
+			if (selectedRow) {
+				return this.executeRowBoost(selectedRow, effect.value, context);
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: 'Выберите ряд для усиления',
+			requiresRowSelection: true,
+			selectionType: 'boost_row'
+		};
+	},
+
+	applyBoostTagEffect: function(effect, context) {
+		if (!effect.tag) {
+			return { success: false, message: 'Не указан тег для усиления' };
+		}
+		
+		if (!context.gameState || !context.boostTagState) {
+			return { 
+				success: false, 
+				message: 'Требуется выбор ряда',
+				requiresRowSelection: true,
+				selectionType: 'boost_tag',
+				tag: effect.tag
+			};
+		}
+		
+		if (context.boostTagState && context.boostTagState.awaitingSelection) {
+			const selectedRow = context.boostTagState.selectedRow;
+			if (selectedRow) {
+				return this.executeTagBoost(effect.tag, effect.value, selectedRow, context);
+			}
+		}
+		
+		return { 
+			success: true, 
+			message: `Выберите ряд для усиления карт с тегом "${effect.tag}"`,
+			requiresRowSelection: true,
+			selectionType: 'boost_tag',
+			tag: effect.tag
+		};
+	},
+
+	executeRowBoost: function(row, boostValue, context) {
+		const rowState = context.gameState.player.rows[row];
+		let boostedCards = 0;
+		
+		rowState.cards.forEach(card => {
+			if (card.type === 'unit' && !this.isHeroCard(card)) {
+				if (card.originalStrength === undefined) {
+					card.originalStrength = card.strength;
+				}
+				
+				const currentStrength = card._displayStrength !== undefined ? 
+					card._displayStrength : card.strength;
+				
+				card.strength = currentStrength + boostValue;
+				card._displayStrength = card.strength;
+				
+				boostedCards++;
+				
+				this.createVisualEffect(card, 'boost', boostValue);
+				this.updateCardDisplay(card);
+			}
+		});
+		
+		if (context.gameState) {
+			context.gameState.player.rows[row].strength = rowState.cards.reduce((sum, card) => 
+				sum + (card._displayStrength || card.strength || 0), 0
+			);
+		}
+		
+		if (window.gameModule) {
+			window.gameModule.updateRowStrength(row, 'player');
+		}
+		
+		return {
+			success: true,
+			message: `Усилено ${boostedCards} карт в ряду ${row} на ${boostValue}`,
+			boostedCount: boostedCards
+		};
+	},
+
+	executeTagBoost: function(tag, boostValue, selectedRow, context) {
+		let boostedCards = 0;
+		
+		// Усиливаем карты только в выбранном ряду
+		const rowState = context.gameState.player.rows[selectedRow];
+		
+		rowState.cards.forEach(card => {
+			if (card.type === 'unit' && 
+				!this.isHeroCard(card) && 
+				card.tags && 
+				card.tags.includes(tag)) {
+				
+				if (card.originalStrength === undefined) {
+					card.originalStrength = card.strength;
+				}
+				
+				const currentStrength = card._displayStrength !== undefined ? 
+					card._displayStrength : card.strength;
+				
+				card.strength = currentStrength + boostValue;
+				card._displayStrength = card.strength;
+				
+				boostedCards++;
+				
+				this.updateCardDisplay(card);
+			}
+		});
+		
+		if (context.gameState) {
+			context.gameState.player.rows[selectedRow].strength = rowState.cards.reduce((sum, card) => 
+				sum + (card._displayStrength || card.strength || 0), 0
+			);
+		}
+		
+		return {
+			success: true,
+			boostedCount: boostedCards
+		};
 	},
 
 	applyDamageRowEffect: function(effect, context) {
@@ -695,8 +1197,7 @@ const skillSystem = {
         });
 
         return { 
-            success: true, 
-            message: `Усилено ${targets.length} целей на ${effect.value}`,
+            success: true,
             targets: targets.length
         };
     },

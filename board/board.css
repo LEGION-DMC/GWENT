@@ -874,21 +874,6 @@
     transform: translateY(-10px);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Анимация урона */
 @keyframes damageAnimation {
     0% {
         opacity: 0;
@@ -907,7 +892,6 @@
     }
 }
 
-/* Подсветка целей для урона */
 .damage-target {
     position: relative;
     z-index: 10;
@@ -922,21 +906,19 @@
     box-shadow: 0 0 20px rgba(255, 68, 68, 0.9) !important;
 }
 
-/* Подсветка рядов для урона */
 .row-damage-target {
     position: relative;
     z-index: 5;
     box-shadow: inset 0 0 20px rgba(255, 68, 68, 0.5) !important;
     cursor: pointer !important;
-    border: 2px solid rgba(255, 68, 68, 0.7) !important;
+    border: 1px solid rgba(255, 68, 68, 0.7) !important;
 }
 
 .row-damage-target:hover {
     box-shadow: inset 0 0 25px rgba(255, 68, 68, 0.7) !important;
-    border: 2px solid rgba(255, 68, 68, 0.9) !important;
+    border: 1px solid rgba(255, 68, 68, 0.9) !important;
 }
 
-/* Анимация обновления силы */
 @keyframes strengthUpdate {
     0% {
         color: white;
@@ -950,4 +932,16 @@
         color: white;
         transform: scale(1);
     }
+}
+
+.boost-target {
+    box-shadow: 0 0 15px 5px rgba(0, 255, 0, 0.7) !important;
+    border: 1px solid green !important;
+    transform: scale(1.02);
+}
+
+.neighbor-highlight {
+    box-shadow: 0 0 15px 5px rgba(0, 255, 0, 0.5) !important;
+    border: 1px solid green !important;
+    transform: scale(1.02);
 }

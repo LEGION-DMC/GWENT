@@ -109,54 +109,93 @@ const aiModule = {
 		}
 	},
 
-    getPlayableCards: function() {
-    const uniqueCards = [];
-    const seenIds = new Set();
-    
-    this.gameState.opponent.hand.forEach(card => {
-        if (this.usedCardIds.has(card.id)) {
-            return;
-        }
-        
-        if (seenIds.has(card.id)) {
-            return;
-        }
-        seenIds.add(card.id);
-        
-        if (this.isWeatherCard(card)) {
-            if (this.canPlayWeatherCard(card)) {
-                uniqueCards.push(card);
-            }
-        } else if (card.type === 'tactic') {
-            if (this.canPlayTacticCard(card)) {
-                uniqueCards.push(card);
-            }
-        } else if (card.ability === 'decoy') {
-            if (this.getWeakCardsOnBoard().length > 0) {
-                uniqueCards.push(card);
-            }
-        } else if (card.ability === 'destroy') {
-            if (this.findStrongestPlayerCard()) {
-                uniqueCards.push(card);
-            }
-        } else if (card.ability === 'destroy_artf') {
-            if (this.findPlayerArtifacts().length > 0) {
-                uniqueCards.push(card);
-            }
-        } else {
-            if (this.canPlayUnitCard(card)) {
-                uniqueCards.push(card);
-            }
-        } if (card.ability && card.ability.startsWith('damage_')) {
-			if (this.canPlayDamageCard(card)) {
+	getPlayableCards: function() {
+		const uniqueCards = [];
+		const seenIds = new Set();
+		
+		this.gameState.opponent.hand.forEach(card => {
+			if (this.usedCardIds.has(card.id) || seenIds.has(card.id)) {
+				return;
+			}
+			seenIds.add(card.id);
+			
+			let canPlay = false;
+			
+			// Проверяем по типам карт
+			if (this.isWeatherCard(card)) {
+				canPlay = this.canPlayWeatherCard(card);
+			} 
+			else if (card.ability === 'decoy') {
+				canPlay = this.getWeakCardsOnBoard().length > 0;
+			}
+			else if (card.ability === 'destroy') {
+				canPlay = this.findStrongestPlayerCard() !== null;
+			}
+			else if (card.ability === 'destroy_artf') {
+				canPlay = this.findPlayerArtifacts().length > 0;
+			}
+			else if (card.ability && card.ability.startsWith('damage_')) {
+				canPlay = this.canPlayDamageCard(card);
+			}
+			else if (card.type === 'tactic') {
+				canPlay = this.canPlayTacticCard(card);
+			}
+			else if (card.type === 'artifact' && card.ability && card.ability.startsWith('boost_')) {
+				canPlay = this.canPlayArtifactBoostCard(card);
+			}
+			else {
+				// Обычные карты, артефакты без способностей усиления, специальные карты
+				canPlay = this.canPlayUnitCard(card);
+			}
+			
+			if (canPlay) {
 				uniqueCards.push(card);
 			}
-		} 
-    });
-    
-    return uniqueCards;
-},
-    
+		});
+		
+		return uniqueCards;
+	},
+   
+	canPlayArtifactBoostCard: function(card) {
+		const ability = card.ability;
+		
+		if (ability.startsWith('boost_') && !ability.startsWith('boost_near_')) {
+			// Для усиления карты проверяем, есть ли карты для усиления
+			const rows = ['close', 'ranged', 'siege'];
+			return rows.some(row => {
+				const rowState = this.gameState.opponent.rows[row];
+				return rowState.cards.some(unitCard => 
+					unitCard.type === 'unit' && !this.isHeroCard(unitCard)
+				);
+			});
+		} else if (ability.startsWith('boost_near_')) {
+			// Для усиления соседей проверяем, есть ли позиции
+			const rows = ['close', 'ranged', 'siege'];
+			return rows.some(row => {
+				const rowState = this.gameState.opponent.rows[row];
+				if (rowState.cards.length >= 9) return false;
+				
+				// Проверяем, есть ли позиции с соседями
+				for (let i = 0; i <= rowState.cards.length; i++) {
+					const hasLeftNeighbor = i > 0 && 
+						rowState.cards[i - 1].type === 'unit' && 
+						!this.isHeroCard(rowState.cards[i - 1]);
+					
+					const hasRightNeighbor = i < rowState.cards.length && 
+						rowState.cards[i].type === 'unit' && 
+						!this.isHeroCard(rowState.cards[i]);
+					
+					if (hasLeftNeighbor || hasRightNeighbor) {
+						return true;
+					}
+				}
+				return false;
+			});
+		}
+		
+		return false;
+	},
+
 	canPlayDamageCard: function(card) {
 		const ability = card.ability;
 		
@@ -300,7 +339,17 @@ const aiModule = {
 		if (this.isWeatherCard(card)) {
 			baseScore = this.evaluateWeatherCard(card);
 		} else if (card.type === 'tactic') {
-			baseScore = this.evaluateTacticCard(card);
+			if (card.ability && card.ability.startsWith('boost_')) {
+				baseScore = this.evaluateBoostCard(card);
+			} else {
+				baseScore = this.evaluateTacticCard(card);
+			}
+		} else if (card.type === 'artifact') {
+			if (card.ability && card.ability.startsWith('boost_')) {
+				baseScore = this.evaluateArtifactBoostCard(card);
+			} else {
+				baseScore = this.evaluateUnitCard(card);
+			}
 		} else if (card.type === 'unit') {
 			baseScore = this.evaluateUnitCard(card);
 		} else if (card.ability === 'decoy') {
@@ -324,7 +373,222 @@ const aiModule = {
 		
 		return Math.max(0, baseScore);
 	},
+
+	evaluateArtifactBoostCard: function(card) {
+		const ability = card.ability;
 		
+		if (ability.startsWith('boost_') && !ability.startsWith('boost_near_')) {
+			return this.evaluateCardBoostArtifact(card);
+		} else if (ability.startsWith('boost_near_')) {
+			return this.evaluateNearBoostArtifact(card);
+		}
+		
+		return 10; // Базовая оценка
+	},
+
+	evaluateCardBoostArtifact: function(card) {
+		let score = 12;
+		const boostMatch = card.ability.match(/boost_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		// Находим лучшую карту для усиления
+		const bestTarget = this.findBestCardForBoost(boostValue);
+		
+		if (bestTarget) {
+			score += boostValue * 3;
+			
+			// Бонус за усиление сильных карт
+			if (bestTarget.card.strength >= 8) {
+				score += 5;
+			}
+			
+			// Бонус за усиление золотых карт
+			if (bestTarget.card.rarity === 'gold') {
+				score += 10;
+			}
+		} else {
+			score = 0;
+		}
+		
+		return score;
+	},
+
+	evaluateNearBoostArtifact: function(card) {
+		let score = 10;
+		const boostMatch = card.ability.match(/boost_near_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		// Находим лучшую позицию для усиления соседей
+		const bestPosition = this.findBestPositionForNearBoost(boostValue);
+		
+		if (bestPosition) {
+			const { row, position, neighborCount } = bestPosition;
+			score += neighborCount * boostValue * 2;
+			
+			// Бонус за усиление нескольких карт
+			if (neighborCount === 2) {
+				score += 8;
+			}
+		} else {
+			score = 0;
+		}
+		
+		return score;
+	},
+		
+	evaluateBoostCard: function(card) {
+		const ability = card.ability;
+		
+		if (ability.startsWith('boost_row_')) {
+			return this.evaluateRowBoostCard(card);
+		} else if (ability.startsWith('boost_tag_')) {
+			return this.evaluateTagBoostCard(card);
+		}
+		
+		return 15; // Базовая оценка для других карт усиления
+	},
+
+	evaluateRowBoostCard: function(card) {
+		let score = 15;
+		
+		const boostMatch = card.ability.match(/boost_row_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		// Находим лучший ряд для усиления
+		const bestRow = this.findBestRowForBoost(boostValue);
+		
+		if (bestRow) {
+			const rowState = this.gameState.opponent.rows[bestRow];
+			const boostableUnits = rowState.cards.filter(card => 
+				card.type === 'unit' && !this.isHeroCard(card)
+			).length;
+			
+			if (boostableUnits > 0) {
+				score += boostableUnits * (boostValue * 2);
+				
+				// Бонус за усиление в ряду с большим количеством карт
+				if (boostableUnits >= 3) {
+					score += 10;
+				}
+				
+				// Бонус за сильные карты в ряду
+				const rowStrength = rowState.strength;
+				if (rowStrength > 20) {
+					score += 5;
+				}
+				
+				// Учитываем ситуацию на поле
+				const playerTotalScore = this.calculateTotalScore('player');
+				const opponentTotalScore = this.calculateTotalScore('opponent');
+				
+				if (opponentTotalScore < playerTotalScore) {
+					score += 10; // Если проигрываем, усиление важнее
+				}
+			} else {
+				score = 0; // Если нет карт для усиления
+			}
+		} else {
+			score = 0; // Если нет подходящих рядов
+		}
+		
+		return score;
+	},
+
+	evaluateTagBoostCard: function(card) {
+		let score = 15;
+		
+		let tag = '';
+		let boostValue = 1;
+		
+		if (card.ability === 'boost_tag_witcher') {
+			tag = 'witcher';
+			boostValue = 3;
+		} else if (card.ability === 'boost_tag_criminal') {
+			tag = 'criminal';
+			boostValue = 2;
+		}
+		
+		if (!tag) return score;
+		
+		// Считаем общее количество карт с этим тегом на поле
+		let tagCardCount = 0;
+		const rows = ['close', 'ranged', 'siege'];
+		
+		rows.forEach(row => {
+			const rowCards = this.gameState.opponent.rows[row].cards;
+			rowCards.forEach(card => {
+				if (card.type === 'unit' && 
+					!this.isHeroCard(card) && 
+					card.tags && 
+					card.tags.includes(tag)) {
+					tagCardCount++;
+				}
+			});
+		});
+		
+		if (tagCardCount > 0) {
+			score += tagCardCount * boostValue * 2;
+			
+			// Бонус за наличие свободных тактических слотов
+			const freeTacticSlots = rows.filter(row => !this.gameState.opponent.rows[row].tactic).length;
+			if (freeTacticSlots > 0) {
+				score += 5;
+			}
+		} else {
+			score = 0;
+		}
+		
+		return score;
+	},
+
+	findBestRowForBoost: function(boostValue) {
+		const rows = ['close', 'ranged', 'siege'];
+		let bestRow = null;
+		let bestScore = -1;
+		
+		rows.forEach(row => {
+			const rowState = this.gameState.opponent.rows[row];
+			
+			// Не усиливаем ряды под погодой
+			if (this.gameState.weather.effects[row]) {
+				return;
+			}
+			
+			const boostableUnits = rowState.cards.filter(card => 
+				card.type === 'unit' && !this.isHeroCard(card)
+			);
+			
+			if (boostableUnits.length === 0) return;
+			
+			let score = 0;
+			
+			score += boostableUnits.length * (boostValue * 2);
+			
+			// Бонус за ряды с большим количеством карт
+			if (boostableUnits.length >= 3) {
+				score += 5;
+			}
+			
+			// Бонус за сильные карты
+			const totalStrength = boostableUnits.reduce((sum, card) => 
+				sum + (card.strength || 0), 0
+			);
+			score += totalStrength * 0.5;
+			
+			// Учитываем текущую силу ряда
+			if (rowState.strength > 15) {
+				score += 3;
+			}
+			
+			if (score > bestScore) {
+				bestScore = score;
+				bestRow = row;
+			}
+		});
+		
+		return bestRow;
+	},
+
 	evaluateDamageCard: function(card) {
 		const ability = card.ability;
 		const isRowDamage = ability.includes('damage_row_');
@@ -373,6 +637,120 @@ const aiModule = {
 		}
 		
 		return score;
+	},
+
+	executeCardBoostForAI: function(artifactCard, targetData) {
+		const { card: targetCard, row, position } = targetData;
+		const boostMatch = artifactCard.ability.match(/boost_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		// Усиливаем карту
+		if (targetCard.originalStrength === undefined) {
+			targetCard.originalStrength = targetCard.strength;
+		}
+		
+		const currentStrength = targetCard._displayStrength !== undefined ? 
+			targetCard._displayStrength : targetCard.strength;
+		
+		targetCard.strength = currentStrength + boostValue;
+		targetCard._displayStrength = targetCard.strength;
+		
+		// Размещаем артефакт в ряду после усиленной карты
+		const rowState = this.gameState.opponent.rows[row];
+		const insertPosition = position + 1;
+		
+		const artifactCopy = { ...artifactCard };
+		artifactCopy.owner = 'opponent';
+		artifactCopy.row = row;
+		
+		rowState.cards.splice(insertPosition, 0, artifactCopy);
+		
+		// Обновляем отображение
+		if (window.gameModule) {
+			window.gameModule.updateCardStrengthDisplay(targetCard, row, 'opponent');
+			window.gameModule.displayCardOnRow(row, artifactCopy, 'opponent', insertPosition);
+			window.gameModule.updateRowStrength(row, 'opponent');
+			
+			setTimeout(() => {
+				if (window.gameModule.completeCardPlay) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 1000);
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact');
+			audioManager.playSound('card_boost');
+		}
+	},
+
+	executeNearBoostForAI: function(artifactCard, positionData) {
+		const { row, position } = positionData;
+		const boostMatch = artifactCard.ability.match(/boost_near_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		const rowState = this.gameState.opponent.rows[row];
+		
+		// Усиливаем соседние карты
+		if (position > 0) {
+			const leftCard = rowState.cards[position - 1];
+			if (leftCard.type === 'unit' && !this.isHeroCard(leftCard)) {
+				if (leftCard.originalStrength === undefined) {
+					leftCard.originalStrength = leftCard.strength;
+				}
+				
+				const currentStrength = leftCard._displayStrength !== undefined ? 
+					leftCard._displayStrength : leftCard.strength;
+				
+				leftCard.strength = currentStrength + boostValue;
+				leftCard._displayStrength = leftCard.strength;
+			}
+		}
+		
+		if (position < rowState.cards.length) {
+			const rightCard = rowState.cards[position];
+			if (rightCard.type === 'unit' && !this.isHeroCard(rightCard)) {
+				if (rightCard.originalStrength === undefined) {
+					rightCard.originalStrength = rightCard.strength;
+				}
+				
+				const currentStrength = rightCard._displayStrength !== undefined ? 
+					rightCard._displayStrength : rightCard.strength;
+				
+				rightCard.strength = currentStrength + boostValue;
+				rightCard._displayStrength = rightCard.strength;
+			}
+		}
+		
+		// Размещаем артефакт в ряду
+		const artifactCopy = { ...artifactCard };
+		artifactCopy.owner = 'opponent';
+		artifactCopy.row = row;
+		
+		rowState.cards.splice(position, 0, artifactCopy);
+		
+		// Обновляем отображение
+		if (window.gameModule) {
+			rowState.cards.forEach((card, index) => {
+				if (card.type === 'unit') {
+					window.gameModule.updateCardStrengthDisplay(card, row, 'opponent');
+				}
+			});
+			
+			window.gameModule.displayCardOnRow(row, artifactCopy, 'opponent', position);
+			window.gameModule.updateRowStrength(row, 'opponent');
+			
+			setTimeout(() => {
+				if (window.gameModule.completeCardPlay) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 1000);
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact');
+			audioManager.playSound('card_boost');
+		}
 	},
 
 	evaluateRowDamageCard: function(card) {
@@ -517,6 +895,93 @@ const aiModule = {
 		} else {
 			this.playUnitDamageCard(card);
 		}
+	},
+
+	findBestCardForBoost: function(boostValue) {
+		const rows = ['close', 'ranged', 'siege'];
+		let bestTarget = null;
+		let bestScore = -1;
+		
+		rows.forEach(row => {
+			const rowState = this.gameState.opponent.rows[row];
+			
+			rowState.cards.forEach((card, index) => {
+				if (card.type === 'unit' && !this.isHeroCard(card)) {
+					let score = 0;
+					
+					score += (card.strength || 0) * 0.5;
+					score += boostValue * 2;
+					
+					if (card.rarity === 'gold') {
+						score += 15;
+					} else if (card.rarity === 'silver') {
+						score += 8;
+					}
+					
+					if (card.tags && card.tags.length > 0) {
+						score += card.tags.length * 3;
+					}
+					
+					if (score > bestScore) {
+						bestScore = score;
+						bestTarget = { card, row, position: index };
+					}
+				}
+			});
+		});
+		
+		return bestTarget;
+	},
+
+	findBestPositionForNearBoost: function(boostValue) {
+		const rows = ['close', 'ranged', 'siege'];
+		let bestPosition = null;
+		let bestScore = -1;
+		
+		rows.forEach(row => {
+			const rowState = this.gameState.opponent.rows[row];
+			
+			if (rowState.cards.length >= 9) return;
+			
+			// Проверяем все возможные позиции
+			for (let i = 0; i <= rowState.cards.length; i++) {
+				let neighborCount = 0;
+				let score = 0;
+				
+				// Проверяем левого соседа
+				if (i > 0) {
+					const leftCard = rowState.cards[i - 1];
+					if (leftCard.type === 'unit' && !this.isHeroCard(leftCard)) {
+						neighborCount++;
+						score += (leftCard.strength || 0) * 0.3;
+					}
+				}
+				
+				// Проверяем правого соседа
+				if (i < rowState.cards.length) {
+					const rightCard = rowState.cards[i];
+					if (rightCard.type === 'unit' && !this.isHeroCard(rightCard)) {
+						neighborCount++;
+						score += (rightCard.strength || 0) * 0.3;
+					}
+				}
+				
+				if (neighborCount > 0) {
+					score += neighborCount * boostValue * 2;
+					
+					if (neighborCount === 2) {
+						score += 5; // Бонус за усиление двух карт
+					}
+					
+					if (score > bestScore) {
+						bestScore = score;
+						bestPosition = { row, position: i, neighborCount };
+					}
+				}
+			}
+		});
+		
+		return bestPosition;
 	},
 
 	playUnitDamageCard: function(card) {
@@ -721,7 +1186,7 @@ const aiModule = {
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%);
-			color: #ff4444;
+			color: red;
 			font-size: 24px;
 			font-weight: bold;
 			text-shadow: 0 0 5px black;
@@ -982,7 +1447,43 @@ const aiModule = {
         scoredRows.sort((a, b) => b.score - a.score);
         return scoredRows[0].row;
     },
-    
+ 
+	playArtifactBoostCard: function(card) {
+		const ability = card.ability;
+		
+		if (ability.startsWith('boost_') && !ability.startsWith('boost_near_')) {
+			this.playCardBoostArtifact(card);
+		} else if (ability.startsWith('boost_near_')) {
+			this.playNearBoostArtifact(card);
+		}
+	},
+
+	playCardBoostArtifact: function(card) {
+		const boostMatch = card.ability.match(/boost_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		const bestTarget = this.findBestCardForBoost(boostValue);
+		
+		if (!bestTarget) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		this.executeCardBoostForAI(card, bestTarget);
+	},
+
+	playNearBoostArtifact: function(card) {
+		const boostMatch = card.ability.match(/boost_near_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		const bestPosition = this.findBestPositionForNearBoost(boostValue);
+		
+		if (!bestPosition) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		this.executeNearBoostForAI(card, bestPosition);
+	},
+ 
     evaluateRowForPlacement: function(row) {
         let score = 0;
         
@@ -1087,7 +1588,17 @@ const aiModule = {
 		if (this.isWeatherCard(card)) {
 			this.playWeatherCard(card);
 		} else if (card.type === 'tactic') {
-			this.playTacticCard(card);
+			if (card.ability && card.ability.startsWith('boost_')) {
+				this.playBoostCard(card);
+			} else {
+				this.playTacticCard(card);
+			}
+		} else if (card.type === 'artifact') {
+			if (card.ability && card.ability.startsWith('boost_')) {
+				this.playArtifactBoostCard(card);
+			} else {
+				this.playUnitCard(card);
+			}
 		} else if (card.ability === 'decoy') {
 			this.playDecoyCard(card);
 		} else if (card.ability === 'destroy') {
@@ -1100,7 +1611,257 @@ const aiModule = {
 			this.playUnitCard(card);
 		}
 	},
-	
+
+	playBoostCard: function(card) {
+		const ability = card.ability;
+		
+		if (ability.startsWith('boost_row_')) {
+			this.playRowBoostCard(card);
+		} else if (ability.startsWith('boost_tag_')) {
+			this.playTagBoostCard(card);
+		}
+	},
+
+	playRowBoostCard: function(card) {
+		const boostMatch = card.ability.match(/boost_row_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		// Находим любой свободный тактический слот
+		const rows = ['close', 'ranged', 'siege'];
+		const availableRows = rows.filter(row => 
+			!this.gameState.opponent.rows[row].tactic &&
+			this.gameState.opponent.rows[row].cards.some(card => 
+				card.type === 'unit' && !this.isHeroCard(card)
+			)
+		);
+		
+		if (availableRows.length === 0) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		const randomRow = availableRows[Math.floor(Math.random() * availableRows.length)];
+		
+		// Размещаем карту тактики
+		this.gameState.opponent.rows[randomRow].tactic = card;
+		
+		// Применяем эффект усиления
+		const rowState = this.gameState.opponent.rows[randomRow];
+		rowState.cards.forEach(unitCard => {
+			if (unitCard.type === 'unit' && !this.isHeroCard(unitCard)) {
+				if (unitCard.originalStrength === undefined) {
+					unitCard.originalStrength = unitCard.strength;
+				}
+				
+				this.createBoostVisualEffect(unitCard, randomRow, boostValue);
+				
+				const currentStrength = unitCard._displayStrength !== undefined ? 
+					unitCard._displayStrength : unitCard.strength;
+				
+				unitCard.strength = currentStrength + boostValue;
+				unitCard._displayStrength = unitCard.strength;
+				
+				// Обновляем отображение
+				if (window.gameModule) {
+					window.gameModule.updateCardStrengthDisplay(unitCard, randomRow, 'opponent');
+				}
+			}
+		});
+		
+		if (window.gameModule) {
+			window.gameModule.displayTacticCard(randomRow, card, 'opponent');
+			window.gameModule.updateRowStrength(randomRow, 'opponent');
+			
+			setTimeout(() => {
+				if (window.gameModule.completeCardPlay) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 1000);
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact');
+			audioManager.playSound('card_boost');
+		}
+	},
+
+	playTagBoostCard: function(card) {
+		let tag = '';
+		let boostValue = 1;
+		
+		if (card.ability === 'boost_tag_witcher') {
+			tag = 'witcher';
+			boostValue = 3;
+		} else if (card.ability === 'boost_tag_criminal') {
+			tag = 'criminal';
+			boostValue = 2;
+		}
+		
+		if (!tag) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		// Находим свободный тактический слот, где есть карты с нужным тегом
+		const rows = ['close', 'ranged', 'siege'];
+		const availableRows = rows.filter(row => 
+			!this.gameState.opponent.rows[row].tactic &&
+			this.gameState.opponent.rows[row].cards.some(card => 
+				card.type === 'unit' && 
+				!this.isHeroCard(card) && 
+				card.tags && 
+				card.tags.includes(tag)
+			)
+		);
+		
+		if (availableRows.length === 0) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		const randomRow = availableRows[Math.floor(Math.random() * availableRows.length)];
+		
+		// Размещаем карту тактики
+		this.gameState.opponent.rows[randomRow].tactic = card;
+		
+		// Применяем эффект усиления по тегу
+		const rowState = this.gameState.opponent.rows[randomRow];
+		let boostedCards = 0;
+		
+		rowState.cards.forEach(unitCard => {
+			if (unitCard.type === 'unit' && 
+				!this.isHeroCard(unitCard) && 
+				unitCard.tags && 
+				unitCard.tags.includes(tag)) {
+				
+				if (unitCard.originalStrength === undefined) {
+					unitCard.originalStrength = unitCard.strength;
+				}
+				
+				this.createBoostVisualEffect(unitCard, randomRow, boostValue);
+				const currentStrength = unitCard._displayStrength !== undefined ? 
+					unitCard._displayStrength : unitCard.strength;
+				
+				unitCard.strength = currentStrength + boostValue;
+				unitCard._displayStrength = unitCard.strength;
+				
+				boostedCards++;
+				
+				// Обновляем отображение
+				if (window.gameModule) {
+					window.gameModule.updateCardStrengthDisplay(unitCard, randomRow, 'opponent');
+				}
+			}
+		});
+		
+		if (window.gameModule) {
+			window.gameModule.displayTacticCard(randomRow, card, 'opponent');
+			window.gameModule.updateRowStrength(randomRow, 'opponent');
+			
+			setTimeout(() => {
+				if (window.gameModule.completeCardPlay) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 1000);
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact');
+			audioManager.playSound('card_boost');
+		}
+	},
+
+	createBoostVisualEffect: function(card, row, boostValue) {
+		const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+		if (!cardElement) return;
+		
+		// Создаем эффект усиления - ЗЕЛЕНЫЙ ЦВЕТ
+		const boostOverlay = document.createElement('div');
+		boostOverlay.className = 'card-boost-overlay';
+		boostOverlay.textContent = `+${boostValue}`;
+		boostOverlay.style.cssText = `
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			color: green;
+			font-size: 24px;
+			font-weight: bold;
+			text-shadow: 0 0 5px black;
+			z-index: 100;
+			pointer-events: none;
+			animation: boostAnimation 0.8s ease-out forwards;
+		`;
+		
+		cardElement.appendChild(boostOverlay);
+		
+		// Удаляем эффект через 0.8 секунды
+		setTimeout(() => {
+			if (boostOverlay.parentNode) {
+				boostOverlay.remove();
+			}
+		}, 800);
+	},
+
+	findBestRowForTagBoost: function(tag, boostValue) {
+		const rows = ['close', 'ranged', 'siege'];
+		let bestRow = null;
+		let bestScore = -1;
+		
+		rows.forEach(row => {
+			// Не размещаем в рядах с уже установленной тактической картой
+			if (this.gameState.opponent.rows[row].tactic) {
+				return;
+			}
+			
+			const rowState = this.gameState.opponent.rows[row];
+			
+			// Считаем карты с нужным тегом в этом ряду
+			const tagCards = rowState.cards.filter(card => 
+				card.type === 'unit' && 
+				!this.isHeroCard(card) && 
+				card.tags && 
+				card.tags.includes(tag)
+			);
+			
+			if (tagCards.length === 0) return;
+			
+			let score = 0;
+			
+			// Базовый бонус за количество карт с тегом
+			score += tagCards.length * 10;
+			
+			// Бонус за общую силу карт с тегом
+			const tagCardsStrength = tagCards.reduce((sum, card) => 
+				sum + (card.strength || 0), 0
+			);
+			score += tagCardsStrength * 0.5;
+			
+			// Бонус за значение усиления
+			score += boostValue * 2;
+			
+			// Бонус за синергию (много карт одного тега в одном ряду)
+			if (tagCards.length >= 2) {
+				score += 15;
+			}
+			
+			// Бонус за ряды без погоды
+			if (!this.gameState.weather.effects[row]) {
+				score += 5;
+			}
+			
+			if (score > bestScore) {
+				bestScore = score;
+				bestRow = row;
+			}
+		});
+		
+		return bestRow;
+	},
+
 	playDestroyArtifactCard: function(card) {
     // Находим артефакты игрока
     const playerArtifacts = this.findPlayerArtifacts();
