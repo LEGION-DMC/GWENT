@@ -644,16 +644,25 @@ const aiModule = {
 		const boostMatch = artifactCard.ability.match(/boost_(\d+)/);
 		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
 		
-		// Усиливаем карту
-		if (targetCard.originalStrength === undefined) {
-			targetCard.originalStrength = targetCard.strength;
+		// Инициализируем поля для отслеживания состояний у целевой карты
+		if (targetCard.baseStrength === undefined) {
+			targetCard.baseStrength = targetCard.strength;
+		}
+		if (targetCard.modifiedStrength === undefined) {
+			targetCard.modifiedStrength = targetCard.strength;
+		}
+		if (targetCard.currentStrength === undefined) {
+			targetCard.currentStrength = targetCard.strength;
 		}
 		
-		const currentStrength = targetCard._displayStrength !== undefined ? 
-			targetCard._displayStrength : targetCard.strength;
+		// Применяем усиление к модифицированной силе
+		targetCard.modifiedStrength += boostValue;
 		
-		targetCard.strength = currentStrength + boostValue;
-		targetCard._displayStrength = targetCard.strength;
+		// Если карта не под погодой, обновляем текущую силу
+		if (!targetCard.underWeather) {
+			targetCard.currentStrength = targetCard.modifiedStrength;
+			targetCard.strength = targetCard.modifiedStrength;
+		}
 		
 		// Размещаем артефакт в ряду после усиленной карты
 		const rowState = this.gameState.opponent.rows[row];
@@ -662,6 +671,12 @@ const aiModule = {
 		const artifactCopy = { ...artifactCard };
 		artifactCopy.owner = 'opponent';
 		artifactCopy.row = row;
+		
+		// Инициализируем поля для артефакта
+		artifactCopy.baseStrength = artifactCopy.strength;
+		artifactCopy.modifiedStrength = artifactCopy.strength;
+		artifactCopy.currentStrength = artifactCopy.strength;
+		artifactCopy.underWeather = false;
 		
 		rowState.cards.splice(insertPosition, 0, artifactCopy);
 		
@@ -695,30 +710,56 @@ const aiModule = {
 		if (position > 0) {
 			const leftCard = rowState.cards[position - 1];
 			if (leftCard.type === 'unit' && !this.isHeroCard(leftCard)) {
-				if (leftCard.originalStrength === undefined) {
-					leftCard.originalStrength = leftCard.strength;
+				// Инициализируем поля
+				if (leftCard.baseStrength === undefined) {
+					leftCard.baseStrength = leftCard.strength;
+				}
+				if (leftCard.modifiedStrength === undefined) {
+					leftCard.modifiedStrength = leftCard.strength;
+				}
+				if (leftCard.currentStrength === undefined) {
+					leftCard.currentStrength = leftCard.strength;
 				}
 				
-				const currentStrength = leftCard._displayStrength !== undefined ? 
-					leftCard._displayStrength : leftCard.strength;
+				// Применяем усиление
+				leftCard.modifiedStrength += boostValue;
 				
-				leftCard.strength = currentStrength + boostValue;
-				leftCard._displayStrength = leftCard.strength;
+				if (!leftCard.underWeather) {
+					leftCard.currentStrength = leftCard.modifiedStrength;
+					leftCard.strength = leftCard.modifiedStrength;
+				}
+				
+				if (window.gameModule) {
+					window.gameModule.updateCardStrengthDisplay(leftCard, row, 'opponent');
+				}
 			}
 		}
 		
 		if (position < rowState.cards.length) {
 			const rightCard = rowState.cards[position];
 			if (rightCard.type === 'unit' && !this.isHeroCard(rightCard)) {
-				if (rightCard.originalStrength === undefined) {
-					rightCard.originalStrength = rightCard.strength;
+				// Инициализируем поля
+				if (rightCard.baseStrength === undefined) {
+					rightCard.baseStrength = rightCard.strength;
+				}
+				if (rightCard.modifiedStrength === undefined) {
+					rightCard.modifiedStrength = rightCard.strength;
+				}
+				if (rightCard.currentStrength === undefined) {
+					rightCard.currentStrength = rightCard.strength;
 				}
 				
-				const currentStrength = rightCard._displayStrength !== undefined ? 
-					rightCard._displayStrength : rightCard.strength;
+				// Применяем усиление
+				rightCard.modifiedStrength += boostValue;
 				
-				rightCard.strength = currentStrength + boostValue;
-				rightCard._displayStrength = rightCard.strength;
+				if (!rightCard.underWeather) {
+					rightCard.currentStrength = rightCard.modifiedStrength;
+					rightCard.strength = rightCard.modifiedStrength;
+				}
+				
+				if (window.gameModule) {
+					window.gameModule.updateCardStrengthDisplay(rightCard, row, 'opponent');
+				}
 			}
 		}
 		
@@ -727,9 +768,15 @@ const aiModule = {
 		artifactCopy.owner = 'opponent';
 		artifactCopy.row = row;
 		
+		// Инициализируем поля для артефакта
+		artifactCopy.baseStrength = artifactCopy.strength;
+		artifactCopy.modifiedStrength = artifactCopy.strength;
+		artifactCopy.currentStrength = artifactCopy.strength;
+		artifactCopy.underWeather = false;
+		
 		rowState.cards.splice(position, 0, artifactCopy);
 		
-		// Обновляем отображение
+		// Обновляем отображение всех карт в ряду
 		if (window.gameModule) {
 			rowState.cards.forEach((card, index) => {
 				if (card.type === 'unit') {
@@ -804,8 +851,9 @@ const aiModule = {
 				}
 				
 				if (card.type === 'unit') {
-					const currentStrength = card._displayStrength !== undefined ? 
-						card._displayStrength : (card.strength || 0);
+					// Используем currentStrength или modifiedStrength для оценки
+					const currentStrength = card.currentStrength !== undefined ? 
+						card.currentStrength : (card.strength || 0);
 					
 					if (currentStrength > 0) {
 						let score = 0;
@@ -907,9 +955,13 @@ const aiModule = {
 			
 			rowState.cards.forEach((card, index) => {
 				if (card.type === 'unit' && !this.isHeroCard(card)) {
+					// Используем currentStrength для оценки
+					const currentStrength = card.currentStrength !== undefined ? 
+						card.currentStrength : (card.strength || 0);
+					
 					let score = 0;
 					
-					score += (card.strength || 0) * 0.5;
+					score += currentStrength * 0.5;
 					score += boostValue * 2;
 					
 					if (card.rarity === 'gold') {
@@ -920,6 +972,11 @@ const aiModule = {
 					
 					if (card.tags && card.tags.length > 0) {
 						score += card.tags.length * 3;
+					}
+					
+					// Учитываем, не под погодой ли карта
+					if (card.underWeather) {
+						score += 10; // Бонус за усиление карты под погодой
 					}
 					
 					if (score > bestScore) {
@@ -1019,23 +1076,26 @@ const aiModule = {
 		const damageMatch = damageCard.ability.match(/damage_(\d+)/);
 		const damageValue = damageMatch ? parseInt(damageMatch[1]) : 1;
 		
-		if (targetCard.originalStrength === undefined) {
-			targetCard.originalStrength = targetCard.strength;
+		// Инициализируем поля для отслеживания состояний, если их нет
+		if (targetCard.baseStrength === undefined) {
+			targetCard.baseStrength = targetCard.strength;
+		}
+		if (targetCard.modifiedStrength === undefined) {
+			targetCard.modifiedStrength = targetCard.strength;
+		}
+		if (targetCard.currentStrength === undefined) {
+			targetCard.currentStrength = targetCard.strength;
 		}
 		
-		if (targetCard._damageDisplayStrength === undefined) {
-			const currentDisplayStrength = targetCard._displayStrength !== undefined ? 
-				targetCard._displayStrength : targetCard.strength;
-			targetCard._damageDisplayStrength = currentDisplayStrength;
+		// Применяем урон к модифицированной силе
+		const newModifiedStrength = Math.max(0, targetCard.modifiedStrength - damageValue);
+		targetCard.modifiedStrength = newModifiedStrength;
+		
+		// Если карта НЕ под погодой, обновляем текущую силу
+		if (!targetCard.underWeather) {
+			targetCard.currentStrength = newModifiedStrength;
+			targetCard.strength = newModifiedStrength;
 		}
-		
-		const currentDisplayStrength = targetCard._displayStrength !== undefined ? 
-			targetCard._displayStrength : targetCard.strength;
-		
-		const newStrength = Math.max(0, currentDisplayStrength - damageValue);
-		
-		targetCard._damageDisplayStrength = newStrength;
-		targetCard._displayStrength = newStrength;
 		
 		this.createDamageVisualEffect(targetCard, targetRow, damageValue);
 		
@@ -1043,7 +1103,7 @@ const aiModule = {
 			window.gameModule.updateCardStrengthDisplay(targetCard, targetRow, 'player');
 		}
 		
-		if (targetCard._displayStrength === 0) {
+		if (targetCard.modifiedStrength === 0) {
 			const rowState = this.gameState.player.rows[targetRow];
 			const cardIndex = rowState.cards.findIndex(c => c.id === targetCard.id);
 			if (cardIndex !== -1) {
@@ -1056,10 +1116,6 @@ const aiModule = {
 						window.gameModule.removeCardFromBoardVisual(targetCard, targetRow, 'player');
 					}
 				}, 500);
-				
-				delete targetCard.originalStrength;
-				delete targetCard._displayStrength;
-				delete targetCard._damageDisplayStrength;
 			}
 		}
 		
@@ -1095,32 +1151,35 @@ const aiModule = {
 			}
 			
 			if (card.type === 'unit') {
-				const currentDisplayStrength = card._displayStrength !== undefined ? 
-					card._displayStrength : card.strength;
+				// Инициализируем поля для отслеживания состояний
+				if (card.baseStrength === undefined) {
+					card.baseStrength = card.strength;
+				}
+				if (card.modifiedStrength === undefined) {
+					card.modifiedStrength = card.strength;
+				}
+				if (card.currentStrength === undefined) {
+					card.currentStrength = card.strength;
+				}
 				
-				if (currentDisplayStrength > 0) {
-					if (card.originalStrength === undefined) {
-						card.originalStrength = card.strength;
-					}
-					
-					if (card._damageDisplayStrength === undefined) {
-						card._damageDisplayStrength = currentDisplayStrength;
-					}
-					
-					const newStrength = Math.max(0, currentDisplayStrength - damageValue);
-					
-					card._damageDisplayStrength = newStrength;
-					card._displayStrength = newStrength;
-					
-					this.createDamageVisualEffect(card, row, damageValue);
-					
-					if (window.gameModule) {
-						window.gameModule.updateCardStrengthDisplay(card, row, 'player');
-					}
-					
-					if (card._displayStrength === 0) {
-						destroyedCards.push(card);
-					}
+				// Применяем урон к модифицированной силе
+				const newModifiedStrength = Math.max(0, card.modifiedStrength - damageValue);
+				card.modifiedStrength = newModifiedStrength;
+				
+				// Если карта НЕ под погодой, обновляем текущую силу
+				if (!card.underWeather) {
+					card.currentStrength = newModifiedStrength;
+					card.strength = newModifiedStrength;
+				}
+				
+				this.createDamageVisualEffect(card, row, damageValue);
+				
+				if (window.gameModule) {
+					window.gameModule.updateCardStrengthDisplay(card, row, 'player');
+				}
+				
+				if (card.modifiedStrength === 0) {
+					destroyedCards.push(card);
 				}
 			}
 		});
@@ -1139,16 +1198,11 @@ const aiModule = {
 						window.gameModule.removeCardFromBoardVisual(destroyedCard, row, 'player');
 					}
 				}, 500);
-				
-				delete destroyedCard.originalStrength;
-				delete destroyedCard._displayStrength;
-				delete destroyedCard._damageDisplayStrength;
 			}
 		}
 		
 		if (window.gameModule) {
 			window.gameModule.updateRowStrength(row, 'player');
-			
 			window.gameModule.displayPlayerDiscard();
 			window.gameModule.displayOpponentDiscard();
 			
@@ -1649,17 +1703,27 @@ const aiModule = {
 		const rowState = this.gameState.opponent.rows[randomRow];
 		rowState.cards.forEach(unitCard => {
 			if (unitCard.type === 'unit' && !this.isHeroCard(unitCard)) {
-				if (unitCard.originalStrength === undefined) {
-					unitCard.originalStrength = unitCard.strength;
+				// Инициализируем поля
+				if (unitCard.baseStrength === undefined) {
+					unitCard.baseStrength = unitCard.strength;
+				}
+				if (unitCard.modifiedStrength === undefined) {
+					unitCard.modifiedStrength = unitCard.strength;
+				}
+				if (unitCard.currentStrength === undefined) {
+					unitCard.currentStrength = unitCard.strength;
+				}
+				
+				// Применяем усиление
+				unitCard.modifiedStrength += boostValue;
+				
+				// Если карта не под погодой, обновляем текущую силу
+				if (!unitCard.underWeather) {
+					unitCard.currentStrength = unitCard.modifiedStrength;
+					unitCard.strength = unitCard.modifiedStrength;
 				}
 				
 				this.createBoostVisualEffect(unitCard, randomRow, boostValue);
-				
-				const currentStrength = unitCard._displayStrength !== undefined ? 
-					unitCard._displayStrength : unitCard.strength;
-				
-				unitCard.strength = currentStrength + boostValue;
-				unitCard._displayStrength = unitCard.strength;
 				
 				// Обновляем отображение
 				if (window.gameModule) {
@@ -1734,23 +1798,34 @@ const aiModule = {
 				unitCard.tags && 
 				unitCard.tags.includes(tag)) {
 				
-				if (unitCard.originalStrength === undefined) {
-					unitCard.originalStrength = unitCard.strength;
+				// Инициализируем поля
+				if (unitCard.baseStrength === undefined) {
+					unitCard.baseStrength = unitCard.strength;
+				}
+				if (unitCard.modifiedStrength === undefined) {
+					unitCard.modifiedStrength = unitCard.strength;
+				}
+				if (unitCard.currentStrength === undefined) {
+					unitCard.currentStrength = unitCard.strength;
+				}
+				
+				// Применяем усиление
+				unitCard.modifiedStrength += boostValue;
+				
+				// Если карта не под погодой, обновляем текущую силу
+				if (!unitCard.underWeather) {
+					unitCard.currentStrength = unitCard.modifiedStrength;
+					unitCard.strength = unitCard.modifiedStrength;
 				}
 				
 				this.createBoostVisualEffect(unitCard, randomRow, boostValue);
-				const currentStrength = unitCard._displayStrength !== undefined ? 
-					unitCard._displayStrength : unitCard.strength;
-				
-				unitCard.strength = currentStrength + boostValue;
-				unitCard._displayStrength = unitCard.strength;
-				
-				boostedCards++;
 				
 				// Обновляем отображение
 				if (window.gameModule) {
 					window.gameModule.updateCardStrengthDisplay(unitCard, randomRow, 'opponent');
 				}
+				
+				boostedCards++;
 			}
 		});
 		
