@@ -144,8 +144,15 @@ const aiModule = {
 				canPlay = this.canPlayArtifactBoostCard(card);
 			}
 			else {
-				// Обычные карты, артефакты без способностей усиления, специальные карты
-				canPlay = this.canPlayUnitCard(card);
+				// Проверяем, является ли карта шпионом
+				const isSpy = window.gameModule && window.gameModule.isSpyCard(card);
+				
+				if (isSpy) {
+					canPlay = this.canPlaySpyCard(card);
+				} else {
+					// Обычные карты
+					canPlay = this.canPlayUnitCard(card);
+				}
 			}
 			
 			if (canPlay) {
@@ -333,7 +340,25 @@ const aiModule = {
         return scoredCards[0].card;
     },
     
-    evaluateCardScore: function(card) {
+	canPlaySpyCard: function(card) {
+		const targetPosition = window.gameModule.getSpyTargetPosition(card);
+		let availableRows = [];
+		
+		if (targetPosition === 'any-row' || (Array.isArray(targetPosition) && targetPosition.includes('any-row'))) {
+			availableRows = ['close', 'ranged', 'siege'];
+		} else if (Array.isArray(targetPosition)) {
+			availableRows = targetPosition.map(pos => pos.replace('-row', ''));
+		} else {
+			availableRows = [targetPosition.replace('-row', '')];
+		}
+		
+		// Проверяем, есть ли место в рядах игрока
+		return availableRows.some(row => 
+			this.gameState.player.rows[row].cards.length < 9
+		);
+	},
+
+	evaluateCardScore: function(card) {
 		let baseScore = 0;
 		
 		if (this.isWeatherCard(card)) {
@@ -351,7 +376,14 @@ const aiModule = {
 				baseScore = this.evaluateUnitCard(card);
 			}
 		} else if (card.type === 'unit') {
-			baseScore = this.evaluateUnitCard(card);
+			// Проверяем, является ли карта шпионом
+			const isSpy = window.gameModule && window.gameModule.isSpyCard(card);
+			
+			if (isSpy) {
+				baseScore = this.evaluateSpyCard(card);
+			} else {
+				baseScore = this.evaluateUnitCard(card);
+			}
 		} else if (card.ability === 'decoy') {
 			baseScore = this.evaluateDecoyCard(card);
 		} else if (card.ability === 'destroy') {
@@ -372,6 +404,42 @@ const aiModule = {
 		baseScore += situationBonus;
 		
 		return Math.max(0, baseScore);
+	},
+
+	evaluateSpyCard: function(card) {
+		let score = card.strength || 0;
+		
+		// Шпионы дают карту в руку - это очень ценно
+		score += 15;
+		
+		// Учитываем состояние колоды
+		const deckSize = this.gameState.opponent.deck.length;
+		if (deckSize > 5) {
+			score += 5; // Бонус, если есть из чего тянуть
+		}
+		
+		// Учитываем ситуацию в раунде
+		const playerTotal = this.calculateTotalScore('player');
+		const opponentTotal = this.calculateTotalScore('opponent');
+		
+		if (opponentTotal < playerTotal) {
+			// Если проигрываем, шпион может помочь добрать карты для comeback'а
+			score += 10;
+		} else if (opponentTotal > playerTotal + 15) {
+			// Если сильно выигрываем, шпион менее ценен
+			score -= 5;
+		}
+		
+		// Проверяем, есть ли в руке сильные карты, которые можно будет сыграть после добора
+		const strongCardsInHand = this.gameState.opponent.hand.filter(c => 
+			c.strength > 8 && c.type === 'unit' && !window.gameModule?.isSpyCard(c)
+		).length;
+		
+		if (strongCardsInHand > 0) {
+			score += strongCardsInHand * 3;
+		}
+		
+		return score;
 	},
 
 	evaluateArtifactBoostCard: function(card) {
@@ -1635,7 +1703,7 @@ const aiModule = {
 		return weakCards.sort((a, b) => b.score - a.score);
 	},
 
-    playCard: function(card) {
+	playCard: function(card) {
 		this.usedCardIds.add(card.id);
 		this.removeCardFromHand(card);
 		
@@ -1662,7 +1730,147 @@ const aiModule = {
 		} else if (card.ability && card.ability.startsWith('damage_')) {
 			this.playDamageCard(card);
 		} else {
-			this.playUnitCard(card);
+			// Проверяем, является ли карта шпионом
+			const isSpy = window.gameModule && window.gameModule.isSpyCard(card);
+			
+			if (isSpy) {
+				this.playSpyCard(card);
+			} else {
+				this.playUnitCard(card);
+			}
+		}
+	},
+
+	playSpyCard: function(card) {
+		const targetPosition = window.gameModule.getSpyTargetPosition(card);
+		let availableRows = [];
+		
+		if (targetPosition === 'any-row' || (Array.isArray(targetPosition) && targetPosition.includes('any-row'))) {
+			availableRows = ['close', 'ranged', 'siege'];
+		} else if (Array.isArray(targetPosition)) {
+			availableRows = targetPosition.map(pos => pos.replace('-row', ''));
+		} else {
+			availableRows = [targetPosition.replace('-row', '')];
+		}
+		
+		// Фильтруем ряды, где есть место
+		availableRows = availableRows.filter(row => 
+			this.gameState.player.rows[row].cards.length < 9
+		);
+		
+		if (availableRows.length === 0) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		// Выбираем ряд с наименьшей силой (чтобы не давать игроку слишком много очков)
+		let bestRow = availableRows[0];
+		let minStrength = this.gameState.player.rows[bestRow].strength;
+		
+		availableRows.forEach(row => {
+			const rowStrength = this.gameState.player.rows[row].strength;
+			if (rowStrength < minStrength) {
+				minStrength = rowStrength;
+				bestRow = row;
+			}
+		});
+		
+		// Размещаем шпиона в выбранном ряду
+		this.placeSpyCardForAI(card, bestRow);
+	},
+
+	placeSpyCardForAI: function(card, row) {
+		const rowState = this.gameState.player.rows[row];
+		let insertIndex = rowState.cards.length;
+		
+		// Вставляем карту (обычно в конец ряда для простоты)
+		const cardCopy = { ...card };
+		cardCopy.owner = 'player';
+		cardCopy.row = row;
+		cardCopy.isSpy = true;
+		
+		rowState.cards.splice(insertIndex, 0, cardCopy);
+		
+		// Отображаем карту
+		if (window.gameModule) {
+			window.gameModule.displayCardOnRow(row, cardCopy, 'player', insertIndex);
+			window.gameModule.updateRowStrength(row, 'player');
+			window.gameModule.updateTotalScoreDisplays(); // Обновляем общий счет
+		}
+		
+		// Увеличиваем счетчик сыгранных карт (ВАЖНО!)
+		this.gameState.cardsPlayedThisTurn++;
+		
+		// Добор карты для ИИ
+		setTimeout(() => {
+			this.drawCardForAISpy(card);
+			
+			// Завершаем ход ИИ после добора карты
+			setTimeout(() => {
+				this.isMakingMove = false;
+				
+				// Завершаем ход в gameModule
+				if (window.gameModule) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 500);
+		}, 500);
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact');
+		}
+	},
+
+	drawCardForAISpy: function(spyCard) {
+		const opponentState = this.gameState.opponent;
+		
+		if (opponentState.deck.length === 0) return;
+		
+		const targetPosition = window.gameModule.getSpyTargetPosition(spyCard);
+		
+		let cardsToSearch = [];
+		
+		if (targetPosition === 'any-row' || (Array.isArray(targetPosition) && targetPosition.includes('any-row'))) {
+			cardsToSearch = [...opponentState.deck];
+		} else {
+			const targetPositions = Array.isArray(targetPosition) ? targetPosition : [targetPosition];
+			
+			cardsToSearch = opponentState.deck.filter(card => {
+				if (!card.position) return false;
+				
+				const cardPositions = Array.isArray(card.position) ? card.position : [card.position];
+				
+				return cardPositions.some(pos => 
+					targetPositions.includes(pos) && !pos.startsWith('hidden-')
+				);
+			});
+		}
+		
+		let drawnCard = null;
+		
+		if (cardsToSearch.length === 0) {
+			// Если нет карт с нужной позицией, берем любую
+			const randomIndex = Math.floor(Math.random() * opponentState.deck.length);
+			drawnCard = opponentState.deck.splice(randomIndex, 1)[0];
+			opponentState.hand.push(drawnCard);
+		} else {
+			const randomIndex = Math.floor(Math.random() * cardsToSearch.length);
+			drawnCard = cardsToSearch[randomIndex];
+			
+			const deckIndex = opponentState.deck.findIndex(c => c.id === drawnCard.id);
+			if (deckIndex !== -1) {
+				opponentState.deck.splice(deckIndex, 1);
+				opponentState.hand.push(drawnCard);
+			}
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('card_draw');
+		}
+		
+		// Обновляем отображение руки ИИ (скрыто)
+		if (window.gameModule && window.gameModule.displayOpponentDeck) {
+			window.gameModule.displayOpponentDeck();
 		}
 	},
 

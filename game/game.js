@@ -2126,7 +2126,10 @@ const gameModule = {
 	completeCardPlay: function() {
 		this.gameState.selectedCard = null;
 		this.gameState.selectingRow = false;
+		
+		// ВАЖНО: Увеличиваем счетчик сыгранных карт
 		this.gameState.cardsPlayedThisTurn++;
+		
 		this.updateTotalScoreDisplays();
 		this.resetTimeoutCounter();
 		
@@ -2136,7 +2139,7 @@ const gameModule = {
 				if (this.gameState[otherPlayer].passed) {
 					this.gameState[this.gameState.currentPlayer].passed = true;
 				}
-				this.handleTurnEnd();
+				this.handleTurnEnd(); // Это переключит ход
 			}, 800);
 		} else {
 			this.updateControlButtons();
@@ -2692,6 +2695,180 @@ const gameModule = {
         
         this.updateWeatherCounter();
     },
+
+	isSpyCard: function(card) {
+		if (!card || !card.position) return false;
+		
+		// Проверяем, содержит ли позиция префикс 'hidden-'
+		const positions = Array.isArray(card.position) ? card.position : [card.position];
+		return positions.some(pos => pos.startsWith('hidden-'));
+	},
+
+	getSpyTargetPosition: function(card) {
+		if (!card || !card.position) return null;
+		
+		const positions = Array.isArray(card.position) ? card.position : [card.position];
+		
+		// Для скрытых позиций возвращаем соответствующую обычную позицию
+		const targetPositions = positions.map(pos => {
+			if (pos === 'hidden-close-row') return 'close-row';
+			if (pos === 'hidden-ranged-row') return 'ranged-row';
+			if (pos === 'hidden-siege-row') return 'siege-row';
+			if (pos === 'hidden-any-row') return 'any-row';
+			return pos; // Для обычных карт возвращаем как есть
+		});
+		
+		return targetPositions.length === 1 ? targetPositions[0] : targetPositions;
+	},
+
+	placeSpyCard: function(card, row, clickX, player = 'player') {
+		const opponent = player === 'player' ? 'opponent' : 'player';
+		const rowState = this.gameState[opponent].rows[row];
+		
+		if (rowState.cards.length >= 9) {
+			this.showGameMessage('В ряду противника максимальное количество карт!', 'warning');
+			return false;
+		}
+		
+		const rowElement = document.getElementById(`${opponent}${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return false;
+		
+		let insertIndex = rowState.cards.length;
+		
+		// Определяем позицию для вставки на основе клика
+		if (clickX !== undefined && rowState.cards.length > 0) {
+			const cardsInRow = Array.from(rowElement.querySelectorAll('.board-card'));
+			if (cardsInRow.length > 0) {
+				let closestCard = null;
+				let minDistance = Infinity;
+				const clickRect = rowElement.getBoundingClientRect();
+				const relativeX = clickX - clickRect.left;
+				
+				cardsInRow.forEach((cardElement, index) => {
+					const cardRect = cardElement.getBoundingClientRect();
+					const cardCenterX = (cardRect.left + cardRect.right) / 2 - clickRect.left;
+					const distance = Math.abs(relativeX - cardCenterX);
+					
+					if (distance < minDistance) {
+						minDistance = distance;
+						closestCard = { element: cardElement, index: index };
+					}
+				});
+				
+				if (closestCard) {
+					const cardRect = closestCard.element.getBoundingClientRect();
+					const cardCenterX = (cardRect.left + cardRect.right) / 2;
+					
+					if (clickX < cardCenterX) {
+						insertIndex = closestCard.index;
+					} else {
+						insertIndex = closestCard.index + 1;
+					}
+				}
+			}
+		}
+		
+		// Создаем копию карты для размещения на поле противника
+		const cardCopy = this.createCardCopy(card);
+		cardCopy.owner = opponent;
+		cardCopy.row = row;
+		cardCopy.isSpy = true;
+		
+		// Вставляем карту в ряд противника
+		rowState.cards.splice(insertIndex, 0, cardCopy);
+		
+		// Удаляем карту из руки игрока
+		this.removeCardFromHand(card, player);
+		
+		// Отображаем карту на поле противника
+		this.displayCardOnRow(row, cardCopy, opponent, insertIndex);
+		
+		// Обновляем силу ряда противника - ЭТО ВАЖНО!
+		this.updateRowStrength(row, opponent);
+		
+		// Воспроизводим звук
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('artefact');
+		}
+		
+		// Выполняем добор карты
+		this.drawCardForSpy(card, player);
+		
+		// Увеличиваем счетчик сыгранных карт
+		this.gameState.cardsPlayedThisTurn++;
+		
+		// Обновляем общий счет
+		this.updateTotalScoreDisplays();
+		
+		// Сбрасываем таймер
+		this.resetTimeoutCounter();
+		
+		return true;
+	},
+
+	drawCardForSpy: function(spyCard, player) {
+		const playerState = this.gameState[player];
+		
+		if (playerState.deck.length === 0) {
+			this.showGameMessage('В колоде нет карт для добора!', 'warning');
+			return false;
+		}
+		
+		const targetPosition = this.getSpyTargetPosition(spyCard);
+		
+		// Определяем, какие карты искать
+		let cardsToSearch = [];
+		
+		if (targetPosition === 'any-row' || (Array.isArray(targetPosition) && targetPosition.includes('any-row'))) {
+			// Для any-row ищем любую карту
+			cardsToSearch = [...playerState.deck];
+		} else {
+			// Ищем карты с соответствующей позицией
+			const targetPositions = Array.isArray(targetPosition) ? targetPosition : [targetPosition];
+			
+			cardsToSearch = playerState.deck.filter(card => {
+				if (!card.position) return false;
+				
+				const cardPositions = Array.isArray(card.position) ? card.position : [card.position];
+				
+				// Проверяем, есть ли совпадение с целевыми позициями (не hidden)
+				return cardPositions.some(pos => 
+					targetPositions.includes(pos) && !pos.startsWith('hidden-')
+				);
+			});
+		}
+		
+		if (cardsToSearch.length === 0) {
+			// Если нет карт с нужной позицией, берем любую карту
+			this.showGameMessage('Нет карт с указанной позицией, берётся любая карта', 'info');
+			const randomIndex = Math.floor(Math.random() * playerState.deck.length);
+			const drawnCard = playerState.deck.splice(randomIndex, 1)[0];
+			playerState.hand.push(drawnCard);
+			this.showGameMessage(`Вы получили карту: ${drawnCard.name}`, 'info');
+		} else {
+			// Выбираем случайную карту из подходящих
+			const randomIndex = Math.floor(Math.random() * cardsToSearch.length);
+			const drawnCard = cardsToSearch[randomIndex];
+			
+			// Удаляем её из колоды
+			const deckIndex = playerState.deck.findIndex(c => c.id === drawnCard.id);
+			if (deckIndex !== -1) {
+				playerState.deck.splice(deckIndex, 1);
+				playerState.hand.push(drawnCard);
+				this.showGameMessage(`Вы получили карту: ${drawnCard.name}`, 'info');
+			}
+		}
+		
+		// Обновляем отображение
+		this.displayPlayerHand();
+		this.displayPlayerDeck();
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('card_draw');
+		}
+		
+		return true;
+	},
 
     restoreScoreDisplays: function() {
         const weatherSlot = document.getElementById('weatherSlot');

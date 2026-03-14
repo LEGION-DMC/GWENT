@@ -33,7 +33,7 @@ const playerModule = {
 		return card.tags && (card.tags.includes('hero') || card.tags.includes('герой'));
 	},
  
-    handleCardSelection: function(card, cardElement) {
+	handleCardSelection: function(card, cardElement) {
 		if (this.gameState.mulligan.phase === 'player') {
 			return;
 		}
@@ -69,6 +69,9 @@ const playerModule = {
 		if (this.isWeatherCard(card)) {
 			this.playWeatherCard(card);
 		} else {
+			// Проверяем, является ли карта шпионом
+			const isSpy = window.gameModule && window.gameModule.isSpyCard(card);
+			
 			switch (card.type) {
 				case 'tactic':
 					if (card.ability && card.ability.startsWith('boost_')) {
@@ -78,7 +81,11 @@ const playerModule = {
 					}
 					break;
 				case 'unit':
-					this.startUnitCardPlacement(card);
+					if (isSpy) {
+						this.startSpyCardPlacement(card);
+					} else {
+						this.startUnitCardPlacement(card);
+					}
 					break;
 				case 'special':
 					if (card.ability === 'decoy') {
@@ -104,6 +111,93 @@ const playerModule = {
 					this.cancelCardSelection();
 			}
 		}
+	},
+
+	startSpyCardPlacement: function(card) {
+		this.gameState.selectingRow = true;
+		this.gameState.placementType = 'spy';
+		
+		// Получаем доступные ряды для размещения шпиона (на стороне противника)
+		const targetPosition = window.gameModule.getSpyTargetPosition(card);
+		const availableRows = this.getAvailableSpyRows(card, targetPosition);
+		
+		if (availableRows.length === 0) {
+			this.showMessage('Нет доступных рядов для размещения шпиона!');
+			this.cancelCardSelection();
+			return;
+		}
+		
+		// Подсвечиваем доступные ряды противника
+		this.highlightOpponentRowsForSpy(availableRows);
+	},
+
+	getAvailableSpyRows: function(card, targetPosition) {
+		let availableRows = [];
+		
+		if (targetPosition === 'any-row' || (Array.isArray(targetPosition) && targetPosition.includes('any-row'))) {
+			availableRows = ['close', 'ranged', 'siege'];
+		} else if (Array.isArray(targetPosition)) {
+			availableRows = targetPosition.map(pos => pos.replace('-row', ''));
+		} else {
+			availableRows = [targetPosition.replace('-row', '')];
+		}
+		
+		// Проверяем, есть ли место в рядах противника
+		return availableRows.filter(row => 
+			this.gameState.opponent.rows[row].cards.length < 9
+		);
+	},
+
+	highlightOpponentRowsForSpy: function(rows) {
+		rows.forEach(row => {
+			const rowElement = document.getElementById(`opponent${this.capitalizeFirst(row)}Row`);
+			if (rowElement) {
+				rowElement.classList.add('row-available');
+				rowElement.classList.add('spy-target'); // Добавляем специальный класс для шпионов
+				this.setupOpponentRowSelectionHandler(rowElement, row);
+			}
+		});
+	},
+
+	setupOpponentRowSelectionHandler: function(rowElement, row) {
+		const clickHandler = (event) => {
+			if (this.gameState.selectingRow && this.gameState.selectedCard) {
+				const card = this.gameState.selectedCard;
+				
+				if (this.gameState.placementType === 'spy') {
+					// Размещаем шпиона в ряду противника
+					const success = window.gameModule.placeSpyCard(card, row, event.clientX, 'player');
+					
+					if (success) {
+						this.cancelRowSelection();
+						
+						// ВАЖНО: Вызываем completeCardPlay для завершения хода
+						if (window.gameModule && window.gameModule.completeCardPlay) {
+							setTimeout(() => {
+								window.gameModule.completeCardPlay();
+							}, 500); // Небольшая задержка для анимации добора карты
+						}
+					}
+				}
+				
+				rowElement.removeEventListener('click', clickHandler);
+				rowElement.classList.remove('row-available', 'spy-target');
+			}
+		};
+		
+		rowElement.addEventListener('click', clickHandler);
+		
+		if (!this.gameState.spySelectionHandlers) {
+			this.gameState.spySelectionHandlers = [];
+		}
+		this.gameState.spySelectionHandlers.push({ element: rowElement, handler: clickHandler, row: row });
+	},
+
+	removeSpyHighlights: function() {
+		const highlightedRows = document.querySelectorAll('.spy-target');
+		highlightedRows.forEach(row => {
+			row.classList.remove('spy-target');
+		});
 	},
 
 	startBoostCardPlacement: function(card) {
@@ -2183,18 +2277,21 @@ const playerModule = {
 		this.cancelRowSelection();
 	},
 
-    cancelRowSelection: function() {
+	cancelRowSelection: function() {
 		this.gameState.selectingRow = false;
 		this.gameState.placementType = null;
 		this.gameState.boostCard = null;
 		this.gameState.boostTag = null;
-	
+
 		this.removeDecoyHighlights();
 		this.removeArtifactHighlights();
 		this.removeDamageHighlights();
 		this.removeAllRowHighlights();
 		this.removeAllTacticSlotHighlights();
 		this.removeBoostHighlights();
+		
+		// Убираем подсветку для шпионов
+		this.removeSpyHighlights();
 		
 		const positionMarkers = document.querySelectorAll('.boost-position-marker');
 		positionMarkers.forEach(marker => {
@@ -2205,7 +2302,7 @@ const playerModule = {
 		boostTargets.forEach(card => {
 			card.classList.remove('boost-target');
 		});
-	
+
 		if (this.gameState.rowSelectionHandlers) {
 			this.gameState.rowSelectionHandlers.forEach(({ element, handler }) => {
 				element.removeEventListener('click', handler);
@@ -2232,6 +2329,20 @@ const playerModule = {
 			});
 			this.gameState.artifactSelectionHandlers = [];
 		}
+		
+		if (this.gameState.spySelectionHandlers) {
+			this.gameState.spySelectionHandlers.forEach(({ element, handler }) => {
+				element.removeEventListener('click', handler);
+			});
+			this.gameState.spySelectionHandlers = [];
+		}
+	},
+
+	removeSpyHighlights: function() {
+		const highlightedRows = document.querySelectorAll('.spy-target');
+		highlightedRows.forEach(row => {
+			row.classList.remove('spy-target');
+		});
 	},
 
 	removeDecoyHighlights: function() {
