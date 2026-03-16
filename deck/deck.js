@@ -269,6 +269,7 @@ let availableCards = {
 let displayedCollectionCards = [];
 let lastCollectionFilter = 'all';
 let lastDeckFilter = 'all';
+let p2pMode = false;
 
 function localizeFaction(factionId) {
     return localization.factions[factionId] || factionId;
@@ -286,10 +287,11 @@ function localizeTags(tags) {
     return tags ? tags.map(tag => localization.tags[tag] || tag) : [];
 }
 
-function initDeckBuilding(faction) {
+function initDeckBuilding(faction, mode = 'single') {
     window.selectedFaction = faction;
     currentDeck.faction = faction.id;
-	
+    p2pMode = mode === 'p2p';
+    
     const savedDeck = localStorage.getItem(`gwent_deck_${faction.id}`);
     
     if (savedDeck) {
@@ -335,6 +337,13 @@ function initDeckBuilding(faction) {
     loadFactionCards(faction);
     setFactionBackground(faction);
     setFactionHeadersBackground(faction.id);
+    
+	if (p2pMode) {
+        const startGameBtn = document.getElementById('startGameBtn');
+        if (startGameBtn) {
+            startGameBtn.textContent = 'СЕТЕВАЯ ИГРА';
+        }
+    }
 }
 
 function hideFactionSelection() {
@@ -2169,21 +2178,62 @@ function showMessage(text) {
 }
 
 function startGame() {
-    if (window.boardModule && window.boardModule.initGameBoard) {
-        const deckBuildingSection = document.querySelector('.deck-building');
-        if (deckBuildingSection) {
-            deckBuildingSection.style.opacity = '0';
-            deckBuildingSection.style.transform = 'translateY(50px)';
+    if (p2pMode) {
+        // Переходим к P2P подключению
+        if (window.p2pUI) {
+            window.p2pUI.showP2PMenu(window.selectedFaction, currentDeck, 'Игрок');
             
-            setTimeout(() => {
-                window.boardModule.initGameBoard();
-            }, 800);
+            window.p2pUI.onGameStart((data) => {
+                // Запускаем игру с P2P
+                if (window.gameModule && window.gameModule.initP2PGame) {
+                    const deckBuildingSection = document.querySelector('.deck-building');
+                    if (deckBuildingSection) {
+                        deckBuildingSection.style.opacity = '0';
+                        deckBuildingSection.style.transform = 'translateY(50px)';
+                        
+                        setTimeout(() => {
+                            window.gameModule.initP2PGame(
+                                window.p2pManager.playerData,
+                                window.p2pManager.opponentData,
+                                data.firstPlayer === 'host' ? window.p2pManager.isHost : !window.p2pManager.isHost
+                            );
+                        }, 800);
+                    }
+                }
+            });
+            
+            window.p2pUI.onClose(() => {
+                // Возврат к выбору колоды
+                const deckBuildingSection = document.querySelector('.deck-building');
+                if (deckBuildingSection) {
+                    deckBuildingSection.style.opacity = '1';
+                    deckBuildingSection.style.transform = 'translateY(0)';
+                }
+            });
         }
     } else {
-        showMessage('Ошибка загрузки игрового модуля');
+        // Обычная игра против ИИ
+        if (window.boardModule && window.boardModule.initGameBoard) {
+            const deckBuildingSection = document.querySelector('.deck-building');
+            if (deckBuildingSection) {
+                deckBuildingSection.style.opacity = '0';
+                deckBuildingSection.style.transform = 'translateY(50px)';
+                
+                setTimeout(() => {
+                    window.boardModule.initGameBoard();
+                    
+                    if (window.gameModule && window.gameModule.init) {
+                        window.gameModule.init();
+                    }
+                }, 800);
+            }
+        } else {
+            showMessage('Ошибка загрузки игрового модуля');
+        }
     }
 }
 
+// Экспортируем p2pMode
 window.deckModule = {
     initDeckBuilding,
     currentDeck,
@@ -2195,5 +2245,6 @@ window.deckModule = {
     clearDeck,
     clearDeckSilent,
     backToFactionSelection,
-    setFactionHeadersBackground
+    setFactionHeadersBackground,
+    p2pMode
 };

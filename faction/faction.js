@@ -66,9 +66,10 @@ let selectedFaction = null;
 let isHovering = false;
 let isFactionSectionCreated = false;
 
-function initFactionSelection() {
+function initFactionSelection(mode = 'single') {
     window.selectedFaction = null;
     selectedFaction = null;
+    window.p2pMode = mode === 'p2p'
 	
     document.body.style.background = "url('ui/fon.jpg') no-repeat center center fixed";
     document.body.style.backgroundSize = 'cover';
@@ -246,8 +247,15 @@ function proceedToDeckBuilding(faction) {
     window.selectedFaction = faction;
     cleanupFactionSelection();
     
-    if (window.deckModule && window.deckModule.initDeckBuilding) {
-        window.deckModule.initDeckBuilding(faction);
+    if (window.p2pMode) {
+        // Переходим к выбору колоды для сетевой игры
+        if (window.deckModule && window.deckModule.initDeckBuilding) {
+            window.deckModule.initDeckBuilding(faction, 'p2p');
+        }
+    } else {
+        if (window.deckModule && window.deckModule.initDeckBuilding) {
+            window.deckModule.initDeckBuilding(faction);
+        }
     }
 }
 
