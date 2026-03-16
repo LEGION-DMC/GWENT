@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
         <img src="ui/logo.png" alt="Gwent" class="logo">
         <div class="main-menu-buttons">
             <button class="menu-btn play-btn" id="playBtn">ИГРАТЬ</button>
-			<button class="menu-btn p2p-btn" id="p2pBtn">ОНЛАЙН</button>
             <button class="menu-btn rules-btn" id="rulesBtn">ПРАВИЛА</button>
             <button class="menu-btn settings-btn" id="settingsBtn">ОПЦИИ</button>
         </div>
@@ -14,8 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     startPage.innerHTML = startPageHTML;
  
     const playBtn = document.getElementById('playBtn');
-    const p2pBtn = document.getElementById('p2pBtn');
-	const rulesBtn = document.getElementById('rulesBtn');
+    const rulesBtn = document.getElementById('rulesBtn');
     const settingsBtn = document.getElementById('settingsBtn');
     
     playBtn.addEventListener('click', function() {
@@ -23,13 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
         animateTransitionToFactionSelection();
     });
     
-	p2pBtn.addEventListener('click', function() {
-		audioManager.playSound('button');
-		
-		// Сначала выбираем фракцию для сетевой игры
-		window.factionModule.initFactionSelection('p2p');
-	});
-
     rulesBtn.addEventListener('click', function() {
         audioManager.playSound('button');
         window.rulesModule.initRulesPage();
