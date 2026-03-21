@@ -3170,11 +3170,11 @@ const gameModule = {
 		
 		const allSpecialCards = [...allSpecials, ...allArtifacts, ...allTactics];
 		
-		const minDeckSize = 15;
-		const maxDeckSize = 25;
-		const minUnits = 10;
-		const minSpecials = 3;
-		const maxSpecials = 5;
+		const minDeckSize = 25;    
+		const maxDeckSize = 40;    
+		const minUnits = 15;        
+		const minSpecials = 5;       
+		const maxSpecials = 10;     
 		
 		const specialCount = minSpecials + Math.floor(Math.random() * (maxSpecials - minSpecials + 1));
 		const selectedSpecials = [];
@@ -3372,7 +3372,7 @@ const gameModule = {
 		this.shuffleArray(deck);
 		
 		return deck;
-	},
+	},	
 
     getRandomFactionAbility: function(factionId) {
         const abilities = window.deckModule?.factionAbilities?.[factionId];

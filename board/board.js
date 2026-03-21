@@ -125,34 +125,34 @@ const boardModule = {
         `;
     },
 
-updateControlsVisibility: function(isPlayerTurn) {
-    const passBtn = document.getElementById('passBtn');
-    const endTurnBtn = document.getElementById('endTurnBtn');
-    
-    if (passBtn && endTurnBtn) {
-        if (isPlayerTurn) {
-            passBtn.classList.remove('hidden-control');
-            endTurnBtn.classList.remove('hidden-control');
-            
-            setTimeout(() => {
-                passBtn.style.opacity = '1';
-                passBtn.style.transform = 'translateY(0)';
-                endTurnBtn.style.opacity = '1';
-                endTurnBtn.style.transform = 'translateY(0)';
-            }, 50);
-        } else {
-            passBtn.style.opacity = '0';
-            passBtn.style.transform = 'translateY(15px)';
-            endTurnBtn.style.opacity = '0';
-            endTurnBtn.style.transform = 'translateY(15px)';
-            
-            setTimeout(() => {
-                passBtn.classList.add('hidden-control');
-                endTurnBtn.classList.add('hidden-control');
-            }, 100);
-        }
-    }
-},
+	updateControlsVisibility: function(isPlayerTurn) {
+		const passBtn = document.getElementById('passBtn');
+		const endTurnBtn = document.getElementById('endTurnBtn');
+		
+		if (passBtn && endTurnBtn) {
+			if (isPlayerTurn) {
+				passBtn.classList.remove('hidden-control');
+				endTurnBtn.classList.remove('hidden-control');
+				
+				setTimeout(() => {
+					passBtn.style.opacity = '1';
+					passBtn.style.transform = 'translateY(0)';
+					endTurnBtn.style.opacity = '1';
+					endTurnBtn.style.transform = 'translateY(0)';
+				}, 50);
+			} else {
+				passBtn.style.opacity = '0';
+				passBtn.style.transform = 'translateY(15px)';
+				endTurnBtn.style.opacity = '0';
+				endTurnBtn.style.transform = 'translateY(15px)';
+				
+				setTimeout(() => {
+					passBtn.classList.add('hidden-control');
+					endTurnBtn.classList.add('hidden-control');
+				}, 100);
+			}
+		}
+	},
 
     setupBoardEventListeners: function() {
         const passBtn = document.getElementById('passBtn');

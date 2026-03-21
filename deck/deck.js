@@ -21,23 +21,36 @@ const localization = {
         gold: 'Золотая'
     },
     tags: {
-        leader: 'Лидер',
-        hero: 'Герой',
-        wild_hunt: 'Дикая Охота',
-        emperor: 'Император',
-        king: 'Король',
-        kingser: 'Аристократия',
-        mage: 'Чародей',
-        witcher: 'Ведьмак',
-        soldier: 'Солдат',
-        monster: 'Чудовище',
-        weather: 'Погода',
-        tactic: 'Тактика',
-        spell: 'Заклятие',
-        hazard: 'Бедствие',
-        ritual: 'Ритуал',
-        execution: 'Наказание',
+		leader: 'Лидер',
+		hero: 'Герой',
+		wild_hunt: 'Дикая Охота',
+		emperor: 'Император',
+		king: 'Правитель',
+		kingser: 'Знать',
+		mage: 'Чародей',
+		witcher: 'Ведьмак',
+		soldier: 'Солдат',
+		monster: 'Чудовище',
+		weather: 'Погода',
+		tactic: 'Военное искуство',
+		spell: 'Заклятие',
+		hazard: 'Бедствие',
+		ritual: 'Ритуал',
+		execution: 'Наказание',
 		criminal: 'Преступник',
+		scavenger: 'Трупоед',
+		ghost: 'Призрак',
+		artifact: 'Артефакт',          
+		dragon: 'Драконид',              
+		fiend: 'Бес',                   
+		specter: 'Дух',                 
+		dwarf: 'Краснолюд',             
+		mercenary: 'Наёмник',
+		elf: 'Ельф',
+		oak: 'Древень',
+		curse: 'Проклятие',
+		religy: 'Религия',
+		weapons: 'Оружие',
     }
 };
 
@@ -1299,11 +1312,11 @@ function autoBuildDeck() {
         return;
     }
     
-    const MIN_TOTAL_CARDS = 15;
-    const MAX_TOTAL_CARDS = 25;
-    const MIN_UNIT_CARDS = 10;
-    const MIN_SPECIAL_CARDS = 3;
-    const MAX_SPECIAL_CARDS = 5;
+    const MIN_TOTAL_CARDS = 25;
+    const MAX_TOTAL_CARDS = 40;
+    const MIN_UNIT_CARDS = 15;
+    const MIN_SPECIAL_CARDS = 5;
+    const MAX_SPECIAL_CARDS = 10;
     
     const unitCards = allCards.filter(card => card.type === 'unit');
     const specialCards = allCards.filter(card => card.type === 'special');
@@ -2101,24 +2114,24 @@ function validateDeckAndStartGame() {
     
     const errors = [];
     
-    if (totalCards < 15) {
-        errors.push(`Минимальный размер колоды: 15 карт`);
+    if (totalCards < 25) {
+        errors.push(`Минимальный размер колоды: 25 карт`);
     }
     
-    if (totalCards > 25) {
-        errors.push(`Максимальный размер колоды: 25 карт`);
+    if (totalCards > 40) {
+        errors.push(`Максимальный размер колоды: 40 карт`);
     }
     
-    if (unitCardsCount < 10) {
-        errors.push(`Минимальное количество карт отрядов: 10`);
+    if (unitCardsCount < 15) {
+        errors.push(`Минимальное количество карт отрядов: 15`);
     }
     
-    if (specialCardsCount < 3) {
-        errors.push(`Обязательное количество специальных карт: 3`);
+    if (specialCardsCount < 5) {
+        errors.push(`Обязательное количество специальных карт: 5`);
     }
     
-    if (specialCardsCount > 5) {
-        errors.push(`Максимальное количество специальных карт: 5`);
+    if (specialCardsCount > 10) {
+        errors.push(`Максимальное количество специальных карт: 10`);
     }
     
     if (errors.length > 0) {

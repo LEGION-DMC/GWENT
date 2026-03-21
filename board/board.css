@@ -280,9 +280,38 @@
 .deck-modal { background: linear-gradient(145deg, #1a1a1a, #2a2a2a); border: 2px solid #d4af37; border-radius: 10px; width: 800px; height: 500px; transform: scale(0.9); opacity: 0; transition: all 0.3s ease; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 50px rgba(212, 175, 55, 0.3); } 
 .deck-modal-overlay.active .deck-modal { transform: scale(1); opacity: 1; } 
 .deck-modal__header { display: flex; justify-content: space-between; align-items: center; padding: 0px 15px; border-bottom: 2px solid #d4af37; position: relative; min-height: 50px; }
-.deck-modal__title { color: #d4af37; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; } 
-.deck-modal__count { position: absolute; color: #ffd700; font-size: 20px; right: 20px; } 
-.deck-modal__close { display: none; } 
+.deck-modal__title {
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.4),
+        0 0 5px rgba(165, 124, 44, 0.2);
+}
+
+.deck-modal__count {
+    position: absolute;
+    font-size: 20px;
+    right: 20px;
+    
+    /* Золотой градиент для счетчика */
+    background: linear-gradient(135deg, #b8892c 0%, #ddb652 45%, #c6982e 80%, #efcd74 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    text-shadow: 
+        0 0 8px rgba(207, 170, 74, 0.4),
+        0 1px 1px rgba(0, 0, 0, 0.3);
+}.deck-modal__close { display: none; } 
 .deck-modal__content { background: url('../ui/fon_dop.jpg') no-repeat center center; background-size: cover; overflow-x: hidden; flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 25px; align-content: flex-start; }
 
 .deck-card {
@@ -744,12 +773,21 @@
 }
             
 .coin-toss-title {
-   color: #d4af37;
    font-size: 30px;
    font-weight: bold;
    text-transform: uppercase;
    letter-spacing: 3px;
-   text-shadow: 0 2px 10px rgba(212, 175, 55, 0.2);
+   
+   /* Благородное золото с градиентом */
+   background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+   -webkit-background-clip: text;
+   background-clip: text;
+   color: transparent;
+   
+   /* Мягкая тень для объема */
+   text-shadow: 
+       1px 1px 2px rgba(0, 0, 0, 0.4),
+       0 0 8px rgba(165, 124, 44, 0.3);
 }
             
 @keyframes titlePulse {
@@ -819,22 +857,37 @@
 .coin-tossing {
    animation: coinTossUp 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
-            
+
+/* Результат подбрасывания монеты */
 .coin-result {
-   color: #fff;
    font-size: 25px;
    font-weight: bold;
    text-transform: uppercase;
    letter-spacing: 2px;
    min-height: 40px;
    opacity: 0;
-   transition: opacity 0.5s ease;
-}
-            
-.coin-result.show {
-   opacity: 1;
+   transform: translateY(-10px);
+   transition: opacity 0.3s ease, transform 0.3s ease;
+   
+   /* Благородное золото для текста результата */
+   background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+   -webkit-background-clip: text;
+   background-clip: text;
+   color: transparent;
+   
+   /* Мягкая тень для объема */
+   text-shadow: 
+       1px 1px 2px rgba(0, 0, 0, 0.4),
+       0 0 8px rgba(165, 124, 44, 0.3);
 }
 
+.coin-result.show {
+   opacity: 1;
+   transform: translateY(0);
+   transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Анимация монеты */
 @keyframes smoothCoinToss {
     0% {
         transform: translateY(0) rotateX(0deg);
@@ -863,15 +916,28 @@
     transform-origin: center center;
 }
 
-.coin-result.show {
-    opacity: 1;
-    transform: translateY(0);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+/* Для отображения стороны монеты (победа/поражение) */
+.coin-side-win,
+.coin-side-lose {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
 }
 
-.coin-result {
-    opacity: 0;
-    transform: translateY(-10px);
+.coin-side-win {
+    background: linear-gradient(135deg, #b8892c 0%, #ddb652 45%, #c6982e 80%, #efcd74 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 10px rgba(207, 170, 74, 0.5);
+}
+
+.coin-side-lose {
+    background: linear-gradient(135deg, #8a8a8a 0%, #b0b0b0 45%, #9a9a9a 80%, #c5c5c5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 5px rgba(100, 100, 100, 0.3);
 }
 
 @keyframes damageAnimation {
@@ -944,4 +1010,111 @@
     box-shadow: 0 0 15px 5px rgba(0, 255, 0, 0.5) !important;
     border: 1px solid green !important;
     transform: scale(1.02);
+}
+
+/* Модальное окно выбора первого хода */
+.turn-choice-modal {
+    text-align: center;
+}
+
+.turn-choice-modal__title {
+    font-size: 25px;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.4),
+        0 0 8px rgba(165, 124, 44, 0.3);
+}
+
+.turn-choice-modal__buttons {
+    display: flex;
+    gap: 13px;
+    margin: 20px 0;
+}
+
+.choice-btn {
+    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    border: 1px solid #3a3a4a;
+    padding: 8px 10px;
+    font-size: 16px;
+    font-family: 'Gwent', sans-serif;
+    cursor: url('../ui/cursor_hover.png'), pointer;
+    border-radius: 5px;
+    flex: 1;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+.choice-btn:hover {
+    transform: scale(1.02);
+    border-color: #cfaa4a;
+    box-shadow: 0 0 12px rgba(207, 170, 74, 0.3);
+}
+
+.choice-btn__label {
+    font-size: 15px;
+    color: #999;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.choice-btn__value {
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Кнопка выбора игрока */
+.player-choice {
+    color: #4CAF50;
+}
+
+.player-choice .choice-btn__value {
+    background: linear-gradient(135deg, #4caf50 0%, #6fbf6f 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+.player-choice:hover {
+    border-color: #4caf50;
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Кнопка выбора противника */
+.opponent-choice {
+    color: #f44336;
+}
+
+.opponent-choice .choice-btn__value {
+    background: linear-gradient(135deg, #f44336 0%, #ff6b5e 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 5px rgba(244, 67, 54, 0.3);
+}
+
+.opponent-choice:hover {
+    border-color: #f44336;
+    box-shadow: 0 0 12px rgba(244, 67, 54, 0.3);
+}
+
+.turn-choice-modal__description {
+    color: #c9c9c9;
+    font-size: 14px;
+    margin-top: 15px;
+    font-style: italic;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    border-top: 1px solid #3a3a4a;
+    padding-top: 15px;
 }

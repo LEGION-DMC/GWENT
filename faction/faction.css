@@ -19,8 +19,18 @@
     margin-bottom: 45px;
     text-transform: uppercase;
     letter-spacing: 3px;
-    color: #d4af37;        
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.5),
+        0 0 8px rgba(165, 124, 44, 0.4),
+        0 0 20px rgba(207, 170, 74, 0.2);
 }
 
 .faction-selection__container {
@@ -78,58 +88,96 @@
     margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 3px;
-    color: #d4af37;        
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 3px rgba(0, 0, 0, 0.5),
+        0 0 6px rgba(165, 124, 44, 0.3),
+        0 0 15px rgba(207, 170, 74, 0.2);
 }
 
 .faction-description__text {
     font-size: 16px;
-    color: #ccc;
+    color: #d4d4d4;
     line-height: 1.4;
-	font-style: italic;
+    font-style: italic;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .confirm-btn {
     background: none;
-    color: #d4af37;
-    border: 1px solid #d4af37;
-    padding: 10px 30px;
-    font-size: 21px;
+    border: none;
+    padding: 10px 20px;
+    font-size: 20px;
     font-family: 'Gwent', sans-serif;
     text-transform: uppercase;
     letter-spacing: 2px;
     cursor: url('../ui/cursor_hover.png'), pointer;
     transition: all 0.3s ease;
-    border-radius: 5px; 
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
     opacity: 0;
     transform: translateY(30px);
     pointer-events: none;
-    overflow: hidden;
-    position: relative;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.4),
+        0 0 5px rgba(165, 124, 44, 0.3);
+}
+
+.confirm-btn::before,
+.confirm-btn::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 1px;
+    /* Линии в тон тексту, но приглушеннее */
+    background: linear-gradient(90deg, transparent, #cfaa4a, #e5c168, #cfaa4a, transparent);
+    transition: width 0.4s ease;
+}
+
+.confirm-btn::before {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.confirm-btn::after {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.confirm-btn:hover::before,
+.confirm-btn:hover::after {
+    width: 100%;
 }
 
 .confirm-btn:hover {
     scale: 1.03;
-    box-shadow: 0 0 25px rgba(212, 175, 55, 0.3);
+    /* Усиливаем свечение при наведении */
+    text-shadow: 
+        1px 1px 3px rgba(0, 0, 0, 0.5),
+        0 0 12px rgba(207, 170, 74, 0.6),
+        0 0 20px rgba(229, 193, 104, 0.3);
 }
 
 .confirm-btn:active {
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
-}
-
-.confirm-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
-    transition: left 0.5s ease;
-}
-
-.confirm-btn:hover::before {
-    left: 100%;
+    transform: scale(1.1);
 }
 
 .faction-description__ability {
@@ -137,11 +185,25 @@
     border-top: 40px solid transparent;
     border-image: url('../ui/long.png') 70 200;
     font-size: 15px;
-    color: #f8c555;
-    letter-spacing: 1px;
-	font-style: italic;
+    /*! letter-spacing: 1px; */
+    font-style: italic;
+    
+    /* Благородное золото для текста способности */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        0.5px 0.5px 1px rgba(0, 0, 0, 0.3),
+        0 0 4px rgba(165, 124, 44, 0.2);
 }
 
 .faction-description__ability strong {
-    color: #ccc;
+    font-size: 15px;
+    color: #d4d4d4;
+    font-style: italic;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }

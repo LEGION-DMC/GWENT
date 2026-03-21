@@ -38,16 +38,36 @@
 }
 
 .settings-modal__title {
-    color: #d4af37;                
     font-size: 30px;
     margin-bottom: 10px;
     text-transform: uppercase;
     text-align: center;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.4),
+        0 0 5px rgba(165, 124, 44, 0.3);
 }
 
 .settings-title {
-    color: #d4af37;                
     font-size: 18px;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 1px rgba(0, 0, 0, 0.3),
+        0 0 4px rgba(165, 124, 44, 0.2);
 }
 
 .settings-controls {

@@ -64,59 +64,26 @@ const factionAbilitiesModule = {
 					const isPlayerScoiatael = gameState.player.faction === 'scoiatael';
 					
 					modalOverlay.innerHTML = `
-						<div style="text-align: center;">
-							<div style="
-								color: #d4af37;
-								font-size: 25px;
-								margin-bottom: 15px;
-								text-transform: uppercase;
-								letter-spacing: 2px;
-							">${isPlayerScoiatael ? 'ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ' : 'ПРОТИВНИК ВЫБИРАЕТ КТО ХОДИТ ПЕРВЫМ'}</div>
+						<div class="turn-choice-modal">
+							<div class="turn-choice-modal__title">
+								${isPlayerScoiatael ? 'ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ' : 'ПРОТИВНИК ВЫБИРАЕТ КТО ХОДИТ ПЕРВЫМ'}
+							</div>
 							
 							${isPlayerScoiatael ? `
-								<div style="display: flex; gap: 13px; margin: 20px 0;">
-									<button class="choice-btn player-choice" style="
-										background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-										color: #4CAF50;
-										border: 1px solid #d4af37;
-										padding: 8px 10px;
-										font-size: 16px;
-										font-family: 'Gwent', sans-serif;
-										cursor: url('ui/cursor_hover.png'), pointer;
-										border-radius: 5px;
-										flex: 1;
-										transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-										transform-origin: center;
-									">
-										<div style="font-size: 15px; color: #999; margin-bottom: 5px;">ИГРОК</div>
-										<div style="font-size: 18px; -webkit-text-stroke: 0.2px black;">ХОДИТ ПЕРВЫМ</div>
+								<div class="turn-choice-modal__buttons">
+									<button class="choice-btn player-choice">
+										<div class="choice-btn__label">ИГРОК</div>
+										<div class="choice-btn__value">ХОДИТ ПЕРВЫМ</div>
 									</button>
 									
-									<button class="choice-btn opponent-choice" style="
-										background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-										color: #f44336;
-										border: 1px solid #d4af37;
-										padding: 8px 10px;
-										font-size: 16px;
-										font-family: 'Gwent', sans-serif;
-										cursor: url('ui/cursor_hover.png'), pointer;
-										border-radius: 5px;
-										flex: 1;
-										transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-										transform-origin: center;
-									">
-										<div style="font-size: 15px; color: #999; margin-bottom: 5px;">ПРОТИВНИК</div>
-										<div style="font-size: 18px; -webkit-text-stroke: 0.2px black;">ХОДИТ ПЕРВЫМ</div>
+									<button class="choice-btn opponent-choice">
+										<div class="choice-btn__label">ПРОТИВНИК</div>
+										<div class="choice-btn__value">ХОДИТ ПЕРВЫМ</div>
 									</button>
 								</div>
 							` : ''}
 							
-							<div style="
-								color: #999;
-								font-size: 14px;
-								margin-top: 15px;
-								font-style: italic;
-							">
+							<div class="turn-choice-modal__description">
 								Способность фракции: Право выбора первого хода
 							</div>
 						</div>

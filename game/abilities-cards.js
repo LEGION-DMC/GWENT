@@ -82,7 +82,7 @@ const skillSystem = {
             }
         },       
         'storm': {
-            name: 'Шторм',
+            name: 'Гнев богов',
             type: 'weather',
             description: 'Снижает силу всех карт в дальнем и осадном рядах до 1',
             effect: {
@@ -103,7 +103,7 @@ const skillSystem = {
         },
         
 		'destroy': {
-			name: 'Казнь',
+			name: 'Пламя и пепел',
 			type: 'special',
 			description: 'Уничтожает самую сильную карту отряда противника',
 			effect: {
@@ -113,7 +113,7 @@ const skillSystem = {
 			}
 		},
 		'destroy_artf': {
-			name: 'Коратская жара',
+			name: 'Мираж',
 			type: 'special',
 			description: 'Уничтожает карту артефакта противника',
 			effect: {
@@ -388,9 +388,9 @@ const skillSystem = {
 			}
 		},
 		'boost_tag_witcher': {
-			name: 'Усиление ведьмаков',
+			name: 'Охотник на чудовищь',
 			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Ведьмак" на 3 ед. силы',
+			description: 'Усиливает все карты с тегом "Ведьмак", в выбранном ряду, на 3 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
@@ -401,15 +401,28 @@ const skillSystem = {
 			}
 		},
 		'boost_tag_criminal': {
-			name: 'Усиление Преступников',
+			name: 'Рэкет и Разбой',
 			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Преступник" на 2 ед. силы',
+			description: 'Усиливает все карты с тегом "Преступник", в выбранном ряду, на 2 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
 				condition: 'ally',
 				value: 2,
 				tag: 'criminal',
+				requiresRowSelection: true
+			}
+		}, 	
+		'boost_tag_thirst': {
+			name: 'Жажда крови',
+			type: 'tactic',
+			description: 'Усиливает все карты с тегом "Кровопийца", в выбранном ряду, на 2 ед. силы',
+			effect: {
+				type: 'boost_tag',
+				target: 'unit',
+				condition: 'ally',
+				value: 2,
+				tag: 'blood',
 				requiresRowSelection: true
 			}
 		}, 	
