@@ -43,7 +43,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
     position: relative;
     z-index: 10;
 }
@@ -52,7 +52,7 @@ body {
     background: none;
     border: none;
     padding: 8px;
-    font-size: 26px;
+    font-size: 25px;
     font-family: 'Gwent', sans-serif;
     text-transform: uppercase;
     letter-spacing: 3px;
@@ -104,11 +104,6 @@ body {
 
 .menu-btn:hover {
     scale: 1.03;
-    /* Усиливаем свечение при наведении */
-    text-shadow: 
-        1px 1px 3px rgba(0, 0, 0, 0.5),
-        0 0 12px rgba(207, 170, 74, 0.6),
-        0 0 20px rgba(229, 193, 104, 0.3);
 }
 
 .menu-btn:active {

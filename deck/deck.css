@@ -90,8 +90,8 @@
 	color: transparent;
 	
 	text-shadow: 
-		1px 1px 2px rgba(0, 0, 0, 0.4),
-		0 0 5px rgba(165, 124, 44, 0.2);
+		1px 1px 2px rgba(0, 0, 0, 0.3),
+		0 0 5px rgba(165, 124, 44, 0.1);
 }
 
 .sort-buttons {
@@ -593,6 +593,7 @@
 
 .card-modal__stat-value {
 	font-size: 15px;
+  letter-spacing: 1.5px;
 	
 	/* Градиентное золото для числовых значений */
 	background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
@@ -618,6 +619,7 @@
 	font-size: 15px;
 	margin-bottom: 5px;
 	text-transform: uppercase;
+  letter-spacing: 2.5px;
 	
 	/* Градиентное золото для заголовков описания */
 	background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
@@ -634,7 +636,7 @@
 	color: #ccc;
 	font-size: 13px;
 	line-height: 1.3;
-	font-style: italic;
+  letter-spacing: 1px;
 }
 
 .card-modal__abilities {
@@ -649,6 +651,7 @@
 	font-size: 15px;
 	margin-bottom: 5px;
 	text-transform: uppercase;
+  letter-spacing: 2.5px;
 	
 	/* Благородное золото с градиентом */
 	background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
@@ -679,8 +682,8 @@
 .card-modal__ability-description {
 	color: #ccc;
 	font-size: 12px;
-	line-height: 1.2;
-	font-style: italic;
+	line-height: 1.3;
+  letter-spacing: 1.3px;
 }
 
 .faction-ability {
@@ -1041,8 +1044,8 @@
 .card-tag {
     color: #ccc;
     font-size: 12px;
-	  font-style: italic;
-    padding: 5px 5px;
+    letter-spacing: 1px;
+    padding: 3px 3px;
     border-radius: 4px;
     border: 1px solid #666;
     white-space: nowrap;

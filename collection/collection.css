@@ -578,7 +578,7 @@
     overflow-y: auto;
     padding: 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 18px;
     align-content: flex-start;
 }
@@ -591,10 +591,13 @@
     font-style: italic;
 }
 
-.collection-empty img {
-    width: 60px;
-    margin-bottom: 20px;
-    opacity: 0.5;
+.collection-page .card {
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+
+.card:hover {
+    transform: translateY(-5px) scale(1.05) !important;
+    z-index: 10 !important;
 }
 
 .back-to-menu-btn-collection {

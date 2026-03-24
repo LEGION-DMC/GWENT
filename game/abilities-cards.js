@@ -135,7 +135,7 @@ const skillSystem = {
 		},
 		
 		'damage_1': {
-			name: 'Нанесение урона 1',
+			name: 'Нанесение урона I',
 			type: 'special',
 			description: 'Наносит 1 ед. урона выбранной карте противника',
 			effect: {
@@ -147,7 +147,7 @@ const skillSystem = {
 			}
 		},
 		'damage_2': {
-			name: 'Нанесение урона 2',
+			name: 'Нанесение урона II',
 			type: 'special',
 			description: 'Наносит 2 ед. урона выбранной карте противника',
 			effect: {
@@ -159,7 +159,7 @@ const skillSystem = {
 			}
 		},
 		'damage_3': {
-			name: 'Нанесение урона 3',
+			name: 'Нанесение урона III',
 			type: 'special',
 			description: 'Наносит 3 ед. урона выбранной карте противника',
 			effect: {
@@ -171,7 +171,7 @@ const skillSystem = {
 			}
 		},
 		'damage_row_1': {
-			name: 'Урон по ряду 1',
+			name: 'Урон по ряду I',
 			type: 'special',
 			description: 'Наносит 1 ед. урона всем картам в выбранном ряду противника',
 			effect: {
@@ -183,7 +183,7 @@ const skillSystem = {
 			}
 		},
 		'damage_row_2': {
-			name: 'Урон по ряду 2',
+			name: 'Урон по ряду II',
 			type: 'special',
 			description: 'Наносит 2 ед. урона всем картам в выбранном ряду противника',
 			effect: {
@@ -195,7 +195,7 @@ const skillSystem = {
 			}
 		},
 		'damage_row_3': {
-			name: 'Урон по ряду 3',
+			name: 'Урон по ряду III',
 			type: 'special',
 			description: 'Наносит 3 ед. урона всем картам в выбранном ряду противника',
 			effect: {
@@ -208,7 +208,7 @@ const skillSystem = {
 		},
 	
 		'boost_1': {
-			name: 'Усиление карты',
+			name: 'Усиление карты I',
 			type: 'artifact',
 			description: 'Усиливает выбранную карту на 1 ед. силы',
 			effect: {
@@ -220,7 +220,7 @@ const skillSystem = {
 			}
 		},
 		'boost_2': {
-			name: 'Усиление карты',
+			name: 'Усиление карты II',
 			type: 'artifact',
 			description: 'Усиливает выбранную карту на 2 ед. силы',
 			effect: {
@@ -232,7 +232,7 @@ const skillSystem = {
 			}
 		},
 		'boost_3': {
-			name: 'Усиление карты',
+			name: 'Усиление карты III',
 			type: 'artifact',
 			description: 'Усиливает выбранную карту на 3 ед. силы',
 			effect: {
@@ -244,7 +244,7 @@ const skillSystem = {
 			}
 		},
 		'boost_4': {
-			name: 'Усиление карты',
+			name: 'Усиление карты IV',
 			type: 'artifact',
 			description: 'Усиливает выбранную карту на 4 ед. силы',
 			effect: {
@@ -256,7 +256,7 @@ const skillSystem = {
 			}
 		},
 		'boost_5': {
-			name: 'Усиление карты',
+			name: 'Усиление карты V',
 			type: 'artifact',
 			description: 'Усиливает выбранную карту на 5 ед. силы',
 			effect: {
@@ -268,7 +268,7 @@ const skillSystem = {
 			}
 		},
 		'boost_near_1': {
-			name: 'Усиление соседей',
+			name: 'Усиление соседей I',
 			type: 'artifact',
 			description: 'Усиливает соседние карты на 1 ед. силы',
 			effect: {
@@ -280,7 +280,7 @@ const skillSystem = {
 			}
 		},
 		'boost_near_2': {
-			name: 'Усиление соседей',
+			name: 'Усиление соседей II',
 			type: 'artifact',
 			description: 'Усиливает соседние карты на 2 ед. силы',
 			effect: {
@@ -292,7 +292,7 @@ const skillSystem = {
 			}
 		},
 		'boost_near_3': {
-			name: 'Усиление соседей',
+			name: 'Усиление соседей III',
 			type: 'artifact',
 			description: 'Усиливает соседние карты на 3 ед. силы',
 			effect: {
@@ -304,7 +304,7 @@ const skillSystem = {
 			}
 		},
 		'boost_near_4': {
-			name: 'Усиление соседей',
+			name: 'Усиление соседей IV',
 			type: 'artifact',
 			description: 'Усиливает соседние карты на 4 ед. силы',
 			effect: {
@@ -316,7 +316,7 @@ const skillSystem = {
 			}
 		},
 		'boost_near_5': {
-			name: 'Усиление соседей',
+			name: 'Усиление соседей V',
 			type: 'artifact',
 			description: 'Усиливает соседние карты на 5 ед. силы',
 			effect: {
@@ -328,7 +328,7 @@ const skillSystem = {
 			}
 		},
 		'boost_row_1': {
-			name: 'Усиление ряда 1',
+			name: 'Усиление ряда I',
 			type: 'tactic',
 			description: 'Усиливает все карты в выбранном ряду на 1 ед. силы',
 			effect: {
@@ -340,7 +340,7 @@ const skillSystem = {
 			}
 		},
 		'boost_row_2': {
-			name: 'Усиление ряда 2',
+			name: 'Усиление ряда II',
 			type: 'tactic',
 			description: 'Усиливает все карты в выбранном ряду на 2 ед. силы',
 			effect: {
@@ -352,7 +352,7 @@ const skillSystem = {
 			}
 		},
 		'boost_row_3': {
-			name: 'Усиление ряда 3',
+			name: 'Усиление ряда III',
 			type: 'tactic',
 			description: 'Усиливает все карты в выбранном ряду на 3 ед. силы',
 			effect: {
@@ -364,7 +364,7 @@ const skillSystem = {
 			}
 		},
 		'boost_row_4': {
-			name: 'Усиление ряда 4',
+			name: 'Усиление ряда IV',
 			type: 'tactic',
 			description: 'Усиливает все карты в выбранном ряду на 4 ед. силы',
 			effect: {
@@ -376,7 +376,7 @@ const skillSystem = {
 			}
 		},
 		'boost_row_5': {
-			name: 'Усиление ряда 5',
+			name: 'Усиление ряда V',
 			type: 'tactic',
 			description: 'Усиливает все карты в выбранном ряду на 5 ед. силы',
 			effect: {
@@ -387,7 +387,20 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		},
-		'boost_tag_witcher': {
+		'boost_tag_witcher_2': {
+			name: 'Подготовка ведьмаков',
+			type: 'tactic',
+			description: 'Усиливает все карты с тегом "Ведьмак", в выбранном ряду, на 2 ед. силы',
+			effect: {
+				type: 'boost_tag',
+				target: 'unit',
+				condition: 'ally',
+				value: 2,
+				tag: 'witcher',
+				requiresRowSelection: true
+			}
+		},
+		'boost_tag_witcher_3': {
 			name: 'Охотник на чудовищь',
 			type: 'tactic',
 			description: 'Усиливает все карты с тегом "Ведьмак", в выбранном ряду, на 3 ед. силы',
@@ -423,6 +436,19 @@ const skillSystem = {
 				condition: 'ally',
 				value: 2,
 				tag: 'blood',
+				requiresRowSelection: true
+			}
+		}, 	
+		'boost_tag_dwarf': {
+			name: 'Жар кузни',
+			type: 'tactic',
+			description: 'Усиливает все карты с тегом "Краснолюд", в выбранном ряду, на 1 ед. силы',
+			effect: {
+				type: 'boost_tag',
+				target: 'unit',
+				condition: 'ally',
+				value: 1,
+				tag: 'dwarf',
 				requiresRowSelection: true
 			}
 		}, 	

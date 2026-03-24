@@ -41,9 +41,6 @@
     border-bottom: 60px solid transparent;
     border-image: url('../ui/long.png') 80 0;
     box-sizing: border-box;
-    
-    /* Важно: изолируем эффекты только для текста */
-    isolation: isolate;
 }
 
 .rules-container {
@@ -132,7 +129,6 @@
 .rule-item__description {
     color: #c9c9c9;
     font-size: 13px;
-    font-style: italic;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
@@ -201,7 +197,6 @@
 .rule-modal__content {
     color: #d9d9d9;
     font-size: 13px;
-    font-style: italic;
     line-height: 0.9;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
@@ -229,7 +224,8 @@
     align-items: center;
     justify-content: left;
     gap: 15px;                      
-    padding-bottom: 5px;      
+    padding-bottom: 5px;  
+    letter-spacing: 1.5px;
 }
 
 .rule-modal__image {

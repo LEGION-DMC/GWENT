@@ -96,6 +96,9 @@ const playerModule = {
 						this.startDestroyArtifactPlacement(card);
 					} else if (card.ability && card.ability.startsWith('damage_')) {
 						this.startDamageCardPlacement(card);
+					} else if (card.ability && card.ability.startsWith('boost_')) {
+						// НОВОЕ: обработка специальных карт усиления
+						this.startSpecialBoostPlacement(card);
 					} else {
 						this.startUnitCardPlacement(card);
 					}
@@ -111,6 +114,460 @@ const playerModule = {
 					this.cancelCardSelection();
 			}
 		}
+	},
+
+	startSpecialBoostPlacement: function(card) {
+		const ability = card.ability;
+		
+		if (ability.startsWith('boost_row_')) {
+			this.startSpecialRowBoostPlacement(card);
+		} else if (ability.startsWith('boost_tag_')) {
+			this.startSpecialTagBoostPlacement(card);
+		} else if (ability.startsWith('boost_') && !ability.startsWith('boost_near_')) {
+			// Для усиления конкретной карты
+			this.startSpecialCardBoostPlacement(card);
+		} else if (ability.startsWith('boost_near_')) {
+			// Для усиления соседей
+			this.startSpecialNearBoostPlacement(card);
+		} else {
+			this.cancelCardSelection();
+		}
+	},
+
+	startSpecialRowBoostPlacement: function(card) {
+		this.gameState.selectingRow = true;
+		this.gameState.placementType = 'special_row_boost';
+		this.gameState.boostCard = card;
+		this.highlightPlayerRowsForSpecialBoost(card);
+	},
+
+	startSpecialTagBoostPlacement: function(card) {
+		this.gameState.selectingRow = true;
+		this.gameState.placementType = 'special_tag_boost';
+		this.gameState.boostCard = card;
+		
+		let tag = '';
+		if (card.ability === 'boost_tag_witcher') {
+			tag = 'witcher';
+		} else if (card.ability === 'boost_tag_criminal') {
+			tag = 'criminal';
+		}
+		
+		if (!tag) {
+			this.showMessage('Неизвестный тег для усиления!');
+			this.cancelCardSelection();
+			return;
+		}
+		
+		this.gameState.boostTag = tag;
+		this.highlightPlayerRowsForSpecialTagBoost(tag);
+	},
+
+	startSpecialCardBoostPlacement: function(card) {
+		this.gameState.selectingRow = true;
+		this.gameState.placementType = 'special_card_boost';
+		this.gameState.boostCard = card;
+		this.highlightPlayerCardsForSpecialBoost(card);
+	},
+
+	startSpecialNearBoostPlacement: function(card) {
+		this.gameState.selectingRow = true;
+		this.gameState.placementType = 'special_near_boost';
+		this.gameState.boostCard = card;
+		this.highlightPlayerSlotsForSpecialNearBoost(card);
+	},
+
+	highlightPlayerRowsForSpecialBoost: function(card) {
+		const rows = ['close', 'ranged', 'siege'];
+		let hasAvailableRows = false;
+		const boostMatch = card.ability.match(/boost_row_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		rows.forEach(row => {
+			const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			const hasBoostableUnits = this.gameState.player.rows[row].cards.some(c => 
+				c.type === 'unit' && !this.isHeroCard(c)
+			);
+			
+			if (rowElement && hasBoostableUnits) {
+				rowElement.classList.add('row-boost-target');
+				this.setupSpecialBoostRowHandler(rowElement, row, boostValue);
+				hasAvailableRows = true;
+			}
+		});
+		
+		if (!hasAvailableRows) {
+			this.showMessage('Нет карт для усиления!');
+			this.cancelCardSelection();
+		}
+	},
+
+	setupSpecialBoostRowHandler: function(rowElement, row, boostValue) {
+		const clickHandler = () => {
+			if (this.gameState.selectingRow && 
+				(this.gameState.placementType === 'special_row_boost' || 
+				 this.gameState.placementType === 'special_tag_boost')) {
+				this.applySpecialRowBoost(this.gameState.boostCard, row, boostValue);
+				rowElement.removeEventListener('click', clickHandler);
+			}
+		};
+		
+		rowElement.addEventListener('click', clickHandler);
+		
+		if (!this.gameState.specialBoostHandlers) {
+			this.gameState.specialBoostHandlers = [];
+		}
+		this.gameState.specialBoostHandlers.push({ 
+			element: rowElement, 
+			handler: clickHandler,
+			row: row
+		});
+	},
+
+	applySpecialRowBoost: function(boostCard, row, boostValue) {
+		const rowState = this.gameState.player.rows[row];
+		let boostedCards = 0;
+		
+		rowState.cards.forEach(card => {
+			if (card.type === 'unit' && !this.isHeroCard(card)) {
+				this.applyBoostToCard(card, boostValue, row, 'player');
+				boostedCards++;
+			}
+		});
+		
+		if (boostedCards > 0) {
+			// Удаляем специальную карту из руки
+			this.removeCardFromHand(boostCard);
+			
+			// Добавляем карту в сброс
+			const boostCardCopy = { ...boostCard };
+			this.gameState.player.discard.push(boostCardCopy);
+			
+			if (window.gameModule) {
+				window.gameModule.updateRowStrength(row, 'player');
+				window.gameModule.displayPlayerDiscard();
+				window.gameModule.completeCardPlay();
+			}
+			
+			if (window.audioManager && window.audioManager.playSound) {
+				audioManager.playSound('card_boost');
+			}
+		}
+		
+		this.cancelSpecialBoostSelection();
+	},
+
+	highlightPlayerRowsForSpecialTagBoost: function(tag) {
+		const rows = ['close', 'ranged', 'siege'];
+		let hasAvailableRows = false;
+		
+		rows.forEach(row => {
+			const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			const hasTagUnits = this.gameState.player.rows[row].cards.some(card => 
+				card.type === 'unit' && 
+				!this.isHeroCard(card) &&
+				card.tags && 
+				card.tags.includes(tag)
+			);
+			
+			if (rowElement && hasTagUnits) {
+				rowElement.classList.add('tag-boost-target');
+				rowElement.dataset.boostTag = tag;
+				this.setupSpecialTagBoostRowHandler(rowElement, row, tag);
+				hasAvailableRows = true;
+			}
+		});
+		
+		if (!hasAvailableRows) {
+			const tagName = tag === 'witcher' ? 'Ведьмак' : 'Преступник';
+			this.showMessage(`Нет карт с тегом "${tagName}" для усиления!`);
+			this.cancelCardSelection();
+		}
+	},
+
+	setupSpecialTagBoostRowHandler: function(rowElement, row, tag) {
+		const clickHandler = () => {
+			if (this.gameState.selectingRow && this.gameState.placementType === 'special_tag_boost') {
+				this.applySpecialTagBoost(this.gameState.boostCard, row, tag);
+				rowElement.removeEventListener('click', clickHandler);
+			}
+		};
+		
+		rowElement.addEventListener('click', clickHandler);
+		
+		if (!this.gameState.specialBoostHandlers) {
+			this.gameState.specialBoostHandlers = [];
+		}
+		this.gameState.specialBoostHandlers.push({ 
+			element: rowElement, 
+			handler: clickHandler,
+			row: row,
+			tag: tag
+		});
+	},
+
+	applySpecialTagBoost: function(boostCard, row, tag) {
+		const rowState = this.gameState.player.rows[row];
+		let boostValue = 1;
+		
+		if (boostCard.ability === 'boost_tag_witcher') {
+			boostValue = 3;
+		} else if (boostCard.ability === 'boost_tag_criminal') {
+			boostValue = 2;
+		}
+		
+		let boostedCards = 0;
+		
+		rowState.cards.forEach(card => {
+			if (card.type === 'unit' && 
+				!this.isHeroCard(card) && 
+				card.tags && 
+				card.tags.includes(tag)) {
+				this.applyBoostToCard(card, boostValue, row, 'player');
+				boostedCards++;
+			}
+		});
+		
+		if (boostedCards > 0) {
+			// Удаляем специальную карту из руки
+			this.removeCardFromHand(boostCard);
+			
+			// Добавляем карту в сброс
+			const boostCardCopy = { ...boostCard };
+			this.gameState.player.discard.push(boostCardCopy);
+			
+			if (window.gameModule) {
+				window.gameModule.updateRowStrength(row, 'player');
+				window.gameModule.displayPlayerDiscard();
+				window.gameModule.completeCardPlay();
+			}
+			
+			if (window.audioManager && window.audioManager.playSound) {
+				audioManager.playSound('card_boost');
+			}
+		}
+		
+		this.cancelSpecialBoostSelection();
+	},
+
+	highlightPlayerCardsForSpecialBoost: function(card) {
+		const rows = ['close', 'ranged', 'siege'];
+		let hasAvailableCards = false;
+		const boostMatch = card.ability.match(/boost_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		rows.forEach(row => {
+			const rowState = this.gameState.player.rows[row];
+			const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			
+			if (!rowElement) return;
+			
+			rowState.cards.forEach((unitCard, index) => {
+				if (unitCard.type === 'unit' && !this.isHeroCard(unitCard)) {
+					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player');
+					if (cardElement) {
+						cardElement.classList.add('boost-target');
+						cardElement.dataset.boostValue = boostValue;
+						this.setupSpecialCardBoostHandler(cardElement, unitCard, row, index, boostValue);
+						hasAvailableCards = true;
+					}
+				}
+			});
+		});
+		
+		if (!hasAvailableCards) {
+			this.showMessage('Нет карт для усиления!');
+			this.cancelCardSelection();
+		}
+	},
+
+	setupSpecialCardBoostHandler: function(cardElement, targetCard, row, position, boostValue) {
+		const clickHandler = () => {
+			if (this.gameState.selectingRow && this.gameState.placementType === 'special_card_boost') {
+				this.applySpecialCardBoost(this.gameState.boostCard, targetCard, row, position, boostValue);
+				cardElement.removeEventListener('click', clickHandler);
+			}
+		};
+		
+		cardElement.addEventListener('click', clickHandler);
+		
+		if (!this.gameState.specialBoostHandlers) {
+			this.gameState.specialBoostHandlers = [];
+		}
+		this.gameState.specialBoostHandlers.push({ 
+			element: cardElement, 
+			handler: clickHandler,
+			card: targetCard,
+			row: row,
+			position: position
+		});
+	},
+
+	applySpecialCardBoost: function(boostCard, targetCard, row, position, boostValue) {
+		// Усиливаем выбранную карту
+		this.applyBoostToCard(targetCard, boostValue, row, 'player');
+		
+		// Удаляем специальную карту из руки
+		this.removeCardFromHand(boostCard);
+		
+		// Добавляем карту в сброс
+		const boostCardCopy = { ...boostCard };
+		this.gameState.player.discard.push(boostCardCopy);
+		
+		if (window.gameModule) {
+			window.gameModule.updateRowStrength(row, 'player');
+			window.gameModule.displayPlayerDiscard();
+			window.gameModule.completeCardPlay();
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('card_boost');
+		}
+		
+		this.cancelSpecialBoostSelection();
+	},
+
+	highlightPlayerSlotsForSpecialNearBoost: function(card) {
+		const rows = ['close', 'ranged', 'siege'];
+		let hasAvailableSlots = false;
+		const boostMatch = card.ability.match(/boost_near_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
+		
+		rows.forEach(row => {
+			const rowState = this.gameState.player.rows[row];
+			const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			
+			if (!rowElement || rowState.cards.length >= 9) return;
+			
+			for (let i = 0; i <= rowState.cards.length; i++) {
+				const hasLeftNeighbor = i > 0 && 
+					rowState.cards[i - 1].type === 'unit' && 
+					!this.isHeroCard(rowState.cards[i - 1]);
+				
+				const hasRightNeighbor = i < rowState.cards.length && 
+					rowState.cards[i].type === 'unit' && 
+					!this.isHeroCard(rowState.cards[i]);
+				
+				if (hasLeftNeighbor || hasRightNeighbor) {
+					const positionMarker = this.createPositionMarker(row, i);
+					if (positionMarker) {
+						positionMarker.classList.add('boost-position-target');
+						positionMarker.dataset.boostValue = boostValue;
+						this.setupSpecialNearBoostHandler(positionMarker, row, i, boostValue);
+						hasAvailableSlots = true;
+					}
+				}
+			}
+		});
+		
+		if (!hasAvailableSlots) {
+			this.showMessage('Нет подходящих позиций для усиления соседей!');
+			this.cancelCardSelection();
+		}
+	},
+
+	setupSpecialNearBoostHandler: function(positionMarker, row, position, boostValue) {
+		const clickHandler = () => {
+			if (this.gameState.selectingRow && this.gameState.placementType === 'special_near_boost') {
+				this.applySpecialNearBoost(this.gameState.boostCard, row, position, boostValue);
+				positionMarker.remove();
+			}
+		};
+		
+		positionMarker.addEventListener('click', clickHandler);
+		
+		if (!this.gameState.specialBoostHandlers) {
+			this.gameState.specialBoostHandlers = [];
+		}
+		this.gameState.specialBoostHandlers.push({ 
+			element: positionMarker, 
+			handler: clickHandler,
+			row: row,
+			position: position
+		});
+	},
+
+	applySpecialNearBoost: function(boostCard, row, position, boostValue) {
+		const rowState = this.gameState.player.rows[row];
+		let boostedCards = 0;
+		
+		// Усиливаем карту слева
+		if (position > 0) {
+			const leftCard = rowState.cards[position - 1];
+			if (leftCard.type === 'unit' && !this.isHeroCard(leftCard)) {
+				this.applyBoostToCard(leftCard, boostValue, row, 'player');
+				boostedCards++;
+			}
+		}
+		
+		// Усиливаем карту справа
+		if (position < rowState.cards.length) {
+			const rightCard = rowState.cards[position];
+			if (rightCard.type === 'unit' && !this.isHeroCard(rightCard)) {
+				this.applyBoostToCard(rightCard, boostValue, row, 'player');
+				boostedCards++;
+			}
+		}
+		
+		if (boostedCards > 0) {
+			// Удаляем специальную карту из руки
+			this.removeCardFromHand(boostCard);
+			
+			// Добавляем карту в сброс
+			const boostCardCopy = { ...boostCard };
+			this.gameState.player.discard.push(boostCardCopy);
+			
+			if (window.gameModule) {
+				window.gameModule.updateRowStrength(row, 'player');
+				window.gameModule.displayPlayerDiscard();
+				window.gameModule.completeCardPlay();
+			}
+			
+			if (window.audioManager && window.audioManager.playSound) {
+				audioManager.playSound('card_boost');
+			}
+		}
+		
+		this.cancelSpecialBoostSelection();
+	},
+
+	cancelSpecialBoostSelection: function() {
+		// Убираем подсветку рядов
+		const highlightedRows = document.querySelectorAll('.row-boost-target, .tag-boost-target');
+		highlightedRows.forEach(row => {
+			row.classList.remove('row-boost-target');
+			row.classList.remove('tag-boost-target');
+			delete row.dataset.boostTag;
+		});
+		
+		// Убираем подсветку карт
+		const highlightedCards = document.querySelectorAll('.boost-target');
+		highlightedCards.forEach(card => {
+			card.classList.remove('boost-target');
+			delete card.dataset.boostValue;
+		});
+		
+		// Убираем маркеры позиций
+		const positionMarkers = document.querySelectorAll('.boost-position-marker');
+		positionMarkers.forEach(marker => {
+			marker.remove();
+		});
+		
+		// Убираем подсветку соседей
+		const neighborHighlights = document.querySelectorAll('.neighbor-highlight');
+		neighborHighlights.forEach(card => {
+			card.classList.remove('neighbor-highlight');
+		});
+		
+		// Очищаем обработчики
+		if (this.gameState.specialBoostHandlers) {
+			this.gameState.specialBoostHandlers.forEach(({ element, handler }) => {
+				element.removeEventListener('click', handler);
+			});
+			this.gameState.specialBoostHandlers = [];
+		}
+		
+		this.cancelRowSelection();
 	},
 
 	startSpyCardPlacement: function(card) {

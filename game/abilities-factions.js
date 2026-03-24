@@ -30,7 +30,7 @@ const factionAbilitiesModule = {
                 return null;
             }
         },
-        'scoiatael': {
+		'scoiatael': {
 			id: 'scoiatael',
 			name: 'Скоя\'таэли',
 			effect: 'choose_first_turn',
@@ -84,7 +84,7 @@ const factionAbilitiesModule = {
 							` : ''}
 							
 							<div class="turn-choice-modal__description">
-								Способность фракции: Право выбора первого хода
+								Способность фракции Скоя\'таэли
 							</div>
 						</div>
 					`;
@@ -95,24 +95,6 @@ const factionAbilitiesModule = {
 					if (isPlayerScoiatael) {
 						const playerChoiceBtn = modalOverlay.querySelector('.player-choice');
 						const opponentChoiceBtn = modalOverlay.querySelector('.opponent-choice');
-
-						const setupButtonHover = (button, color) => {
-							button.addEventListener('mouseenter', () => {
-								audioManager.playSound('touch');
-								button.style.transform = 'scale(1.05)';
-								button.style.boxShadow = `0 0 15px ${color}80`;
-								button.style.borderColor = color;
-							});
-							
-							button.addEventListener('mouseleave', () => {
-								button.style.transform = 'scale(1)';
-								button.style.boxShadow = 'none';
-								button.style.borderColor = '#d4af37';
-							});
-						};
-
-						setupButtonHover(playerChoiceBtn, '#4CAF50');
-						setupButtonHover(opponentChoiceBtn, '#f44336');
 
 						playerChoiceBtn.addEventListener('click', () => {
 							audioManager.playSound('choice');
@@ -167,8 +149,6 @@ const factionAbilitiesModule = {
 			},
 			animateChoiceSelection: function(button, isPlayer) {
 				button.style.animation = 'choiceSelected 0.5s ease-out';
-				button.style.transform = 'scale(1.05)';
-				button.style.boxShadow = `0 0 20px ${isPlayer ? '#4CAF50' : '#f44336'}`;
 			}
 		},
         'monsters': {

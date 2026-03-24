@@ -434,106 +434,43 @@ const gameModule = {
     },
 
     createMulliganControls: function() {
-        const playerHand = document.getElementById('playerHand');
-        if (!playerHand) return;
-        
-        const existingControls = document.getElementById('mulliganControls');
-        if (existingControls) {
-            existingControls.remove();
-        }
-        
-        const controlsContainer = document.createElement('div');
-        controlsContainer.id = 'mulliganControls';
-        controlsContainer.style.cssText = `
-            position: fixed;
-            bottom: 100px;
-            left: 54%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-            bottom: 2.3%;
-        `;
-        
-        const resetButton = document.createElement('button');
-        resetButton.id = 'mulliganResetBtn';
-        resetButton.textContent = 'ОТМЕНИТЬ ВЫБОР';
-        resetButton.style.cssText = `
-            background: linear-gradient(145deg, rgb(42, 42, 42), rgb(26, 26, 26));
-            color: rgb(212, 175, 55);
-            border: 1px solid rgb(212, 175, 55);
-            padding: 8px;
-            font-size: 14px;
-            font-family: "Gwent", sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: url("./ui/cursor_hover.png"), pointer;
-            transition: 0.3s;
-            border-radius: 4px;
-            box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 8px;
-            margin: 0px auto;
-            display: block;
-            overflow: hidden;
-            transform: scale(1);
-            width: 170px;
-        `;
-        
-        const infoPanel = document.createElement('div');
-        infoPanel.id = 'mulliganInfo';
-        infoPanel.style.cssText = `
-            background: rgba(0, 0, 0, 0.8);
-            color: rgb(212, 175, 55);
-            border-radius: 4px;
-            border: 1px solid rgb(212, 175, 55);
-            font-family: "Gwent", sans-serif;
-            font-size: 18px;
-            text-align: center;
-            min-width: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 20px;
-            font-weight: bold;
-        `;
-        
-        const infoText = document.createElement('div');
-        infoText.id = 'mulliganInfoText';
-        infoText.textContent = 'Выбрано: 0/2 карт';
-        
-        infoPanel.appendChild(infoText);
-        
-        const doneButton = document.createElement('button');
-        doneButton.id = 'mulliganDoneBtn';
-        doneButton.textContent = 'ЗАВЕРШИТЬ ЗАМЕНУ';
-        doneButton.style.cssText = `
-            background: linear-gradient(145deg, rgb(42, 42, 42), rgb(26, 26, 26));
-            color: rgb(212, 175, 55);
-            border: 1px solid rgb(212, 175, 55);
-            padding: 8px;
-            font-size: 14px;
-            font-family: "Gwent", sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: url("./ui/cursor_hover.png"), pointer;
-            transition: 0.3s;
-            border-radius: 4px;
-            box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 8px;
-            margin: 0px auto;
-            display: block;
-            overflow: hidden;
-            transform: scale(1);
-            width: 170px;
-        `;
-        
-        controlsContainer.appendChild(resetButton);
-        controlsContainer.appendChild(infoPanel);
-        controlsContainer.appendChild(doneButton);
-        
-        document.body.appendChild(controlsContainer);
-        
-        this.setupMulliganControlsEventListeners();
-        this.updateMulliganInfo();
-    },
+		const playerHand = document.getElementById('playerHand');
+		if (!playerHand) return;
+		
+		const existingControls = document.getElementById('mulliganControls');
+		if (existingControls) {
+			existingControls.remove();
+		}
+		
+		const controlsContainer = document.createElement('div');
+		controlsContainer.id = 'mulliganControls';
+		
+		const resetButton = document.createElement('button');
+		resetButton.id = 'mulliganResetBtn';
+		resetButton.textContent = 'ОТМЕНИТЬ ВЫБОР';
+		
+		const infoPanel = document.createElement('div');
+		infoPanel.id = 'mulliganInfo';
+		
+		const infoText = document.createElement('div');
+		infoText.id = 'mulliganInfoText';
+		infoText.textContent = 'Выбрано: 0/2 карт';
+		
+		infoPanel.appendChild(infoText);
+		
+		const doneButton = document.createElement('button');
+		doneButton.id = 'mulliganDoneBtn';
+		doneButton.textContent = 'ЗАВЕРШИТЬ ЗАМЕНУ';
+		
+		controlsContainer.appendChild(resetButton);
+		controlsContainer.appendChild(infoPanel);
+		controlsContainer.appendChild(doneButton);
+		
+		document.body.appendChild(controlsContainer);
+		
+		this.setupMulliganControlsEventListeners();
+		this.updateMulliganInfo();
+	},
 
     setupMulliganControlsEventListeners: function() {
         const doneBtn = document.getElementById('mulliganDoneBtn');
@@ -584,7 +521,7 @@ const gameModule = {
         }
     },
 
-    displayPlayerHandForMulligan: function() {
+	displayPlayerHandForMulligan: function() {
 		const handContainer = document.getElementById('playerHand');
 		if (!handContainer) return;
 
@@ -599,64 +536,29 @@ const gameModule = {
 			
 			const overlay = document.createElement('div');
 			overlay.id = 'mulligan-overlay';
-			overlay.style.cssText = `
-				position: fixed;
-				top: 0;
-				left: 0;
-				width: 100vw;
-				height: 100vh;
-				background: rgba(0, 0, 0, 0.9);
-				backdrop-filter: blur(3px);
-				z-index: 9998;
-				display: flex;
-				justify-content: center;
-				align-items: center;
-			`;
+			overlay.className = 'mulligan-overlay';
 			
 			const messageContainer = document.createElement('div');
-			messageContainer.style.cssText = `
-				text-align: center;
-				margin-top: -100px;
-			`;
+			messageContainer.className = 'mulligan-message-container';
 			
 			const lockImage = document.createElement('img');
 			lockImage.src = 'board/lock.png';
 			lockImage.alt = 'Заблокировано';
-			lockImage.style.cssText = `
-				width: 150px;
-				height: 150px;
-				margin: 20px auto;
-				display: block;
-				filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
-			`;
+			lockImage.className = 'mulligan-lock-image';
 			
 			const title = document.createElement('div');
+			title.className = 'mulligan-blocked-title';
 			title.textContent = 'МУЛЛИГАН ЗАБЛОКИРОВАН';
-			title.style.cssText = `
-				color: #f44336;
-				font-family: 'Gwent', sans-serif;
-				font-size: 28px;
-				-webkit-text-stroke: 0.2px black;
-				text-transform: uppercase;
-				letter-spacing: 3px;
-				margin-bottom: 20px;
-				text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-			`;
 			
 			const description = document.createElement('div');
+			description.className = 'mulligan-blocked-description';
 			description.textContent = 'Способность фракции Синдикат';
-			description.style.cssText = `
-				color: #aaa;
-				font-family: 'Gwent', sans-serif;
-				font-size: 18px;
-				margin-bottom: 30px;
-			`;
 			
 			messageContainer.appendChild(lockImage);
 			messageContainer.appendChild(title);
 			messageContainer.appendChild(description);
 			overlay.appendChild(messageContainer);
-        
+			
 			document.body.appendChild(overlay);
 			setTimeout(() => {
 				audioManager.playSound('button');
@@ -669,67 +571,32 @@ const gameModule = {
 			
 			return;
 		}
-	
-        const frameWrapper = document.createElement('div');
-        frameWrapper.id = 'mulligan-frame-wrapper';
-        frameWrapper.style.cssText = `
-            position: relative;
-            display: inline-block;
-        `;
-        
-        const titleLabel = document.createElement('div');
-        titleLabel.id = 'mulligan-title';
-        titleLabel.textContent = 'Муллигана';
-        titleLabel.style.cssText = `
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(145deg, rgb(42, 42, 42), rgb(26, 26, 26));
-            color: #d4af37;
-            padding: 3px 15px;
-            border: 1px solid #d4af37;
-            border-radius: 4px;
-            font-family: "Gwent", sans-serif;
-            font-size: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            z-index: 1000;
-            white-space: nowrap;
-        `;
-        
-        const cardsContainer = document.createElement('div');
-        cardsContainer.id = 'mulligan-cards-container';
-        cardsContainer.style.cssText = `
-            border: 1px solid #d4af37;
-            border-radius: 5px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            display: inline-block;
-        `;
-        
-        const innerCardsContainer = document.createElement('div');
-        innerCardsContainer.style.cssText = `
-            display: flex;
-            gap: 10px;
-        `;
-        
-        this.gameState.player.hand.forEach((card, index) => {
-            const cardElement = this.createMulliganCardElement(card, index);
-            innerCardsContainer.appendChild(cardElement);
-        });
-        
-        cardsContainer.appendChild(innerCardsContainer);
-        frameWrapper.appendChild(titleLabel);
-        frameWrapper.appendChild(cardsContainer);
-        handContainer.appendChild(frameWrapper);
-        
-        handContainer.style.cssText = originalStyles;
-        handContainer.style.display = 'flex';
-        handContainer.style.justifyContent = 'center';
-        handContainer.style.alignItems = 'center';
-    },
+
+		const frameWrapper = document.createElement('div');
+		frameWrapper.id = 'mulligan-frame-wrapper';
+		frameWrapper.className = 'mulligan-frame-wrapper';
+		
+		const cardsContainer = document.createElement('div');
+		cardsContainer.id = 'mulligan-cards-container';
+		cardsContainer.className = 'mulligan-cards-container';
+		
+		const innerCardsContainer = document.createElement('div');
+		innerCardsContainer.className = 'mulligan-inner-cards-container';
+		
+		this.gameState.player.hand.forEach((card, index) => {
+			const cardElement = this.createMulliganCardElement(card, index);
+			innerCardsContainer.appendChild(cardElement);
+		});
+		
+		cardsContainer.appendChild(innerCardsContainer);
+		frameWrapper.appendChild(cardsContainer);
+		handContainer.appendChild(frameWrapper);
+		
+		handContainer.style.cssText = originalStyles;
+		handContainer.style.display = 'flex';
+		handContainer.style.justifyContent = 'center';
+		handContainer.style.alignItems = 'center';
+	},
 
     createMulliganCardElement: function(card, index) {
         const cardElement = document.createElement('div');
