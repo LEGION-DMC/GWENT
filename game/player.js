@@ -134,6 +134,118 @@ const playerModule = {
 		}
 	},
 
+	highlightPlayerCardsForSpecialTagBoost: function(tag, boostValue) {
+		const rows = ['close', 'ranged', 'siege'];
+		let hasAvailableCards = false;
+		
+		rows.forEach(row => {
+			const rowState = this.gameState.player.rows[row];
+			const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			
+			if (!rowElement) return;
+			
+			rowState.cards.forEach((unitCard, index) => {
+				if (unitCard.type === 'unit' && 
+					!this.isHeroCard(unitCard) && 
+					unitCard.tags && 
+					unitCard.tags.includes(tag)) {
+					
+					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player');
+					if (cardElement) {
+						cardElement.classList.add('boost-target');
+						cardElement.classList.add('tag-boost-target-card');
+						cardElement.dataset.boostValue = boostValue;
+						cardElement.dataset.boostTag = tag;
+						this.setupSpecialTagCardBoostHandler(cardElement, unitCard, row, index, boostValue);
+						hasAvailableCards = true;
+					}
+				}
+			});
+		});
+		
+		if (!hasAvailableCards) {
+			const tagName = this.getTagRussianName(tag);
+			this.showMessage(`Нет карт с тегом "${tagName}" для усиления!`);
+			this.cancelCardSelection();
+		}
+	},
+
+	setupSpecialTagCardBoostHandler: function(cardElement, targetCard, row, position, boostValue) {
+		const clickHandler = () => {
+			if (this.gameState.selectingRow && this.gameState.placementType === 'special_tag_boost') {
+				// Для специальных карт с усилением по тегу - применяем ко всем картам с тегом в ряду
+				this.applySpecialTagBoostToRow(this.gameState.boostCard, row, boostValue, this.gameState.boostTag);
+				cardElement.removeEventListener('click', clickHandler);
+			}
+		};
+		
+		cardElement.addEventListener('click', clickHandler);
+		
+		if (!this.gameState.specialBoostHandlers) {
+			this.gameState.specialBoostHandlers = [];
+		}
+		this.gameState.specialBoostHandlers.push({ 
+			element: cardElement, 
+			handler: clickHandler,
+			card: targetCard,
+			row: row,
+			position: position
+		});
+	},
+
+	applySpecialTagBoostToRow: function(boostCard, row, boostValue, tag) {
+		const rowState = this.gameState.player.rows[row];
+		let boostedCards = 0;
+		
+		rowState.cards.forEach(card => {
+			if (card.type === 'unit' && 
+				!this.isHeroCard(card) && 
+				card.tags && 
+				card.tags.includes(tag)) {
+				this.applyBoostToCard(card, boostValue, row, 'player');
+				boostedCards++;
+			}
+		});
+		
+		if (boostedCards > 0) {
+			// Удаляем специальную карту из руки
+			this.removeCardFromHand(boostCard);
+			
+			// Добавляем карту в сброс
+			const boostCardCopy = { ...boostCard };
+			this.gameState.player.discard.push(boostCardCopy);
+			
+			if (window.gameModule) {
+				window.gameModule.updateRowStrength(row, 'player');
+				window.gameModule.displayPlayerDiscard();
+				window.gameModule.completeCardPlay();
+			}
+			
+			if (window.audioManager && window.audioManager.playSound) {
+				audioManager.playSound('card_boost');
+			}
+		} else {
+			this.showMessage(`В этом ряду нет карт с тегом "${this.getTagRussianName(tag)}"!`);
+		}
+		
+		this.cancelSpecialBoostSelection();
+	},
+
+	getTagRussianName: function(tag) {
+		const tagNames = {
+			'witcher': 'Ведьмак',
+			'criminal': 'Преступник',
+			'dwarf': 'Краснолюд',
+			'blood': 'Кровопийца',
+			'elf': 'Эльф',
+			'mage': 'Маг',
+			'soldier': 'Солдат',
+			'king': 'Король',
+			'leader': 'Лидер'
+		};
+		return tagNames[tag] || tag;
+	},
+
 	startSpecialRowBoostPlacement: function(card) {
 		this.gameState.selectingRow = true;
 		this.gameState.placementType = 'special_row_boost';
@@ -147,10 +259,23 @@ const playerModule = {
 		this.gameState.boostCard = card;
 		
 		let tag = '';
+		let boostValue = 1;
+		
 		if (card.ability === 'boost_tag_witcher') {
 			tag = 'witcher';
+			boostValue = 3;
+		} else if (card.ability === 'boost_tag_witcher_2') {
+			tag = 'witcher';
+			boostValue = 2;
+		} else if (card.ability === 'boost_tag_witcher_3') {
+			tag = 'witcher';
+			boostValue = 3;
 		} else if (card.ability === 'boost_tag_criminal') {
 			tag = 'criminal';
+			boostValue = 2;
+		} else if (card.ability === 'boost_tag_dwarf') {
+			tag = 'dwarf';
+			boostValue = 1;
 		}
 		
 		if (!tag) {
@@ -160,7 +285,10 @@ const playerModule = {
 		}
 		
 		this.gameState.boostTag = tag;
-		this.highlightPlayerRowsForSpecialTagBoost(tag);
+		this.gameState.boostTagValue = boostValue;
+		
+		// Подсвечиваем карты с нужным тегом
+		this.highlightPlayerCardsForSpecialTagBoost(tag, boostValue);
 	},
 
 	startSpecialCardBoostPlacement: function(card) {
@@ -312,8 +440,14 @@ const playerModule = {
 		
 		if (boostCard.ability === 'boost_tag_witcher') {
 			boostValue = 3;
+		} else if (boostCard.ability === 'boost_tag_witcher_2') {
+			boostValue = 2;
+		} else if (boostCard.ability === 'boost_tag_witcher_3') {
+			boostValue = 3;
 		} else if (boostCard.ability === 'boost_tag_criminal') {
 			boostValue = 2;
+		} else if (boostCard.ability === 'boost_tag_dwarf') {
+			boostValue = 1;
 		}
 		
 		let boostedCards = 0;
@@ -681,11 +815,24 @@ const playerModule = {
 		
 		// Определяем тег из ability
 		let tag = '';
+		let boostValue = 1;
+		
 		if (card.ability === 'boost_tag_witcher') {
 			tag = 'witcher';
+			boostValue = 3;
+		} else if (card.ability === 'boost_tag_witcher_2') {
+			tag = 'witcher';
+			boostValue = 2;
+		} else if (card.ability === 'boost_tag_witcher_3') {
+			tag = 'witcher';
+			boostValue = 3;
 		} else if (card.ability === 'boost_tag_criminal') {
 			tag = 'criminal';
-		} 
+			boostValue = 2;
+		} else if (card.ability === 'boost_tag_dwarf') {
+			tag = 'dwarf';
+			boostValue = 1;
+		}
 		
 		if (!tag) {
 			this.showMessage('Неизвестный тег для усиления!');
@@ -694,6 +841,7 @@ const playerModule = {
 		}
 		
 		this.gameState.boostTag = tag;
+		this.gameState.boostTagValue = boostValue;
 		this.highlightPlayerRowsForTagBoost(tag);
 	},
 
@@ -873,9 +1021,18 @@ const playerModule = {
 		if (ability === 'boost_tag_witcher') {
 			tag = 'witcher';
 			boostValue = 3;
+		} else if (ability === 'boost_tag_witcher_2') {
+			tag = 'witcher';
+			boostValue = 2;
+		} else if (ability === 'boost_tag_witcher_3') {
+			tag = 'witcher';
+			boostValue = 3;
 		} else if (ability === 'boost_tag_criminal') {
 			tag = 'criminal';
 			boostValue = 2;
+		} else if (ability === 'boost_tag_dwarf') {
+			tag = 'dwarf';
+			boostValue = 1;
 		}
 		
 		if (!tag) {

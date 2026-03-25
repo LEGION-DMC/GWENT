@@ -65,6 +65,9 @@ const factionAbilitiesModule = {
 					
 					modalOverlay.innerHTML = `
 						<div class="turn-choice-modal">
+							<div class="turn-choice-modal__icon">
+								<img src="board/choice.png" alt="Выбор хода">
+							</div>
 							<div class="turn-choice-modal__title">
 								${isPlayerScoiatael ? 'ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ' : 'ПРОТИВНИК ВЫБИРАЕТ КТО ХОДИТ ПЕРВЫМ'}
 							</div>
@@ -119,17 +122,14 @@ const factionAbilitiesModule = {
 							audioManager.playSound('choice');
 							
 							modalOverlay.innerHTML = `
-								<div style="text-align: center;">
-									<div style="color: #d4af37; font-size: 30px; margin-bottom: 15px;">
+								<div class="turn-choice-ai-result">
+									<div class="turn-choice-ai-result__icon">
+										<img src="board/choice.png" alt="Выбор хода">
+									</div>
+									<div class="turn-choice-ai-result__title">
 										ПРОТИВНИК ВЫБРАЛ
 									</div>
-									
-									<div style="
-										color: white;
-										font-size: 25px;
-										animation: choiceReveal 0.5s ease-out;
-										-webkit-text-stroke: 0.2px black;
-									">
+									<div class="turn-choice-ai-result__value">
 										${aiChoice === 'opponent' ? 'ХОЖУ ПЕРВЫМ' : 'ХОДИТЕ ПЕРВЫМ'}
 									</div>
 								</div>

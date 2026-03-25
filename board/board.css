@@ -1015,6 +1015,19 @@
 /* Модальное окно выбора первого хода */
 .turn-choice-modal {
     text-align: center;
+    margin-bottom: 150px;
+}
+
+.turn-choice-modal__icon {
+    margin-bottom: 15px;
+}
+
+.turn-choice-modal__icon img {
+    width: 90px;
+    height: 90px;
+    display: block;
+    margin: 0 auto;
+    filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.3));
 }
 
 .turn-choice-modal__title {
@@ -1291,10 +1304,10 @@
 }
 
 .mulligan-cards-container {
-    padding: 10px;
+    padding: 5px;
     display: inline-block;
     position: relative;
-	  margin-top: -11px;
+	  margin-top: -10px;
 }
 
 .mulligan-cards-container::before,

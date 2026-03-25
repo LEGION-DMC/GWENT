@@ -389,10 +389,10 @@ const skillSystem = {
 		},
 		'boost_tag_witcher_2': {
 			name: 'Подготовка ведьмаков',
-			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Ведьмак", в выбранном ряду, на 2 ед. силы',
+			type: 'special',
+			description: 'Усиливает все карты с тегом "Ведьмак" в одном ряду на 2 ед. силы',
 			effect: {
-				type: 'boost_tag',
+				type: 'special_tag_boost',
 				target: 'unit',
 				condition: 'ally',
 				value: 2,
@@ -416,7 +416,7 @@ const skillSystem = {
 		'boost_tag_criminal': {
 			name: 'Рэкет и Разбой',
 			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Преступник", в выбранном ряду, на 2 ед. силы',
+			description: 'Усиливает все карты с тегом "Преступник" в выбранном ряду на 2 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
@@ -428,8 +428,8 @@ const skillSystem = {
 		}, 	
 		'boost_tag_thirst': {
 			name: 'Жажда крови',
-			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Кровопийца", в выбранном ряду, на 2 ед. силы',
+			type: 'special',
+			description: 'Усиливает все карты с тегом "Кровопийца" в одном ряду на 2 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
@@ -441,10 +441,10 @@ const skillSystem = {
 		}, 	
 		'boost_tag_dwarf': {
 			name: 'Жар кузни',
-			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Краснолюд", в выбранном ряду, на 1 ед. силы',
+			type: 'special',
+			description: 'Усиливает все карты с тегом "Краснолюд" в одном ряду на 1 ед. силы',
 			effect: {
-				type: 'boost_tag',
+				type: 'special_tag_boost',
 				target: 'unit',
 				condition: 'ally',
 				value: 1,
