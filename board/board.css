@@ -1063,7 +1063,6 @@
 .turn-choice-modal__buttons {
     display: flex;
     gap: 10px;
-    margin: 8px 0;
     justify-content: center;
 }
 
@@ -1179,7 +1178,61 @@
     background: linear-gradient(90deg, transparent, #cfaa4a, #e5c168, #cfaa4a, transparent);
 }
 
-/* Mulligan Controls */
+.turn-choice-modal__thinking {
+    margin: 10px;
+    text-align: center;
+}
+
+.thinking-animation {
+    font-size: 30px;
+    letter-spacing: 5px;
+    color: #d4af37;
+    animation: thinkingPulse 1s ease-in-out infinite;
+}
+
+@keyframes thinkingPulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+.turn-choice-modal-result {
+    text-align: center;
+}
+
+.turn-choice-modal__result-value {
+    font-size: 20px;
+    letter-spacing: 3px;
+    margin: 15px;
+    
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    text-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.5),
+        0 0 10px rgba(165, 124, 44, 0.4);
+    
+    animation: resultAppear 0.5s ease-out;
+}
+
+@keyframes resultAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 #mulliganControls {
     position: fixed;
     margin-bottom: -5px;
@@ -1192,25 +1245,19 @@
 
 #mulliganResetBtn,
 #mulliganDoneBtn {
-    background: none;
     border: none;
     padding: 5px;
     font-size: 14px;
     font-family: 'Gwent', sans-serif;
-    text-transform: uppercase;
     letter-spacing: 2px;
     cursor: url('./ui/cursor_hover.png'), pointer;
     transition: transform 0.3s ease;
-    border-radius: 4px;
     position: relative;
     overflow: hidden;
     width: 170px;
-    
-    /* Благородное золото с градиентом */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    -webkit-text-fill-color: transparent;
 }
 
 #mulliganResetBtn::before,
@@ -1222,7 +1269,6 @@
     width: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent, #cfaa4a, #e5c168, #cfaa4a, transparent);
-    transition: width 0.4s ease;
 }
 
 #mulliganResetBtn::before,
@@ -1262,10 +1308,10 @@
     text-align: center;
     min-width: 100px;
     display: flex;
+    letter-spacing: 1px;
     align-items: center;
     justify-content: center;
     padding: 8px 10px;
-    font-weight: bold;
     position: relative;
 }
 
@@ -1401,4 +1447,222 @@
     font-size: 15px;
     margin-bottom: 30px;
     letter-spacing: 1px;
+}
+
+#gameMessages {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 300px;
+    pointer-events: none;
+}
+
+.game-message {
+    text-align: center;
+    font-family: 'Gwent', sans-serif;
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: messageAppear 0.3s ease-out;
+}
+
+.game-message-info {
+    color: #fff;
+}
+
+.game-message-warning {
+    color: #ff9800;
+}
+
+.game-message-error {
+    color: #f44336;
+}
+
+.game-message-success {
+    color: #4CAF50;
+}
+
+@keyframes messageAppear {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes messageDisappear {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.round-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: overlayAppear 0.3s ease-out;
+}
+
+.round-result-container {
+    text-align: center;
+    overflow: hidden;
+    margin-top: -100px;
+}
+
+.round-result-image {
+    width: 400px;
+    height: 300px;
+    display: block;
+    filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.5));
+    animation: resultAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.game-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url("../ui/fon.jpg") center center / cover no-repeat;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-result-container {
+    /*! text-align: center; */
+    animation: resultAppear 0.5s ease-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.game-result-image {
+    width: 400px;
+    height: 300px;
+    display: block;
+    margin-top: -70%;
+    filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.5));
+}
+
+.final-score {
+    font-size: 70px;
+    color: #d4af37;
+    font-family: 'Gwent', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    text-shadow: 0 0 20px rgba(212, 175, 55, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 20px;
+}
+
+.action-buttons {
+    display: grid;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.restart-btn,
+.redeck-btn {
+    background: transparent;
+    border: none;
+    padding: 8px;
+    font-size: 18px;
+    font-family: 'Gwent', sans-serif;
+    letter-spacing: 2px;
+    cursor: url('../ui/cursor_hover.png'), pointer;
+    transition: all 0.3s ease;
+    border-radius: 5px;
+    position: relative;
+    width: 200px;
+    overflow: hidden;
+    
+    /* Градиент для текста */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #a57c2c;
+    
+    /* Убираем все свечения и тени */
+    text-shadow: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.restart-btn::before,
+.redeck-btn::before,
+.restart-btn::after,
+.redeck-btn::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #cfaa4a, #e5c168, #cfaa4a, transparent);
+    transition: width 0.4s ease;
+    pointer-events: none;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.restart-btn::before,
+.redeck-btn::before {
+    top: 0;
+}
+
+.restart-btn::after,
+.redeck-btn::after {
+    bottom: 0;
+}
+
+.restart-btn:hover::before,
+.redeck-btn:hover::before,
+.restart-btn:hover::after,
+.redeck-btn:hover::after {
+    width: 100%;
+}
+
+.restart-btn:hover,
+.redeck-btn:hover {
+    transform: scale(1.03);
+    text-shadow: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.restart-btn:active,
+.redeck-btn:active {
+    transform: scale(1.1);
+}
+
+.restart-btn:focus,
+.redeck-btn:focus {
+    outline: none;
+    box-shadow: none;
 }

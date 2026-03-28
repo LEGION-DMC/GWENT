@@ -116,9 +116,10 @@ const gameModule = {
         this.startGameSequence();
     },
 
-    startGameSequence: function() {
-        this.startCoinToss();
-    },
+	startGameSequence: function() {
+		this.gameState.winnerOfLastRound = null;
+		this.startCoinToss();
+	},
 
     createTimerDisplay: function() {
 		if (document.getElementById('turnTimerDisplay')) return;
@@ -1021,21 +1022,56 @@ const gameModule = {
 		}, resultDelay);
 	},
 
-    startGameAfterCoinToss: function(firstPlayer) {
-        const coinOverlay = document.getElementById('coinTossOverlay');
-        if (coinOverlay) {
-            coinOverlay.style.opacity = '0';
-            setTimeout(() => {
-                if (coinOverlay.parentNode) {
-                    coinOverlay.parentNode.removeChild(coinOverlay);
-                }
-            }, 500);
-        }
-        
-        this.stopTurnTimer();
-        this.gameState.currentPlayer = firstPlayer;
-        this.startMulliganPhase();
-    },
+	startGameAfterCoinToss: function(firstPlayer) {
+		const coinOverlay = document.getElementById('coinTossOverlay');
+		if (coinOverlay) {
+			coinOverlay.style.opacity = '0';
+			setTimeout(() => {
+				if (coinOverlay.parentNode) {
+					coinOverlay.parentNode.removeChild(coinOverlay);
+				}
+			}, 500);
+		}
+		
+		this.stopTurnTimer();
+		this.gameState.currentPlayer = firstPlayer;
+		this.startMulliganPhase();
+		
+		this.isFirstRoundStart = true;
+	},
+
+	completeMulliganPhase: function() {
+		this.gameState.mulligan.phase = 'completed';
+		
+		const playerUsed = this.gameState.mulligan.player.used;
+		const opponentUsed = this.gameState.mulligan.opponent.used;
+		
+		this.displayPlayerHand();
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('round_start');
+		}
+		
+		if (this.isFirstRoundStart) {
+			this.showRoundStartMessage(`РАУНД 1`);
+			this.isFirstRoundStart = false;
+			
+			setTimeout(() => {
+				if (this.gameState.currentPlayer === 'player') {
+					this.startPlayerTurn();
+				} else {
+					this.startOpponentTurn();
+				}
+			}, 3000);
+		} else {
+			setTimeout(() => {
+				if (this.gameState.currentPlayer === 'player') {
+					this.startPlayerTurn();
+				} else {
+					this.startOpponentTurn();
+				}
+			}, 1000);
+		}
+	},
 
     loadSettings: function() {
         if (window.settingsModule) {
@@ -1333,23 +1369,25 @@ const gameModule = {
 		const playerScore = this.calculateTotalScore('player');
 		const opponentScore = this.calculateTotalScore('opponent');
 		
+		let roundWinner = null;
+		
 		if (this.gameState.roundLossDueToTimeout) {
 			const losingPlayer = this.gameState.roundLossDueToTimeout;
 			
 			if (losingPlayer === 'player') {
 				this.gameState.roundsWon.opponent++;
 				this.gameState.roundResults.push('opponent');
+				roundWinner = 'opponent';
 				this.showRoundResult('opponent', playerScore, opponentScore);
 			} else {
 				this.gameState.roundsWon.player++;
 				this.gameState.roundResults.push('player');
+				roundWinner = 'player';
 				this.showRoundResult('player', playerScore, opponentScore);
 			}
 			
 			this.gameState.roundLossDueToTimeout = null;
 		} else {
-			let roundWinner = null;
-			
 			if (window.factionAbilitiesModule) {
 				roundWinner = window.factionAbilitiesModule.checkRoundWinner(
 					this.gameState, 
@@ -1374,11 +1412,16 @@ const gameModule = {
 				this.gameState.roundResults.push('opponent');
 			} else {
 				this.gameState.roundsWon.player++;
-				this.gameState.roundsWon.opponent++;
 				this.gameState.roundResults.push('draw');
+				this.gameState.winnerOfLastRound = this.gameState.winnerOfLastRound || 'player';
 			}
 			
 			this.showRoundResult(roundWinner, playerScore, opponentScore);
+		}
+		
+		// Сохраняем победителя раунда для следующего хода (только если не ничья)
+		if (roundWinner !== 'draw') {
+			this.gameState.winnerOfLastRound = roundWinner;
 		}
 		
 		if (window.factionAbilitiesModule) {
@@ -1388,21 +1431,17 @@ const gameModule = {
 		const playerWins = this.gameState.roundsWon.player;
 		const opponentWins = this.gameState.roundsWon.opponent;
 		
+		// Проверяем окончание игры
 		if (playerWins >= 2 || opponentWins >= 2) {
-			setTimeout(() => this.endGame(), 3000);
+			// Игра закончена, показываем финальный результат через 3.5 секунды
+			setTimeout(() => this.endGame(), 3500);
 		} else if (this.gameState.currentRound >= this.gameState.totalRounds) {
-			if (playerWins > opponentWins) {
-				setTimeout(() => this.endGame(), 3000);
-			} else if (opponentWins > playerWins) {
-				setTimeout(() => this.endGame(), 3000);
-			} else {
-				setTimeout(() => this.endGame(), 3000);
-			}
-		} else {
-			setTimeout(() => this.startNewRound(), 3000);
+			// Если это был последний раунд, но никто не выиграл 2 раунда (ничья по раундам)
+			setTimeout(() => this.endGame(), 3500);
 		}
+		// Если игра не закончена, новый раунд запустится через showRoundResult
 	},
-
+	
     calculateTotalScore: function(player) {
         const rows = this.gameState[player].rows;
         
@@ -1452,7 +1491,30 @@ const gameModule = {
 		this.updateCrownIndicators();
 		this.resetRoundState();
 		this.dealAdditionalCards();
-		this.startPlayerTurn();
+		
+		let firstPlayer = this.determineFirstPlayerForNewRound();
+		this.gameState.currentPlayer = firstPlayer;
+		
+		if (firstPlayer === 'player') {
+			this.startPlayerTurn();
+		} else {
+			this.startOpponentTurn();
+		}
+	},
+
+	determineFirstPlayerForNewRound: function() {
+		if (this.gameState.winnerOfLastRound) {
+			return this.gameState.winnerOfLastRound;
+		}
+		
+		const playerIsScoiatael = this.gameState.player.faction === 'scoiatael';
+		const opponentIsScoiatael = this.gameState.opponent.faction === 'scoiatael';
+		
+		if (playerIsScoiatael || opponentIsScoiatael) {
+			return 'player';
+		}
+		
+		return Math.random() < 0.5 ? 'player' : 'opponent';
 	},
 
     updateGameModeIndicator: function() {
@@ -4068,85 +4130,149 @@ const gameModule = {
 		
 		const resultOverlay = document.createElement('div');
 		resultOverlay.className = 'round-result-overlay';
-		resultOverlay.style.cssText = `
+		
+		let resultImage;
+		
+		if (winner === 'player') {
+			resultImage = 'board/win.png';
+		} else if (winner === 'opponent') {
+			resultImage = 'board/lose.png';
+		} else {
+			resultImage = 'board/draw.png';
+		}
+		
+		resultOverlay.innerHTML = `
+			<div class="round-result-container">
+				<img src="${resultImage}" alt="Результат раунда" class="round-result-image">
+			</div>
+		`;
+		
+		this.updateCrownIndicators();
+		document.body.appendChild(resultOverlay);
+		this.animateResultAppear(resultOverlay);
+		
+		const playerWins = this.gameState.roundsWon.player;
+		const opponentWins = this.gameState.roundsWon.opponent;
+		const isGameOver = (playerWins >= 2 || opponentWins >= 2);
+		
+		setTimeout(() => {
+			if (document.body.contains(resultOverlay)) {
+				this.animateResultDisappear(resultOverlay);
+				
+				if (!isGameOver) {
+					setTimeout(() => {
+						this.startNewRoundAfterDelay();
+					}, 400);
+				}
+			}
+		}, 3000);
+	},
+
+	startNewRoundAfterDelay: function() {
+		const playerWins = this.gameState.roundsWon.player;
+		const opponentWins = this.gameState.roundsWon.opponent;
+		
+		if (playerWins >= 2 || opponentWins >= 2) {
+			return;
+		}
+		
+		this.stopTurnTimer();
+		
+		if (this.gameState.currentRound < this.gameState.totalRounds) {
+			this.gameState.currentRound++;
+		} else {
+			return;
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('round_start');
+		}
+		
+		this.showRoundStartMessage(`РАУНД ${this.gameState.currentRound}`);
+		
+		this.updateRoundCounter();
+		this.updateCrownIndicators();
+		this.resetRoundState();
+		this.dealAdditionalCards();
+		
+		let firstPlayer = this.determineFirstPlayerForNewRound();
+		this.gameState.currentPlayer = firstPlayer;
+		
+		setTimeout(() => {
+			if (firstPlayer === 'player') {
+				this.startPlayerTurn();
+			} else {
+				this.startOpponentTurn();
+			}
+		}, 3000);
+	},
+
+	showRoundStartMessage: function(text) {
+		const existingMessage = document.getElementById('roundStartMessage');
+		if (existingMessage) {
+			existingMessage.remove();
+		}
+		
+		const messageOverlay = document.createElement('div');
+		messageOverlay.id = 'roundStartMessage';
+		messageOverlay.style.cssText = `
 			position: fixed;
 			top: 0;
 			left: 0;
 			width: 100%;
 			height: 100%;
-			background: rgba(0, 0, 0, 0.9);
+			background: rgba(0, 0, 0, 0.7);
 			display: flex;
-			flex-direction: column;
 			align-items: center;
 			justify-content: center;
-			z-index: 10000;
-			font-family: 'Gwent', sans-serif;
+			z-index: 10001;
+			pointer-events: none;
+			animation: roundMessageFadeIn 0.5s ease-out;
 		`;
-
-		let resultImage, resultText, resultColor, borderColor;
 		
-		if (winner === 'player') {
-			resultImage = 'board/win.png';
-			resultText = 'ПОБЕДА В РАУНДЕ';
-			resultColor = '#4CAF50';
-			borderColor = '#4CAF50';
-		} else if (winner === 'opponent') {
-			resultImage = 'board/lose.png';
-			resultText = 'ПОРАЖЕНИЕ В РАУНДЕ';
-			resultColor = '#f44336';
-			borderColor = '#f44336';
-		} else {
-			resultImage = 'board/draw.png';
-			resultText = 'НИЧЬЯ В РАУНДЕ';
-			resultColor = '#FFD700';
-			borderColor = '#FFD700';
+		const messageContainer = document.createElement('div');
+		messageContainer.style.cssText = `
+			text-align: center;
+			animation: roundMessageScale 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+		`;
+		
+		const roundNumber = this.gameState.currentRound;
+		let roundColor = '#d4af37'; 
+		
+		if (roundNumber === 1) {
+			roundColor = '#4CAF50'; 
+		} else if (roundNumber === 2) {
+			roundColor = '#ff9800'; 
+		} else if (roundNumber === 3) {
+			roundColor = '#f44336'; 
 		}
-
-		resultOverlay.innerHTML = `
-			<div class="round-result-container" style="
-				text-align: center;
-				overflow: hidden;
-				margin-top: -100px;
-			">
-				
-				<img src="${resultImage}" alt="${resultText}" style="
-					width: 400px;
-					height: 300px;
-					margin-bottom: 20px;
-					filter: drop-shadow(0 0 10px ${resultColor}80);
-				" onerror="this.style.display='none'">
-				
-				<h2 style="
-					color: ${resultColor};
-					margin: 0 0 20px 0;
-					font-size: 35px;
-					text-transform: uppercase;
-					letter-spacing: 3px;
-					text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-					-webkit-text-stroke: 0.2px black;
-				">${resultText}</h2>
-				
-				<div class="rounds-progress" style="
-					display: flex;
-					justify-content: center;
-					gap: 8px;
-					margin: 20px 0;
-				">
-					${this.generateRoundsProgress()}
-				</div>
-			</div>
+		
+		messageContainer.innerHTML = `
+			<div style="
+				font-family: 'Gwent', sans-serif;
+				font-size: 45px;
+				text-transform: uppercase;
+				letter-spacing: 8px;
+				color: ${roundColor};
+				text-shadow: 0 0 20px ${roundColor}, 0 0 40px rgba(0,0,0,0.5);
+				margin-bottom: 20px;
+				animation: roundTextGlow 1s ease-in-out infinite;
+			">${text}</div>
 		`;
 		
-		this.updateCrownIndicators();
-
-		document.body.appendChild(resultOverlay);
-		this.animateResultAppear(resultOverlay);
+		messageOverlay.appendChild(messageContainer);
+		document.body.appendChild(messageOverlay);
 		
 		setTimeout(() => {
-			if (document.body.contains(resultOverlay)) {
-				this.animateResultDisappear(resultOverlay);
+			if (messageOverlay && messageOverlay.parentNode) {
+				messageOverlay.style.animation = 'roundMessageFadeOut 0.5s ease-in';
+				setTimeout(() => {
+					if (messageOverlay.parentNode) {
+						messageOverlay.parentNode.removeChild(messageOverlay);
+					}
+				}, 500);
 			}
-		}, 1000);
+		}, 2500);
 	},
 
 	generateRoundsProgress: function() {
@@ -4264,136 +4390,59 @@ const gameModule = {
         document.head.appendChild(style);
     },
 
-    showGameResult: function(winner) {
-        if (window.audioManager && window.audioManager.playSound) {
-            if (winner === 'player') {
-                audioManager.playSound('win');
-            } else if (winner === 'opponent') {
-                audioManager.playSound('lose');
-            } else {
-                audioManager.playSound('draw');
-            }
-        }
+	showGameResult: function(winner) {
+		if (window.audioManager && window.audioManager.playSound) {
+			if (winner === 'player') {
+				audioManager.playSound('win');
+			} else if (winner === 'opponent') {
+				audioManager.playSound('lose');
+			} else {
+				audioManager.playSound('draw');
+			}
+		}
 		
-        const resultOverlay = document.createElement('div');
-        resultOverlay.className = 'game-result-overlay';
-        resultOverlay.style.cssText = `
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            background: url("ui/fon.jpg") center center / cover no-repeat;
-            z-index: 10000;
-        `;
-
-        let resultImage, resultText, resultColor;
-        const finalScore = `${this.gameState.roundsWon.player}-${this.gameState.roundsWon.opponent}`;
-        
-        if (winner === 'player') {
-            resultImage = 'board/win.png';
-            resultText = 'ПОБЕДА';
-            resultColor = '#4CAF50';
-        } else if (winner === 'opponent') {
-            resultImage = 'board/lose.png';
-            resultText = 'ПОРАЖЕНИЕ';
-            resultColor = '#f44336';
-        } else {
-            resultImage = 'board/draw.png';
-            resultText = 'НИЧЬЯ';
-            resultColor = '#FFD700';
-        }
-
-        resultOverlay.innerHTML = `
-            <div class="game-result-container" style="
-                text-align: center;
-                animation: resultAppear 0.5s ease-out;
-            ">
-                <img src="${resultImage}" alt="${resultText}" style="
-                    width: 400px;
-                    height: 300px;
-                    margin-bottom: 30px;
-					margin-top: 120px;
-                " onerror="this.style.display='none'">
-                
-                <h1 style="
-                    color: ${resultColor};
-                    margin: 0 0 20px 0;
-                    font-size: 35px;
-                    text-transform: uppercase;
-                    letter-spacing: 3px;
-                    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-					-webkit-text-stroke: 0.2px black;
-                ">${resultText}</h1>
-                
-                <div class="final-score" style="
-                    font-size: 25px;
-                    color: #fff;
-					-webkit-text-stroke: 0.2px black;
-                ">
-                    ${finalScore}
-                </div>
-                
-                <div class="action-buttons" style="
-                    display: flex;
-                    gap: 20px;
-                    justify-content: center;
-                    margin-top: 20px;
-                ">
-                    <button class="restart-btn" style="
-						background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-						color: #d4af37;
-						border: 1px solid #d4af37; 
-						padding: 10px;
-						font-size: 21px;
-						font-family: 'Gwent', sans-serif;
-						text-transform: uppercase;
-						letter-spacing: 3px; 
-						cursor: url('ui/cursor_hover.png'), pointer;
-						transition: all 0.3s ease; 
-						border-radius: 5px; 
-						box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
-						position: relative;
-						overflow: hidden;
-						width: 200px;
-                    ">В ГЛАВНОЕ МЕНЮ</button>
-                    
-                    <button class="redeck-btn" style="
-						background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-						color: #d4af37;
-						border: 1px solid #d4af37; 
-						padding: 10px;
-						font-size: 21px;
-						font-family: 'Gwent', sans-serif;
-						text-transform: uppercase;
-						letter-spacing: 3px; 
-						cursor: url('ui/cursor_hover.png'), pointer;
-						transition: all 0.3s ease; 
-						border-radius: 5px; 
-						box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
-						position: relative;
-						overflow: hidden;
-						width: 200px;
-                    ">К СБОРУ КОЛОДЫ</button>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(resultOverlay);
-        
-        const restartBtn = resultOverlay.querySelector('.restart-btn');
-        const redeckBtn = resultOverlay.querySelector('.redeck-btn');
-        
-        restartBtn.addEventListener('click', () => {
-            audioManager.playSound('button');
-            document.body.removeChild(resultOverlay);
-            this.returnToMainMenu();
-        });
-        
-        redeckBtn.addEventListener('click', () => {
-            audioManager.playSound('button');
-            document.body.removeChild(resultOverlay);
-            this.redeckGame();
-        });
-    },
+		const resultOverlay = document.createElement('div');
+		resultOverlay.className = 'game-result-overlay';
+		
+		let resultImage;
+		const finalScore = `${this.gameState.roundsWon.player}-${this.gameState.roundsWon.opponent}`;
+		
+		if (winner === 'player') {
+			resultImage = 'board/win.png';
+		} else if (winner === 'opponent') {
+			resultImage = 'board/lose.png';
+		} else {
+			resultImage = 'board/draw.png';
+		}
+		
+		resultOverlay.innerHTML = `
+			<div class="game-result-container">
+				<img src="${resultImage}" alt="Результат игры" class="game-result-image">
+				<div class="final-score">${finalScore}</div>
+				<div class="action-buttons">
+					<button class="restart-btn">В ГЛАВНОЕ МЕНЮ</button>
+					<button class="redeck-btn">К СБОРУ КОЛОДЫ</button>
+				</div>
+			</div>
+		`;
+		
+		document.body.appendChild(resultOverlay);
+		
+		const restartBtn = resultOverlay.querySelector('.restart-btn');
+		const redeckBtn = resultOverlay.querySelector('.redeck-btn');
+		
+		restartBtn.addEventListener('click', () => {
+			audioManager.playSound('button');
+			document.body.removeChild(resultOverlay);
+			this.returnToMainMenu();
+		});
+		
+		redeckBtn.addEventListener('click', () => {
+			audioManager.playSound('button');
+			document.body.removeChild(resultOverlay);
+			this.redeckGame();
+		});
+	},
 
     returnToMainMenu: function() {
         window.location.reload();
@@ -4490,6 +4539,7 @@ const gameModule = {
 				opponent: 0
 			},
 			roundResults: [],
+			winnerOfLastRound: null,
 			currentPlayer: 'player',
 			gamePhase: 'setup',
 			selectedCard: null,
@@ -4623,52 +4673,30 @@ const gameModule = {
         return color;
     },
 
-    showGameMessage: function(text, type = 'info') {
-        let messageContainer = document.getElementById('gameMessages');
-        if (!messageContainer) {
-            messageContainer = document.createElement('div');
-            messageContainer.id = 'gameMessages';
-            messageContainer.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-				color: white;
-                transform: translateX(-50%);
-                z-index: 10000;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                max-width: 400px;
-            `;
-            document.body.appendChild(messageContainer);
-        }
-        
-        const messageElement = document.createElement('div');
-        messageElement.className = `game-message game-message-${type}`;
-        messageElement.style.cssText = `
-            text-align: center;
-            font-family: 'Gwent', sans-serif;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            animation: messageAppear 0.3s ease-out;
-        `;
-        
-        messageElement.textContent = text;
-        messageContainer.appendChild(messageElement);
-        
-        setTimeout(() => {
-            if (messageElement.parentNode) {
-                messageElement.style.animation = 'messageDisappear 0.3s ease-out';
-                setTimeout(() => {
-                    if (messageElement.parentNode) {
-                        messageElement.parentNode.removeChild(messageElement);
-                    }
-                }, 300);
-            }
-        }, 3000);
-    },
+	showGameMessage: function(text, type = 'info') {
+		let messageContainer = document.getElementById('gameMessages');
+		if (!messageContainer) {
+			messageContainer = document.createElement('div');
+			messageContainer.id = 'gameMessages';
+			document.body.appendChild(messageContainer);
+		}
+		
+		const messageElement = document.createElement('div');
+		messageElement.className = `game-message game-message-${type}`;
+		messageElement.textContent = text;
+		messageContainer.appendChild(messageElement);
+		
+		setTimeout(() => {
+			if (messageElement.parentNode) {
+				messageElement.style.animation = 'messageDisappear 0.3s ease-out';
+				setTimeout(() => {
+					if (messageElement.parentNode) {
+						messageElement.parentNode.removeChild(messageElement);
+					}
+				}, 300);
+			}
+		}, 3000);
+	},
 
 };
 

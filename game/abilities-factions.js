@@ -63,16 +63,62 @@ const factionAbilitiesModule = {
 
 					const isPlayerScoiatael = gameState.player.faction === 'scoiatael';
 					
-					modalOverlay.innerHTML = `
-						<div class="turn-choice-modal">
-							<div class="turn-choice-modal__icon">
-								<img src="board/choice.png" alt="Выбор хода">
+					if (!isPlayerScoiatael) {
+						modalOverlay.innerHTML = `
+							<div class="turn-choice-modal">
+								<div class="turn-choice-modal__icon">
+									<img src="board/choice.png" alt="Выбор хода">
+								</div>
+								<div class="turn-choice-modal__title">
+									ПРОТИВНИК ВЫБИРАЕТ КТО ХОДИТ ПЕРВЫМ
+								</div>
+								<div class="turn-choice-modal__thinking">
+									<div class="thinking-animation">•••</div>
+								</div>
+								<div class="turn-choice-modal__description">
+									Способность фракции Скоя'таэли
+								</div>
 							</div>
-							<div class="turn-choice-modal__title">
-								${isPlayerScoiatael ? 'ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ' : 'ПРОТИВНИК ВЫБИРАЕТ КТО ХОДИТ ПЕРВЫМ'}
-							</div>
+						`;
+						
+						document.body.appendChild(modalOverlay);
+						audioManager.playSound('button');
+						
+						setTimeout(() => {
+							const aiChoice = this.makeAIChoice(gameState);
+							audioManager.playSound('choice');
 							
-							${isPlayerScoiatael ? `
+							modalOverlay.innerHTML = `
+								<div class="turn-choice-modal turn-choice-modal-result">
+									<div class="turn-choice-modal__icon">
+										<img src="board/choice.png" alt="Выбор хода">
+									</div>
+									<div class="turn-choice-modal__title">
+										ПРОТИВНИК ВЫБРАЛ
+									</div>
+									<div class="turn-choice-modal__result-value">
+										${aiChoice === 'opponent' ? 'ХОЖУ ПЕРВЫМ' : 'ХОДИТЕ ПЕРВЫМ'}
+									</div>
+									<div class="turn-choice-modal__description">
+										Способность фракции Скоя'таэли
+									</div>
+								</div>
+							`;
+							
+							setTimeout(() => {
+								document.body.removeChild(modalOverlay);
+								resolve(aiChoice);
+							}, 2000);
+						},3000);
+					} else {
+						modalOverlay.innerHTML = `
+							<div class="turn-choice-modal">
+								<div class="turn-choice-modal__icon">
+									<img src="board/choice.png" alt="Выбор хода">
+								</div>
+								<div class="turn-choice-modal__title">
+									ВЫБЕРИТЕ КТО ХОДИТ ПЕРВЫМ
+								</div>
 								<div class="turn-choice-modal__buttons">
 									<button class="choice-btn player-choice">
 										<div class="choice-btn__label">ИГРОК</div>
@@ -84,21 +130,18 @@ const factionAbilitiesModule = {
 										<div class="choice-btn__value">ХОДИТ ПЕРВЫМ</div>
 									</button>
 								</div>
-							` : ''}
-							
-							<div class="turn-choice-modal__description">
-								Способность фракции Скоя\'таэли
+								<div class="turn-choice-modal__description">
+									Способность фракции Скоя'таэли
+								</div>
 							</div>
-						</div>
-					`;
-
-					document.body.appendChild(modalOverlay);
-					audioManager.playSound('button');
-
-					if (isPlayerScoiatael) {
+						`;
+						
+						document.body.appendChild(modalOverlay);
+						audioManager.playSound('button');
+						
 						const playerChoiceBtn = modalOverlay.querySelector('.player-choice');
 						const opponentChoiceBtn = modalOverlay.querySelector('.opponent-choice');
-
+						
 						playerChoiceBtn.addEventListener('click', () => {
 							audioManager.playSound('choice');
 							this.animateChoiceSelection(playerChoiceBtn, true);
@@ -107,7 +150,7 @@ const factionAbilitiesModule = {
 								resolve('player');
 							}, 100);
 						});
-
+						
 						opponentChoiceBtn.addEventListener('click', () => {
 							audioManager.playSound('choice');
 							this.animateChoiceSelection(opponentChoiceBtn, false);
@@ -116,30 +159,6 @@ const factionAbilitiesModule = {
 								resolve('opponent');
 							}, 100);
 						});
-					} else {
-						setTimeout(() => {
-							const aiChoice = this.makeAIChoice(gameState);
-							audioManager.playSound('choice');
-							
-							modalOverlay.innerHTML = `
-								<div class="turn-choice-ai-result">
-									<div class="turn-choice-ai-result__icon">
-										<img src="board/choice.png" alt="Выбор хода">
-									</div>
-									<div class="turn-choice-ai-result__title">
-										ПРОТИВНИК ВЫБРАЛ
-									</div>
-									<div class="turn-choice-ai-result__value">
-										${aiChoice === 'opponent' ? 'ХОЖУ ПЕРВЫМ' : 'ХОДИТЕ ПЕРВЫМ'}
-									</div>
-								</div>
-							`;
-							
-							setTimeout(() => {
-								document.body.removeChild(modalOverlay);
-								resolve(aiChoice);
-							}, 2500);
-						}, 5000);
 					}
 				});
 			},

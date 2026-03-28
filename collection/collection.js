@@ -51,7 +51,7 @@ const collectionModule = (function() {
             dragon: 'Драконид', specter: 'Дух', dwarf: 'Краснолюд', mercenary: 'Наёмник',
             elf: 'Ельф', oak: 'Древень', curse: 'Проклятие', religy: 'Религия',
             weapons: 'Оружие', ogr: 'Огройд', pirat: 'Пират', alchimy: 'Алхимия',
-            scenary: 'Сценарий', treasure: 'Сокровище'
+            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт'
         }
     };
     
@@ -442,81 +442,89 @@ const collectionModule = (function() {
         audioManager?.playSound('button');
     }
     
-    function resetFilters() {
-        currentFilters = { faction: 'all', type: 'all', rarity: 'all', position: 'all' };
-        showCopies = false;
-        
-        const showCopiesCheckbox = document.getElementById('showCopiesCheckbox');
-        if (showCopiesCheckbox) showCopiesCheckbox.checked = false;
-        
-        document.querySelectorAll('.filter-faction-btn, .filter-type-btn, .filter-rarity-btn, .filter-position-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        document.querySelectorAll('.filter-faction-all, .filter-btn-all').forEach(btn => {
-            btn.classList.add('active');
-        });
-        
-        displayCards();
-        audioManager?.playSound('button');
-    }
-    
-    function setupFilterListeners() {
-        const filters = {
-            faction: '.filter-faction-btn',
-            type: '.filter-type-btn',
-            rarity: '.filter-rarity-btn',
-            position: '.filter-position-btn'
-        };
-        
-        const updateFilter = (type, value, btn) => {
-            document.querySelectorAll(filters[type]).forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFilters[type] = value;
-            
-            if (type === 'position' && value !== 'all') {
-                currentFilters.type = 'unit';
-                document.querySelectorAll('.filter-type-btn').forEach(b => {
-                    b.classList.toggle('active', b.dataset.type === 'unit');
-                });
-            }
-            if (type === 'type' && value !== 'unit' && value !== 'all') {
-                currentFilters.position = 'all';
-                document.querySelectorAll('.filter-position-btn').forEach(b => {
-                    b.classList.toggle('active', b.dataset.position === 'all');
-                });
-            }
-            
-            displayCards();
-            audioManager?.playSound('button');
-        };
-        
-        for (const [type, selector] of Object.entries(filters)) {
-            document.querySelectorAll(selector).forEach(btn => {
-                btn.addEventListener('click', () => {
-                    updateFilter(type, btn.dataset[type], btn);
-                });
-                btn.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
-            });
-        }
-        
-        const showCopiesCheckbox = document.getElementById('showCopiesCheckbox');
-        if (showCopiesCheckbox) {
-            showCopiesCheckbox.addEventListener('change', (e) => {
-                showCopies = e.target.checked;
-                displayCards();
-                audioManager?.playSound('button');
-            });
-            showCopiesCheckbox.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
-        }
-        
-        const resetBtn = document.getElementById('resetFiltersBtn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', resetFilters);
-            resetBtn.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
-        }
-    }
-    
+	function resetFilters() {
+		currentFilters = { faction: 'all', type: 'all', rarity: 'all', position: 'all' };
+		showCopies = false;
+		
+		const showCopiesCheckbox = document.getElementById('showCopiesCheckbox');
+		if (showCopiesCheckbox) {
+			showCopiesCheckbox.checked = false;
+		}
+		
+		updateCopyToggleState();
+		
+		document.querySelectorAll('.filter-faction-btn, .filter-type-btn, .filter-rarity-btn, .filter-position-btn').forEach(btn => {
+			btn.classList.remove('active');
+		});
+		
+		document.querySelectorAll('.filter-faction-all, .filter-btn-all').forEach(btn => {
+			btn.classList.add('active');
+		});
+		
+		displayCards();
+		audioManager?.playSound('button');
+	}
+		
+	function setupFilterListeners() {
+		const filters = {
+			faction: '.filter-faction-btn',
+			type: '.filter-type-btn',
+			rarity: '.filter-rarity-btn',
+			position: '.filter-position-btn'
+		};
+		
+		const updateFilter = (type, value, btn) => {
+			document.querySelectorAll(filters[type]).forEach(b => b.classList.remove('active'));
+			btn.classList.add('active');
+			currentFilters[type] = value;
+			
+			if (type === 'position' && value !== 'all') {
+				currentFilters.type = 'unit';
+				document.querySelectorAll('.filter-type-btn').forEach(b => {
+					b.classList.toggle('active', b.dataset.type === 'unit');
+				});
+			}
+			if (type === 'type' && value !== 'unit' && value !== 'all') {
+				currentFilters.position = 'all';
+				document.querySelectorAll('.filter-position-btn').forEach(b => {
+					b.classList.toggle('active', b.dataset.position === 'all');
+				});
+			}
+			
+			displayCards();
+			audioManager?.playSound('button');
+		};
+		
+		for (const [type, selector] of Object.entries(filters)) {
+			document.querySelectorAll(selector).forEach(btn => {
+				btn.addEventListener('click', () => {
+					updateFilter(type, btn.dataset[type], btn);
+				});
+				btn.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
+			});
+		}
+		
+		const showCopiesCheckbox = document.getElementById('showCopiesCheckbox');
+		if (showCopiesCheckbox) {
+			showCopiesCheckbox.checked = showCopies;
+			updateCopyToggleState();
+			
+			showCopiesCheckbox.addEventListener('change', (e) => {
+				showCopies = e.target.checked;
+				updateCopyToggleState();
+				displayCards();
+				audioManager?.playSound('button');
+			});
+			showCopiesCheckbox.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
+		}
+		
+		const resetBtn = document.getElementById('resetFiltersBtn');
+		if (resetBtn) {
+			resetBtn.addEventListener('click', resetFilters);
+			resetBtn.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
+		}
+	}
+   
     function setupEscapeHandler() {
         if (escapeHandler) document.removeEventListener('keydown', escapeHandler);
         
@@ -582,93 +590,106 @@ const collectionModule = (function() {
         }
     }
     
-    function initCollection() {
-        const existingCollection = document.querySelector('.collection-page');
-        if (existingCollection) existingCollection.remove();
-        
-        currentFilters = { faction: 'all', type: 'all', rarity: 'all', position: 'all' };
-        allCards = [];
-        showCopies = false;
-        clearCache();
-        
-        const startPage = document.querySelector('.start-page');
-        const logo = startPage?.querySelector('.logo');
-        const menuButtons = startPage?.querySelector('.main-menu-buttons');
-        
-        if (logo) logo.style.animation = 'fadeOutUp 0.5s ease forwards';
-        if (menuButtons) menuButtons.style.animation = 'fadeOutDown 0.5s ease forwards';
-        
-        setTimeout(() => {
-            if (startPage) {
-                startPage.style.opacity = '0';
-                setTimeout(() => startPage.style.display = 'none', 500);
-            }
-            
-            getAllCards();
-            
-            const collectionHTML = `
-                <div class="collection-page">
-                    <button class="back-to-menu-btn-collection" id="backToMenuBtn">Назад</button>
-                    <div class="collection-container">
-                        <div class="collection-filters">
-                            ${generateFiltersHTML()}
-                        </div>
-                        <div class="collection-cards-area">
-                            <div class="collection-header">
-                                <h2>КОЛЛЕКЦИЯ</h2>
-                                <div class="collection-stats">
-                                    <div class="collection-strength" id="collectionStrength" style="display: none;"></div>
-                                    <div class="collection-count" id="collectionCount">0 карт</div>
-                                </div>
-                            </div>
-                            <div class="section-divider"></div>
-                            <div class="collection-grid" id="collectionGrid">
-                                <div class="collection-empty">
-                                    <img src="deck/none_cards.png" alt="Загрузка">
-                                    <p>Загрузка карт...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(createElementFromHTML(collectionHTML));
-            
-            setTimeout(() => {
-                const collectionPage = document.querySelector('.collection-page');
-                if (collectionPage) collectionPage.style.opacity = '1';
-                document.body.style.background = "url('ui/fon.jpg') no-repeat center center fixed";
-                document.body.style.backgroundSize = 'cover';
-            }, 100);
-            
-            setupFilterListeners();
-            setupEscapeHandler();
-            
-            setTimeout(() => {
-                document.querySelectorAll('.filter-faction-all, .filter-btn-all').forEach(btn => btn.classList.add('active'));
-                displayCards();
-            }, 50);
-            
-            const backBtn = document.getElementById('backToMenuBtn');
-            if (backBtn) {
-                backBtn.addEventListener('click', () => {
-                    audioManager?.playSound('button');
-                    closeCollection();
-                });
-                backBtn.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
-            }
-            
-            if (window.settingsModule) {
-                const originalNotify = settingsModule.notifySettingsChange;
-                settingsModule.notifySettingsChange = function() {
-                    originalNotify?.call(this);
-                    refreshCardsDisplay();
-                };
-            }
-        }, 500);
-    }
-    
+	function initCollection() {
+		const existingCollection = document.querySelector('.collection-page');
+		if (existingCollection) existingCollection.remove();
+		
+		currentFilters = { faction: 'all', type: 'all', rarity: 'all', position: 'all' };
+		allCards = [];
+		showCopies = false;
+		clearCache();
+		
+		const startPage = document.querySelector('.start-page');
+		const logo = startPage?.querySelector('.logo');
+		const menuButtons = startPage?.querySelector('.main-menu-buttons');
+		
+		if (logo) logo.style.animation = 'fadeOutUp 0.5s ease forwards';
+		if (menuButtons) menuButtons.style.animation = 'fadeOutDown 0.5s ease forwards';
+		
+		setTimeout(() => {
+			if (startPage) {
+				startPage.style.opacity = '0';
+				setTimeout(() => startPage.style.display = 'none', 500);
+			}
+			
+			getAllCards();
+			
+			const collectionHTML = `
+				<div class="collection-page">
+					<button class="back-to-menu-btn-collection" id="backToMenuBtn">Назад</button>
+					<div class="collection-container">
+						<div class="collection-filters">
+							${generateFiltersHTML()}
+						</div>
+						<div class="collection-cards-area">
+							<div class="collection-header">
+								<h2>КОЛЛЕКЦИЯ</h2>
+								<div class="collection-stats">
+									<div class="collection-strength" id="collectionStrength" style="display: none;"></div>
+									<div class="collection-count" id="collectionCount">0 карт</div>
+								</div>
+							</div>
+							<div class="section-divider"></div>
+							<div class="collection-grid" id="collectionGrid">
+								<div class="collection-empty">
+									<img src="deck/none_cards.png" alt="Загрузка">
+									<p>Загрузка карт...</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+			
+			document.body.appendChild(createElementFromHTML(collectionHTML));
+			
+			setTimeout(() => {
+				const collectionPage = document.querySelector('.collection-page');
+				if (collectionPage) collectionPage.style.opacity = '1';
+				document.body.style.background = "url('ui/fon.jpg') no-repeat center center fixed";
+				document.body.style.backgroundSize = 'cover';
+			}, 100);
+			
+			setupFilterListeners();
+			setupEscapeHandler();
+			
+			setTimeout(() => {
+				document.querySelectorAll('.filter-faction-all, .filter-btn-all').forEach(btn => btn.classList.add('active'));
+				displayCards();
+			}, 50);
+			
+			const backBtn = document.getElementById('backToMenuBtn');
+			if (backBtn) {
+				backBtn.addEventListener('click', () => {
+					audioManager?.playSound('button');
+					closeCollection();
+				});
+				backBtn.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
+			}
+			
+			updateCopyToggleState();
+			
+			if (window.settingsModule) {
+				const originalNotify = settingsModule.notifySettingsChange;
+				settingsModule.notifySettingsChange = function() {
+					originalNotify?.call(this);
+					refreshCardsDisplay();
+				};
+			}
+		}, 500);
+	}
+   
+	function updateCopyToggleState() {
+		const copyToggle = document.querySelector('.copy-toggle');
+		if (copyToggle) {
+			if (showCopies) {
+				copyToggle.classList.add('active');
+			} else {
+				copyToggle.classList.remove('active');
+			}
+		}
+	}
+   
     function generateFiltersHTML() {
         return `
             <div class="filter-section">

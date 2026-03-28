@@ -96,7 +96,7 @@
 
 .sort-buttons {
 	display: flex;
-	gap: 10px;
+	gap: 5px;
 	padding-top: 5px;
 }
 
@@ -110,6 +110,8 @@
 .sort-btn img {
 	width: 35px;
 	height: 35px;
+    filter: grayscale(0.8) brightness(0.7);
+    transition: all 0.3s ease;
 }
 
 .sort-btn img:hover {
@@ -117,9 +119,41 @@
 	filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.3));
 }
 
-.sort-btn.active img{
-	transform: scale(1.4);
+.sort-btn.active:not(.faction-sort-btn):not(.deck-faction-sort-btn) img {
+	transform: scale(1.2);
 	filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
+}
+
+.sort-btn.inactive img {
+    filter: grayscale(0.8) brightness(0.7);
+    opacity: 0.9;
+    transform: scale(1);
+}
+
+.sort-btn.inactive:hover img {
+    filter: grayscale(0.5) brightness(0.85);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.sort-btn.faction-sort-btn.active img,
+.sort-btn.deck-faction-sort-btn.active img {
+    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.5));
+    transform: scale(1.1);
+}
+
+.sort-btn.faction-sort-btn.inactive img,
+.sort-btn.deck-faction-sort-btn.inactive img {
+    filter: grayscale(0.8) brightness(0.7);
+    opacity: 0.9;
+    transform: scale(1);
+}
+
+.sort-btn.faction-sort-btn.inactive:hover img,
+.sort-btn.deck-faction-sort-btn.inactive:hover img {
+    filter: grayscale(0.5) brightness(0.85);
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .cards-grid {
@@ -325,12 +359,15 @@
 }
 
 .stats-info {
-	background: rgba(20, 20, 20, 0.8);
-	border: 1px solid #222;
+	background: 
+        url('../ui/border.png') no-repeat center center,
+        rgba(20, 20, 20, 0.8);
+  background-size: 100% 100%, cover;
 	border-radius: 8px;
 	margin-top: -15px;
-	padding: 10px;
-	width: 200px;
+	padding-top: 15px;
+	padding-bottom: 15px;
+	width: 193px;
 }
 
 .stat-group {
@@ -394,7 +431,7 @@
     margin: 0 auto;
     position: absolute;
     overflow: hidden;
-    top: 64%;
+    top: 65%;
     left: 50%;
     transform: translate(-50%, 0);
     transform-origin: center;

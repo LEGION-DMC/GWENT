@@ -21,11 +21,18 @@
 }
 
 .settings-modal {
-    background: url('../ui/fon_dop.jpg') no-repeat center center; background-size: cover;
-    border: 1px solid #d4af37;
+    background: 
+        url('../ui/border.png') no-repeat center center,
+        url('../ui/fon_dop.jpg') no-repeat center center;
+    background-size: 100% 100%, cover;
+    border: none;
     border-radius: 10px;
-    padding: 15px;                 
-    max-width: 350px;              
+    padding-top: 25px; 
+    padding-left: 25px;   
+    padding-right: 25px;   
+    padding-bottom: 15px;     
+    height: 430px;
+    max-width: 340px;              
     width: 100%;
     transform: scale(0.9);
     opacity: 0;

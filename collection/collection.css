@@ -72,6 +72,14 @@
 }
 
 .filter-btn,
+.filter-faction-btn,
+.filter-position-btn,
+.filter-faction-all {
+    filter: grayscale(0.6) brightness(0.8);
+    opacity: 0.8;
+}
+
+.filter-btn,
 .filter-position-btn,
 .filter-faction-all {
     padding: 4px 10px;
@@ -96,6 +104,8 @@
 .filter-faction-btn.active,
 .filter-position-btn.active,
 .filter-faction-all.active {
+    filter: none;
+    opacity: 1;
     background: rgba(165, 124, 44, 0.15);
     border-color: #cfaa4a;
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
@@ -104,7 +114,6 @@
     color: transparent;
     box-shadow: 0 0 10px rgba(207, 170, 74, 0.25);
     text-shadow: 0 0 8px rgba(207, 170, 74, 0.5), 0 1px 1px rgba(0, 0, 0, 0.3);
-    margin-bottom: 10px;
 }
 
 .filter-btn:hover,
@@ -112,6 +121,8 @@
 .filter-position-btn:hover,
 .filter-faction-all:hover,
 .reset-filters-btn:hover {
+    filter: none;
+    opacity: 1;
     border-color: #cfaa4a;
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
@@ -119,6 +130,29 @@
     color: transparent;
     transform: translateY(-1px);
     text-shadow: 0 0 6px rgba(207, 170, 74, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.reset-filters-btn {
+    filter: grayscale(0.6) brightness(0.8);
+    opacity: 0.8;
+    padding: 5px 15px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    color: #d4af37;
+}
+
+.reset-filters-btn:hover {
+    filter: none;
+    opacity: 1;
+    transform: scale(1.02);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    border-color: #d4af37;
 }
 
 .filter-icon,
@@ -130,12 +164,14 @@
     width: 20px;
     height: 20px;
     object-fit: contain;
+    filter: grayscale(0.8) brightness(0.7);
 }
 
 .filter-faction-img {
     width: 32px;
     height: 32px;
     object-fit: contain;
+    filter: grayscale(0.8) brightness(0.7);
 }
 
 .filter-btn:hover .filter-icon,
@@ -155,13 +191,17 @@
 
 .filter-faction-btn span {
     font-size: 11px;
-    color: #ccc;
+    color: #ссс;
     text-transform: uppercase;
     letter-spacing: 1px;
+    transition: all 0.2s ease;
 }
 
 .filter-faction-btn.active span {
     color: transparent;
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
 }
 
 .faction-grid {
@@ -212,6 +252,7 @@
     width: 100%;
     justify-content: center;
     margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
 .copy-toggle {
@@ -227,7 +268,22 @@
     white-space: nowrap;
 }
 
+.copy-toggle:not(.active) {
+    filter: grayscale(0.6) brightness(0.9);
+    opacity: 0.8;
+}
+
+.copy-toggle.active {
+    filter: none;
+    opacity: 1;
+    border-color: #cfaa4a;
+    background: rgba(165, 124, 44, 0.1);
+    box-shadow: 0 0 8px rgba(207, 170, 74, 0.25);
+}
+
 .copy-toggle:hover {
+    filter: none;
+    opacity: 1;
     border-color: #cfaa4a;
     box-shadow: 0 0 6px rgba(207, 170, 74, 0.2);
 }
@@ -237,6 +293,7 @@
     width: 15px;
     height: 15px;
     accent-color: #cfaa4a;
+    transition: all 0.2s ease;
 }
 
 .copy-toggle-label {
@@ -248,31 +305,29 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    text-shadow: 0 0 3px rgba(165, 124, 44, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 0 3px rgba(165, 124, 44, 0.2), 0 1px 1px rgba(0, 0, 0, 0);
+    transition: all 0.2s ease;
 }
 
-.reset-filters-btn {
-    padding: 5px 15px;
-    font-size: 12px;
-    letter-spacing: 2px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    color: #d4af37;
+.copy-toggle.active .copy-toggle-label {
+    background: linear-gradient(135deg, #e5c168 0%, #cfaa4a 45%, #a57c2c 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
 }
 
-.reset-filters-btn:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
-    border-color: #d4af37;
+.copy-toggle.active input {
+    accent-color: #d4af37;
+    filter: drop-shadow(0 0 2px rgba(212, 175, 55, 0.3));
 }
 
 .reset-filters-btn img {
     width: 15px;
     height: auto;
+    transition: all 0.2s ease;
+}
+
+.reset-filters-btn:hover img {
+    filter: none;
 }
 
 .reset-filters-btn:active {

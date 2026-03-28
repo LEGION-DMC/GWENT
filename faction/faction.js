@@ -265,6 +265,8 @@ function proceedToDeckBuilding(faction) {
 function handleKeyPress(event) {
     if (event.key === 'Escape') {
         if (selectedFaction) {
+            stopCurrentVoice();
+            
             document.querySelectorAll('.faction-card').forEach(card => {
                 card.classList.remove('faction-card--selected');
             });

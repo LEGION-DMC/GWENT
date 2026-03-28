@@ -228,6 +228,10 @@
     letter-spacing: 1.5px;
 }
 
+.bloc-rule p {
+    line-height: 18px;
+}
+
 .rule-modal__image {
     height: 70px;                   
 }

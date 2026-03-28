@@ -55,6 +55,7 @@ const localization = {
 		alchimy: 'Алхимия',
 		scenary: 'Сценарий',
 		treasure: 'Сокровище',
+		relict: 'Реликт'
     }
 };
 
@@ -286,6 +287,8 @@ let availableCards = {
 let displayedCollectionCards = [];
 let lastCollectionFilter = 'all';
 let lastDeckFilter = 'all';
+let factionSortEnabled = false;
+let deckFactionSortEnabled = false;
 
 function localizeFaction(factionId) {
     return localization.factions[factionId] || factionId;
@@ -413,6 +416,9 @@ function createDeckBuildingHTML() {
 							<button class="sort-btn" data-type="artifacts">
 								<img src="deck/artifact.png" alt="Артефакты" title="Артефакты">
 							</button>
+							<button class="sort-btn faction-sort-btn" data-type="faction">
+								<img src="faction/${faction.id}/sort.png" alt="Только карты фракции" title="Только карты фракции">
+							</button>
 						</div>
 					</div>
 				</div>
@@ -507,6 +513,9 @@ function createDeckBuildingHTML() {
 							<button class="sort-btn" data-type="artifacts">
 								<img src="deck/artifact.png" alt="Артефакты" title="Артефакты">
 							</button>
+							<button class="sort-btn deck-faction-sort-btn" data-type="faction">
+								<img src="faction/${faction.id}/sort.png" alt="Только карты фракции" title="Только карты фракции">
+							</button>
 						</div>
 					</div>
 				</div>
@@ -557,26 +566,63 @@ function createDeckBuildingHTML() {
 function setupDeckBuildingEventListeners() {
     const collectionSortButtons = document.querySelectorAll('.cards-collection .sort-btn');
     const deckSortButtons = document.querySelectorAll('.deck-cards .sort-btn');
-	
+    
     collectionSortButtons.forEach(btn => {
         if (btn.dataset.type === 'all') {
             btn.classList.add('active');
+            btn.classList.remove('inactive');
+        } else if (btn.dataset.type !== 'faction') {
+            btn.classList.add('inactive');
+            btn.classList.remove('active');
         }
     });
     
     deckSortButtons.forEach(btn => {
         if (btn.dataset.type === 'all') {
             btn.classList.add('active');
+            btn.classList.remove('inactive');
+        } else if (btn.dataset.type !== 'faction') {
+            btn.classList.add('inactive');
+            btn.classList.remove('active');
         }
     });
     
     collectionSortButtons.forEach(button => {
+        // Пропускаем кнопку фракции
+        if (button.dataset.type === 'faction') return;
+        
         button.addEventListener('click', (e) => {
             audioManager.playSound('button');
             const type = e.currentTarget.dataset.type;
-            collectionSortButtons.forEach(btn => btn.classList.remove('active'));
+            
+            collectionSortButtons.forEach(btn => {
+                if (btn.dataset.type !== 'faction' && btn.dataset.type !== 'all') {
+                    btn.classList.remove('active');
+                    btn.classList.add('inactive');
+                }
+            });
+            
+            e.currentTarget.classList.remove('inactive');
             e.currentTarget.classList.add('active');
-            sortCollection(type);
+            
+            const allButton = Array.from(collectionSortButtons).find(btn => btn.dataset.type === 'all');
+            if (allButton && type !== 'all') {
+                allButton.classList.remove('active');
+                allButton.classList.add('inactive');
+            }
+            
+            if (type === 'all') {
+                collectionSortButtons.forEach(btn => {
+                    if (btn.dataset.type !== 'faction') {
+                        btn.classList.remove('active');
+                        btn.classList.add('inactive');
+                    }
+                });
+                e.currentTarget.classList.remove('inactive');
+                e.currentTarget.classList.add('active');
+            }
+            
+            sortCollectionWithFactionFilter(type);
         });
         
         button.addEventListener('mouseenter', () => {
@@ -585,18 +631,110 @@ function setupDeckBuildingEventListeners() {
     });
     
     deckSortButtons.forEach(button => {
+        if (button.dataset.type === 'faction') return;
+        
         button.addEventListener('click', (e) => {
             audioManager.playSound('button');
             const type = e.currentTarget.dataset.type;
-            deckSortButtons.forEach(btn => btn.classList.remove('active'));
+            
+            deckSortButtons.forEach(btn => {
+                if (btn.dataset.type !== 'faction' && btn.dataset.type !== 'all') {
+                    btn.classList.remove('active');
+                    btn.classList.add('inactive');
+                }
+            });
+            
+            e.currentTarget.classList.remove('inactive');
             e.currentTarget.classList.add('active');
-            sortDeck(type);
+            
+            const allButton = Array.from(deckSortButtons).find(btn => btn.dataset.type === 'all');
+            if (allButton && type !== 'all') {
+                allButton.classList.remove('active');
+                allButton.classList.add('inactive');
+            }
+            
+            if (type === 'all') {
+                deckSortButtons.forEach(btn => {
+                    if (btn.dataset.type !== 'faction') {
+                        btn.classList.remove('active');
+                        btn.classList.add('inactive');
+                    }
+                });
+                e.currentTarget.classList.remove('inactive');
+                e.currentTarget.classList.add('active');
+            }
+            
+            sortDeckWithFactionFilter(type);
         });
         
         button.addEventListener('mouseenter', () => {
             audioManager.playSound('touch');
         });
     });
+    
+    const factionSortBtn = document.querySelector('.cards-collection .faction-sort-btn');
+    if (factionSortBtn) {
+        if (!factionSortEnabled) {
+            factionSortBtn.classList.add('inactive');
+            factionSortBtn.classList.remove('active');
+        } else {
+            factionSortBtn.classList.remove('inactive');
+            factionSortBtn.classList.add('active');
+        }
+        
+        factionSortBtn.addEventListener('click', (e) => {
+            audioManager.playSound('button');
+            factionSortEnabled = !factionSortEnabled;
+            
+            if (factionSortEnabled) {
+                factionSortBtn.classList.remove('inactive');
+                factionSortBtn.classList.add('active');
+            } else {
+                factionSortBtn.classList.remove('active');
+                factionSortBtn.classList.add('inactive');
+            }
+            
+            const activeFilter = document.querySelector('.cards-collection .sort-btn.active:not(.faction-sort-btn)');
+            const filterType = activeFilter ? activeFilter.dataset.type : 'all';
+            sortCollectionWithFactionFilter(filterType);
+        });
+        
+        factionSortBtn.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+    }
+    
+    const deckFactionSortBtn = document.querySelector('.deck-cards .deck-faction-sort-btn');
+    if (deckFactionSortBtn) {
+        if (!deckFactionSortEnabled) {
+            deckFactionSortBtn.classList.add('inactive');
+            deckFactionSortBtn.classList.remove('active');
+        } else {
+            deckFactionSortBtn.classList.remove('inactive');
+            deckFactionSortBtn.classList.add('active');
+        }
+        
+        deckFactionSortBtn.addEventListener('click', (e) => {
+            audioManager.playSound('button');
+            deckFactionSortEnabled = !deckFactionSortEnabled;
+            
+            if (deckFactionSortEnabled) {
+                deckFactionSortBtn.classList.remove('inactive');
+                deckFactionSortBtn.classList.add('active');
+            } else {
+                deckFactionSortBtn.classList.remove('active');
+                deckFactionSortBtn.classList.add('inactive');
+            }
+            
+            const activeFilter = document.querySelector('.deck-cards .sort-btn.active:not(.deck-faction-sort-btn)');
+            const filterType = activeFilter ? activeFilter.dataset.type : 'all';
+            sortDeckWithFactionFilter(filterType);
+        });
+        
+        deckFactionSortBtn.addEventListener('mouseenter', () => {
+            audioManager.playSound('touch');
+        });
+    }
     
     const startGameBtn = document.getElementById('startGameBtn');
     startGameBtn.addEventListener('click', () => {
@@ -701,14 +839,14 @@ function loadFactionCards(faction) {
 
 function displayCollectionCards() {
     const collectionGrid = document.getElementById('collectionGrid');
-    const activeFilter = document.querySelector('.cards-collection .sort-btn.active');
+    const activeFilter = document.querySelector('.cards-collection .sort-btn.active:not(.faction-sort-btn)');
     let filterType = 'all';
     
     if (activeFilter) {
         filterType = activeFilter.dataset.type;
     }
     
-    sortCollection(filterType);
+    sortCollectionWithFactionFilter(filterType);
 }
 
 function sortCollectionCards() {
@@ -1412,8 +1550,8 @@ function autoBuildDeck() {
         finalSelectedCards.forEach(card => {
             currentDeck.cards.push(card);
         });
-		
-		sortDeckCards();
+        
+        sortDeckCards();
         
         if (window.cardsModule && window.cardsModule.getFactionCards) {
             availableCards = window.cardsModule.getFactionCards(faction.id);
@@ -1505,16 +1643,16 @@ function updateDeckDisplay() {
             <div class="empty-deck-message">
                 <p>Колода пуста</p>
                 <p>Добавьте карты из коллекции</p>
-			    <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
+                <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
             </div>
         `;
     } else {
-        const activeFilter = document.querySelector('.deck-cards .sort-btn.active');
+        const activeFilter = document.querySelector('.deck-cards .sort-btn.active:not(.deck-faction-sort-btn)');
         if (activeFilter) {
             const filterType = activeFilter.dataset.type;
-            sortDeck(filterType);
+            sortDeckWithFactionFilter(filterType);
         } else {
-            sortDeck('all');
+            sortDeckWithFactionFilter('all');
         }
     }
 }
@@ -1696,10 +1834,16 @@ function animateCardRemoval(card) {
 
 function sortCollection(type) {
     const collectionGrid = document.getElementById('collectionGrid');
-	
-	const isFilterChanged = lastCollectionFilter !== type;
+    
+    const isFilterChanged = lastCollectionFilter !== type;
     lastCollectionFilter = type;
-	
+    
+    sortCollectionWithFactionFilter(type);
+}
+
+function sortCollectionWithFactionFilter(type) {
+    const collectionGrid = document.getElementById('collectionGrid');
+    
     let sortedCards = [];
     
     switch (type) {
@@ -1719,6 +1863,11 @@ function sortCollection(type) {
         default:
             sortedCards = [...displayedCollectionCards];
             break;
+    }
+    
+    // Применяем фильтр по фракции, если он активен
+    if (factionSortEnabled && window.selectedFaction) {
+        sortedCards = sortedCards.filter(card => card.faction === window.selectedFaction.id);
     }
     
     const filteredCards = sortedCards.filter(card => {
@@ -1743,9 +1892,7 @@ function sortCollection(type) {
             const cardElement = createCardElement(card, 'collection');
             cardElement.classList.add('collection-card');
             
-            if (isFilterChanged) {
-                cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
-            }
+            cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
             
             collectionGrid.appendChild(cardElement);
         });
@@ -1778,15 +1925,27 @@ function createDeckCardElement(card) {
 }
 
 function sortDeck(type) {
+    sortDeckWithFactionFilter(type);
+}
+
+function sortDeckWithFactionFilter(type) {
     const deckGrid = document.getElementById('deckGrid');
     
     if (currentDeck.cards.length === 0) {
+        deckGrid.innerHTML = `
+            <div class="empty-deck-message">
+                <p>Колода пуста</p>
+                <p>Добавьте карты из коллекции</p>
+                <img src="deck/none_cards.png" alt="Пустая колода" class="empty-deck-icon">
+            </div>
+        `;
         return;
     }
     
-	const isFilterChanged = lastDeckFilter !== type;
+    const previousFilter = lastDeckFilter;
+    const isFilterChanged = previousFilter !== type;
     lastDeckFilter = type;
-	
+    
     let sortedCards = [];
     
     switch (type) {
@@ -1807,6 +1966,16 @@ function sortDeck(type) {
             sortedCards = [...currentDeck.cards];
             break;
     }
+    
+    if (deckFactionSortEnabled && window.selectedFaction) {
+        sortedCards = sortedCards.filter(card => card.faction === window.selectedFaction.id);
+    }
+    
+    const oldCards = Array.from(deckGrid.querySelectorAll('.deck-card')).map(el => el.dataset.cardId);
+    const newCards = sortedCards.map(card => card.id);
+    
+    const cardsChanged = oldCards.length !== newCards.length || 
+                         oldCards.some((id, index) => id !== newCards[index]);
     
     deckGrid.innerHTML = '';
     
@@ -1832,7 +2001,7 @@ function sortDeck(type) {
         uniqueCards.forEach((card, index) => {
             const cardElement = createDeckCardElement(card);
             
-            if (isFilterChanged) {
+            if (isFilterChanged || cardsChanged) {
                 cardElement.style.animation = `cardAddition 0.3s ease ${index * 0.02}s both`;
             }
             
