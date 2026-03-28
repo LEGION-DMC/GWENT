@@ -1,0 +1,151 @@
+.settings-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;                  
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+	backdrop-filter: blur(5px);
+}
+
+.settings-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.settings-modal {
+    background: 
+        url('../ui/border.png') no-repeat center center,
+        url('../ui/fon_dop.jpg') no-repeat center center;
+    background-size: 100% 100%, cover;
+    border: none;
+    border-radius: 10px;
+    padding-top: 25px; 
+    padding-left: 25px;   
+    padding-right: 25px;   
+    padding-bottom: 15px;     
+    height: 430px;
+    max-width: 340px;              
+    width: 100%;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.settings-modal-overlay.active .settings-modal {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.settings-modal__title {
+    font-size: 30px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    text-align: center;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 2px rgba(0, 0, 0, 0.4),
+        0 0 5px rgba(165, 124, 44, 0.3);
+}
+
+.settings-title {
+    font-size: 18px;
+    
+    /* Благородное золото с градиентом */
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Мягкая тень для объема */
+    text-shadow: 
+        1px 1px 1px rgba(0, 0, 0, 0.3),
+        0 0 4px rgba(165, 124, 44, 0.2);
+}
+
+.settings-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;                     
+}
+
+.settings-control {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    padding: 8px;
+    background: rgba(10, 10, 10, 0.5); 
+    border-radius: 5px;
+    border-left: 2px solid #d4af37; 
+}
+
+.settings-control__label {
+    color: #ccc;
+    font-size: 16px;
+}
+
+.settings-control__buttons {
+    display: flex;
+    gap: 10px;                      
+}
+
+.settings-control__btn {
+    background: rgba(10, 10, 10, 0.4); 
+    border: 1px solid #333;         
+    border-radius: 50%;            
+    width: 40px;                 
+    height: 40px;
+    font-size: 20px;               
+    cursor: url('../ui/cursor_hover.png'), pointer !important; 
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-control__btn.active {
+    border-color: #d4af37;        
+    color: #d4af37;              
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); 
+}
+
+.settings-control__btn:hover {
+    transform: scale(1.06);          
+    border-color: #d4af37;         
+    color: #d4af37;              
+}
+
+.settings-select {
+    cursor: url('../ui/cursor_hover.png'), pointer !important; 
+    background: rgba(10, 10, 10, 0.8);
+    color: white;
+    border: 1px solid #d4af37;
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: inherit;
+    min-width: 150px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d4af37'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 30px;
+    transition: all 0.3s ease;
+}

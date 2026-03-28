@@ -1,2176 +1,1551 @@
-const cardsData = {
+const cardDefaults = {
+    getBorderByRarity: (rarity) => {
+        const borders = {
+            gold: 'deck/bord_gold.png',
+            silver: 'deck/bord_silver.png',
+            bronze: 'deck/bord_bronze.png'
+        };
+        return borders[rarity] || borders.bronze;
+    },
+    
+    getBannerByRarityAndFaction: (rarity, faction) => {
+        if (rarity === 'gold') {
+            return `faction/${faction}/banner_gold.png`;
+        }
+        return `faction/${faction}/banner_bronze.png`;
+    },
+    
+    getPositionBanner: (faction) => `faction/${faction}/banner_position.png`,
+    
+    generateId: (faction, type, index) => `${faction}_${type}_${index}`,
+    
+    cardTypes: ['units', 'specials', 'artifacts', 'tactics'],
+    
+    typePrefixes: {
+        units: 'unit',
+        specials: 'special',
+        artifacts: 'artifact',
+        tactics: 'tactic'
+    }
+};
+
+function enrichCard(card, faction, cardType, index) {
+    const enrichedCard = { ...card };
+    
+    if (!enrichedCard.type) {
+        const typeMap = {
+            units: 'unit',
+            specials: 'special',
+            artifacts: 'artifact',
+            tactics: 'tactic'
+        };
+        enrichedCard.type = typeMap[cardType] || 'unit';
+    }
+    
+    if (!enrichedCard.faction) {
+        enrichedCard.faction = faction;
+    }
+    
+    if (!enrichedCard.id) {
+        const typePrefix = cardDefaults.typePrefixes[cardType] || 'card';
+        enrichedCard.id = `${faction}_${typePrefix}_${index}`;
+    }
+    
+    if (enrichedCard.type === 'unit' && !enrichedCard.positionBanner) {
+        enrichedCard.positionBanner = cardDefaults.getPositionBanner(faction);
+    }
+    
+    if (!enrichedCard.border && enrichedCard.rarity) {
+        enrichedCard.border = cardDefaults.getBorderByRarity(enrichedCard.rarity);
+    }
+    
+    if (!enrichedCard.banner && enrichedCard.rarity) {
+        enrichedCard.banner = cardDefaults.getBannerByRarityAndFaction(enrichedCard.rarity, faction);
+    }
+    
+    return enrichedCard;
+}
+
+function createFactionCards(faction, minimalData) {
+    const result = {
+        units: [],
+        specials: [],
+        artifacts: [],
+        tactics: []
+    };
+    
+    for (const cardType of cardDefaults.cardTypes) {
+        const cards = minimalData[cardType];
+        if (cards && Array.isArray(cards)) {
+            result[cardType] = cards.map((card, index) => 
+                enrichCard(card, faction, cardType, index + 1)
+            );
+        }
+    }
+    
+    return result;
+}
+
+const minimalCardsData = {
     neutral: {
         units: [
             {
-                id: 'neutral_unit_1',
                 name: 'Геральт',
-				namefull: 'Геральт из Ривии',
+                namefull: 'Геральт из Ривии',
                 strength: 10,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'geralt.mp4',
                 description: 'Белый Волк',
-				descriptionfull: 'Ведьмак школы Волка. Профессиональный охотник на чудовищ и один из лучших фехтовальщиков Севера, герой сказаний и легенд и невольный телохранитель королей. Стараясь не встревать ни в какие передряги и во всём придерживаться нейтралитета, Геральт, однако, часто оказывается меж двух огней и вынужден выбирать сторону в назревающих столкновениях.',
-				ability: ' ',
+                descriptionfull: 'Ведьмак школы Волка. Профессиональный охотник на чудовищ и один из лучших фехтовальщиков Севера, герой сказаний и легенд и невольный телохранитель королей. <br><br>Стараясь не встревать ни в какие передряги и во всём придерживаться нейтралитета, Геральт, однако, часто оказывается меж двух огней и вынужден выбирать сторону в назревающих столкновениях.',
+                ability: ' ',
                 position: 'any-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
                 tags: ['witcher', 'hero'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
             },
             {
-                id: 'neutral_unit_2',
                 name: 'Весемир',
-				namefull: 'Весемир',
+                namefull: 'Весемир',
                 strength: 8,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'vesemir.mp4',
                 description: 'Наставник школы Волка',
-				descriptionfull: 'Глава Школы Волка, одной из пяти ведьмачьих школ, и самый старший ведьмак на континенте. Несмотря на седину и преклонный возраст, он продолжает управлять школой и охотиться на чудовищ, своим примером показывая, что некоторые знания приходят только с опытом.',
-				ability: ' ',
+                descriptionfull: 'Глава Школы Волка, одной из пяти ведьмачьих школ, и самый старший ведьмак на континенте. Несмотря на седину и преклонный возраст, он продолжает управлять школой и охотиться на чудовищ, своим примером показывая, что некоторые знания приходят только с опытом.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'silver',
                 tags: ['witcher'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
             {
-                id: 'neutral_unit_3',
                 name: 'Цири',
-				namefull: 'Цирилла Фиона Элен Рианнон',
+                namefull: 'Цирилла Фиона Элен Рианнон',
                 strength: 9,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'ciri.mp4',
-                description: 'Дитя Старшей Крови',
-				descriptionfull: 'Наследница престола Нильфгаардской империи, лихая ведьмачка, обладающая невероятными магическими способностями, а также Дитя-Неожиданность и фактически приёмная дочь Геральта из Ривии.',
-				ability: ' ',
+                description: 'Ласточка',
+                descriptionfull: 'Наследница престола Нильфгаардской империи, лихая ведьмачка, обладающая невероятными магическими способностями, а также Дитя-Неожиданность и фактически приёмная дочь Геральта из Ривии.',
+                ability: ' ',
                 position: 'any-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
                 tags: ['witcher', 'hero'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
             },
             {
-                id: 'neutral_unit_4',
                 name: 'Йеннифэр',
-				namefull: 'Йеннифэр из Венгерберга',
+                namefull: 'Йеннифэр из Венгерберга',
                 strength: 8,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'yennifer.mp4',
                 description: 'Женщина с запахом сирени и крыжовника',
-				descriptionfull: 'Талантливая и могущественная чародейка. Входила в состав последнего Совета Чародеев, позднее — в Ложу Чародеек. Правителей, при которых она состояла советницей, Йеннифэр использовала для достижения собственных целей. Что же до любовников… ими она всегда вертела как хотела.',
-				ability: ' ',
+                descriptionfull: 'Талантливая и могущественная чародейка. Входила в состав последнего Совета Чародеев, позднее — в Ложу Чародеек. <br><br>Правителей, при которых она состояла советницей, Йеннифэр использовала для достижения собственных целей. Что же до любовников… ими она всегда вертела как хотела.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
                 tags: ['mage', 'hero'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
             },
             {
-                id: 'neutral_unit_5',
                 name: 'Трисс',
-				namefull: 'Трисс Меригольд',
+                namefull: 'Трисс Меригольд',
                 strength: 8,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'triss.mp4',
                 description: 'Четырнадцатая с Холма',
-				descriptionfull: 'Чародейка, целительница и алхимик, одна из самых молодых, но вместе с тем самых талантливых магов Севера, а также советница короля Фольтеста, подруга Йеннифэр, Цири и ведьмаков из Каэр Морхена, состоявшая в близких отношениях с Геральтом. Участвовала в битве под Содденом, в ходе которой потеряла свои волосы и покалечила тело, притом была ошибочно признана погибшей, а после спасения длительное время проходила реабилитацию и лечение и впоследствии получила прозвище «Четырнадцатая с Холма».',
-				ability: ' ',
+                descriptionfull: 'Чародейка, целительница и алхимик, одна из самых молодых, но вместе с тем самых талантливых магов Севера, а также советница короля Фольтеста, подруга Йеннифэр, Цири и ведьмаков из Каэр Морхена, состоявшая в близких отношениях с Геральтом. <br><br>Участвовала в битве под Содденом, в ходе которой потеряла свои волосы и покалечила тело, притом была ошибочно признана погибшей, а после спасения длительное время проходила реабилитацию и лечение и впоследствии получила прозвище «Четырнадцатая с Холма».',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'gold',
                 tags: ['mage', 'hero'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/neutral/banner_gold.png'
             },
-			{
-                id: 'neutral_unit_6',
+            {
                 name: 'Гезрас',
-				namefull: 'Гезрас из Лейды',
+                namefull: 'Гезрас из Лейды',
                 strength: 7,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'gezras.mp4',
                 description: 'Предводитель школы Кота',
-				descriptionfull: 'Гезрас был рождён полуэльфом — по мнению большинства, негодным выродком. Когда его продали чародеям из замка Стигга, он был совсем ребёнком. Его подвергли мутациям, которые придумали недавно в расчёте на то, чтобы сильнее подавлять эмоции новоиспечённых ведьмаков. Эксперимент закончился провалом. По иронии судьбы мутации не сдержали эмоции, а усилили их проявление. Из-за них Гезрас и его новые собратья отличались большей неуравновешенностью.',
-				ability: ' ',
+                descriptionfull: 'Гезрас был рождён полуэльфом — по мнению большинства, негодным выродком. Когда его продали чародеям из замка Стигга, он был совсем ребёнком. Его подвергли мутациям, которые придумали недавно в расчёте на то, чтобы сильнее подавлять эмоции новоиспечённых ведьмаков. <br><br>Эксперимент закончился провалом. По иронии судьбы мутации не сдержали эмоции, а усилили их проявление. Из-за них Гезрас и его новые собратья отличались большей неуравновешенностью.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_unit_7',
+            {
                 name: 'Арнагад',
-				namefull: 'Арнагад',
+                namefull: 'Арнагад',
                 strength: 7,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'arnagad.mp4',
                 description: 'Основатель школы Медведя',
-				descriptionfull: 'Один из первых ведьмаков и основатель Школы Медведя. Арнагад же был убеждён, что ведьмачье ремесло — лишь работа, не больше и не меньше. Ведьмак должен искать заказы, убивать чудовищ и брать за это плату. Всё остальное, утверждал он, лишь раздувает чувство собственной важности.',
-				ability: ' ',
+                descriptionfull: 'Один из первых ведьмаков и основатель Школы Медведя. Арнагад же был убеждён, что ведьмачье ремесло — лишь работа, не больше и не меньше. Ведьмак должен искать заказы, убивать чудовищ и брать за это плату. Всё остальное, утверждал он, лишь раздувает чувство собственной важности.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_unit_8',
+            {
                 name: 'Ивар',
-				namefull: 'Ивар Злобоглаз',
+                namefull: 'Ивар Злобоглаз',
                 strength: 6,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'ivar.mp4',
                 description: 'Основатель школы Змеи',
-				descriptionfull: 'Мастер-ведьмак прошлого, основатель и многолетний лидер Школы Змеи, боровшийся с Дикой Охотой. Вопреки слухам, Школа Змеи была основана с великой целью, а вовсе не для того, чтобы предлагать богачам всевозможные услуги по избавлению от врагов. Мастер-ведьмак Ивар Злобоглаз понимал, что не достигнет в одиночку своей истинной цели — отыскать и одолеть Дикую Охоту.',
-				ability: ' ',
+                descriptionfull: 'Мастер-ведьмак прошлого, основатель и многолетний лидер Школы Змеи, боровшийся с Дикой Охотой. Вопреки слухам, Школа Змеи была основана с великой целью, а вовсе не для того, чтобы предлагать богачам всевозможные услуги по избавлению от врагов. <br><br>Мастер-ведьмак Ивар Злобоглаз понимал, что не достигнет в одиночку своей истинной цели — отыскать и одолеть Дикую Охоту.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_unit_9',
+            {
                 name: 'Эрланд',
-				namefull: 'Эрланд из Ларвика',
+                namefull: 'Эрланд из Ларвика',
                 strength: 7,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'erland.mp4',
                 description: 'Основатель школы Грифона',
-				descriptionfull: 'Один из первых созданных ведьмаков, первый гроссмейстер Школы Грифона, а также её основатель. Имея огромное уважение и даже получал приглашения к королевским дворам с просьбами о помощи или совете, он не оставлял свою деятельность и продолжал лично охотиться на чудовищ, считая это своим долгом и Предназначением.',
-				ability: ' ',
+                descriptionfull: 'Один из первых созданных ведьмаков, первый гроссмейстер Школы Грифона, а также её основатель. Имея огромное уважение и даже получал приглашения к королевским дворам с просьбами о помощи или совете, он не оставлял свою деятельность и продолжал лично охотиться на чудовищ, считая это своим долгом и Предназначением.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_unit_10',
+            {
                 name: 'Эскель',
-				namefull: 'Эсау Келли Камински',
+                namefull: 'Эсау Келли Камински',
                 strength: 4,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'eskel.mp4',
                 description: 'Ведьмак школы Волка',
-				descriptionfull: 'Является опытным и искусным охотником на чудовищ, ничем не уступающим Геральту, однако он не снискал такую славу, как его коллега по цеху. Кроме того, они с Белым Волком одного возраста и вместе прошли Испытание Травами, жестокий отбор и обучение, после чего стали ведьмаками.',
-				ability: ' ',
+                descriptionfull: 'Является опытным и искусным охотником на чудовищ, ничем не уступающим Геральту, однако он не снискал такую славу, как его коллега по цеху. Кроме того, они с Белым Волком одного возраста и вместе прошли Испытание Травами, жестокий отбор и обучение, после чего стали ведьмаками.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_unit_11',
+            {
                 name: 'Ламберт',
-				namefull: 'Ламберт',
+                namefull: 'Ламберт',
                 strength: 4,
-                type: 'unit',
-                faction: 'neutral',
                 image: 'lambert.mp4',
                 description: 'Ведьмак школы Волка',
-				descriptionfull: 'Самый молодой из оставшихся в живых ведьмаков Школы Волка, отличающийся тяжёлым характером.',
-				ability: ' ',
+                descriptionfull: 'Самый молодой из оставшихся в живых ведьмаков Школы Волка, отличающийся тяжёлым характером.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/neutral/banner_position.png',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
         ],
         specials: [
             {
-                id: 'neutral_special_1',
                 name: 'Проливной дождь',
-                type: 'special',
-                faction: 'neutral',
                 image: 'rain.mp4',
                 description: ' ',
-				descriptionfull: 'Осадная башня увязла в грязи!',
-				ability: 'torrential_rain',
+                descriptionfull: 'Осадная башня увязла в грязи!',
+                ability: 'torrential_rain',
                 rarity: 'bronze',
                 tags: ['weather'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
             {
-                id: 'neutral_special_2',
                 name: 'Трескучий мороз',
-                type: 'special',
-                faction: 'neutral',
                 image: 'cold.mp4',
                 description: ' ',
-				descriptionfull: 'У меня пальцы так заледенели, едва меч держу... А ведь мечом еще и махать надо...',
-				ability: 'impenetrable_fog',
+                descriptionfull: 'У меня пальцы так заледенели, едва меч держу... А ведь мечом еще и махать надо...',
+                ability: 'impenetrable_fog',
                 rarity: 'bronze',
                 tags: ['weather'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
             {
-                id: 'neutral_special_3',
                 name: 'Густой туман',
-                type: 'special',
-                faction: 'neutral',
                 image: 'fog.mp4',
                 description: ' ',
-				descriptionfull: 'Вот туман-то... Хоть глаз выколи.',
-				ability: 'impenetrable_fog',
+                descriptionfull: 'Вот туман-то... Хоть глаз выколи.',
+                ability: 'impenetrable_fog',
                 rarity: 'bronze',
                 tags: ['weather'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
             {
-                id: 'neutral_special_4',
                 name: 'Чистое небо',
-                type: 'special',
-                faction: 'neutral',
                 image: 'sun.mp4',
                 description: ' ',
-				descriptionfull: 'Хороший день, чтобы умереть.',
-				ability: 'clear_weather',
+                descriptionfull: 'Хороший день, чтобы умереть.',
+                ability: 'clear_weather',
                 rarity: 'bronze',
                 tags: ['weather'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_special_5',
+            {
                 name: 'Чучело',
-                type: 'special',
-                faction: 'neutral',
                 image: 'decoy.mp4',
                 description: ' ',
-				descriptionfull: '',
-				ability: 'decoy',
+                descriptionfull: '',
+                ability: 'decoy',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_special_6',
+            {
                 name: 'Казнь',
-                type: 'special',
-                faction: 'neutral',
                 image: 'scorch.mp4',
                 description: 'Заклятие',
-				descriptionfull: '',
-				ability: 'destroy',
+                descriptionfull: 'Действие данного заклинания доподлинно неизвестно. Можно предположить, что оно является крайне мощным, а при применении вызывает огромный столб пламени, который буквально испепеляет всех живых существ в определенном радиусе. ',
+                ability: 'destroy',
                 rarity: 'silver',
                 tags: ['spell'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_special_7',
+            {
                 name: 'Коратская жара',
-                type: 'special',
-                faction: 'neutral',
                 image: 'korathi.mp4',
                 description: ' ',
-				descriptionfull: 'Пораженные засухой провинции, оставшись без имперской помощи, теряют половину населения, две трети поголовья скота и всякую волю к сопротивлению.',
-				ability: 'destroy_artf',
+                descriptionfull: 'Пораженные засухой провинции, оставшись без имперской помощи, теряют половину населения, две трети поголовья скота и всякую волю к сопротивлению.',
+                ability: 'destroy_artf',
                 rarity: 'bronze',
                 tags: ['hazard'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_special_8',
+            {
                 name: 'Песчаная буря',
-                type: 'special',
-                faction: 'neutral',
                 image: 'desert.mp4',
                 description: 'Бедствие',
-				descriptionfull: 'В лучшем случае она лишь швырнет песок в глаза. В самом худшем — похоронит заживо.',
-				ability: 'damage_row_3',
+                descriptionfull: 'В лучшем случае она лишь швырнет песок в глаза. В самом худшем — похоронит заживо.',
+                ability: 'damage_row_3',
                 rarity: 'bronze',
                 tags: ['hazard'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_special_9',
+            {
                 name: 'Испытание Травами',
-                type: 'special',
-                faction: 'neutral',
                 image: 'mutation.mp4',
                 description: ' ',
-				descriptionfull: 'Испытание предполагает введение в организм специфических эликсиров под постоянным магическим контролем, которые радикально изменяют человеческий метаболизм, гормональную и нервную системы.',
-				ability: 'boost_tag_witcher_2',
+                descriptionfull: 'Испытание предполагает введение в организм специфических эликсиров под постоянным магическим контролем, которые радикально изменяют человеческий метаболизм, гормональную и нервную системы.',
+                ability: 'boost_tag_witcher_2',
                 rarity: 'bronze',
                 tags: ['alchimy', 'witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-		],
+        ],
         tactics: [
-			{
-                id: 'neutral_tactic_1',
+            {
                 name: 'Стрельба по мишеням',
-                type: 'tactic',
-                faction: 'neutral',
                 image: 'practice.mp4',
                 description: 'Тренеровка',
-				descriptionfull: 'Почти все Грифоны могут с сотни шагов стрелой пробить яблоко. Ты, главное, не шевелись.',
-				ability: 'boost_row_1',
+                descriptionfull: 'Почти все ведьмаки могут с сотни шагов стрелой пробить яблоко.',
+                ability: 'boost_row_1',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_tactic_2',
+            {
                 name: 'Славная охота',
-                type: 'tactic',
-                faction: 'neutral',
                 image: 'hunt.mp4',
                 description: ' ',
-				descriptionfull: 'За каким дьяволом ты мне эту падаль приволок, ведьмак? «Принеси мне голову чудовища», — это была лишь гребаная фигура речи!',
-				ability: 'boost_tag_witcher_3',
+                descriptionfull: 'За каким дьяволом ты мне эту падаль приволок, ведьмак? «Принеси мне голову чудовища», — это была лишь гребаная фигура речи!',
+                ability: 'boost_tag_witcher_3',
                 rarity: 'bronze',
                 tags: ['witcher'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/neutral/banner_bronze.png'
-            },],
+            },
+        ],
         artifacts: [
-			{
-                id: 'neutral_artifact_1',
+            {
                 name: 'Арондит',
-                type: 'artifact',
-                faction: 'neutral',
                 image: 'arondit.mp4',
                 description: ' ',
-				descriptionfull: 'Этот острый как бритва клинок идеально сбалансирован и на удивление лёгок. Почти всё время он терпеливо ждёт следующего владельца, скрывшись от чужих глаз. Говорят, найдёт меч лишь достойный.',
-				ability: 'boost_4',
+                descriptionfull: 'Этот острый как бритва клинок идеально сбалансирован и на удивление лёгок. Почти всё время он терпеливо ждёт следующего владельца, скрывшись от чужих глаз. Говорят, найдёт меч лишь достойный.',
+                ability: 'boost_4',
                 rarity: 'silver',
                 tags: ['weapons'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-			{
-                id: 'neutral_artifact_2',
+            {
                 name: 'Ласточка',
-                type: 'artifact',
-                faction: 'neutral',
                 image: 'swallow.mp4',
-                description: 'Зелье',
-				descriptionfull: 'Это зелье, ускоряющее заживление ран, получило свое название от ласточки, что приносит весну и радость.',
-				ability: 'boost_2',
+                description: 'эликсир',
+                descriptionfull: 'Этот эликсир, ускоряющее заживление ран, получило свое название от ласточки, что приносит весну и радость. <br><br>Нет птицы прекраснее ласточки, предвестницы весны и возрождения жизни. Даже темные маги-ренегаты, которые разработали рецепты для ведьмачьих эликсиров, поддались очарованию образа этой птицы и дали ее имя эликсиру, который ускоряет регенерацию мутировавшего организма.',
+                ability: 'boost_2',
                 rarity: 'silver',
                 tags: ['alchimy'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/neutral/banner_bronze.png'
             },
-		],
+        ],
     },
-
-    monsters: {
+	
+	monsters: {
         units: [
             {
-                id: 'monsters_unit_1',
-				name: 'Эредин',
-				namefull: 'Эредин Бреакк Глас',
-				strength: 10,
-				type: 'unit',
-				faction: 'monsters',
-				image: 'eredin.mp4',
-				description: 'Король Дикой Охоты',
-				descriptionfull: 'Король Дикой Охоты, призрачных эльфийских всадников, которых считают предвестниками злого рока. Дикая Охота странствует между мирами в поисках средства, что спасло бы их родные земли от чудовищного катаклизма, Белого Хлада. Эредин — безжалостный правитель, он не останавливается ни перед чем на пути к своей цели. Если он поклялся найти Цири — значит, рано или поздно это произойдёт.',
-				ability: ' ',
+                name: 'Эредин',
+                namefull: 'Эредин Бреакк Глас',
+                strength: 10,
+                image: 'eredin.mp4',
+                description: 'Король Дикой Охоты',
+                descriptionfull: 'Король Дикой Охоты, призрачных эльфийских всадников, которых считают предвестниками злого рока. Эредин — безжалостный правитель, он не останавливается ни перед чем на пути к своей цели. Если он поклялся найти Цири — значит, рано или поздно это произойдёт. <br><br>Дикая Охота странствует между мирами в поисках средства, что спасло бы их родные земли от чудовищного катаклизма, Белого Хлада.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/monsters/banner_position.png',
-				rarity: 'gold',
-				tags: ['leader', 'wild_hunt'],
-				border: 'deck/bord_gold.png',
-				banner: 'faction/monsters/banner_gold.png'
+                rarity: 'gold',
+                tags: ['leader', 'wild_hunt'],
             },
             {
-                id: 'monsters_unit_2',
                 name: 'Имлерих',
-				namefull: 'Имлерих',
+                namefull: 'Имлерих',
                 strength: 8,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'imlerih.mp4',
                 description: 'Генерал Дикой Охоты',
-				descriptionfull: 'Полководец Дикой Охоты и правая рука Эредина. Могучий и опытный воин огромного роста, на голову возвышающийся над всеми обитателями мира Континента и превосходящий по размерам даже своих собратьев.',
-				ability: ' ',
+                descriptionfull: 'Полководец Дикой Охоты и правая рука Эредина. Могучий и опытный воин огромного роста, на голову возвышающийся над всеми обитателями мира Континента и превосходящий по размерам даже своих собратьев.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/monsters/banner_position.png',
-				rarity: 'silver',
+                rarity: 'silver',
                 tags: ['wild_hunt'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
             {
-                id: 'monsters_unit_3',
                 name: 'Карантир',
-				namefull: 'Карантир Ар-Фейниэль',
+                namefull: 'Карантир Ар-Фейниэль',
                 strength: 7,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'karantir.mp4',
                 description: 'Навигатор Дикой Охоты',
-				descriptionfull: 'Могущественный чародей-навигатор и лейтенант Дикой Охоты. Кроме того, благодаря уникальной наследственности навигатор обладал способностями к древней магии, открывающей ему путь в ледяную пустоту, отделяющую мир от другого, а оттуда — в любой из известных ему миров.',
-				ability: ' ',
+                descriptionfull: 'Могущественный чародей-навигатор и лейтенант Дикой Охоты. Кроме того, благодаря уникальной наследственности навигатор обладал способностями к древней магии, открывающей ему путь в ледяную пустоту, отделяющую мир от другого, а оттуда — в любой из известных ему миров.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'silver',
                 tags: ['wild_hunt', 'mage'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
             {
-                id: 'monsters_unit_4',
                 name: 'Нитраль',
-				namefull: 'Нитраль',
+                namefull: 'Нитраль',
                 strength: 7,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'nitral.mp4',
                 description: 'Всадник Дикой Охоты',
-				descriptionfull: 'Высокопоставленный эльф из народа Aen Elle, всадник Дикой Охоты. Обладает некими магическими способностями, поскольку может открывать порталы, окружать себя защитной сферой и телепортироваться. ',
-				ability: ' ',
+                descriptionfull: 'Высокопоставленный эльф из народа Aen Elle, всадник Дикой Охоты. Обладает некими магическими способностями, поскольку может открывать порталы, окружать себя защитной сферой и телепортироваться.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'silver',
                 tags: ['wild_hunt'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-			{
-                id: 'monsters_unit_5',
+            {
                 name: 'Хим',
-				namefull: 'Хим',
+                namefull: 'Хим',
                 strength: 5,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'hym.mp4',
                 description: ' ',
-				descriptionfull: 'Дух, питающийся страхом и страданиями преступника. Хим привязывается к человеку, совершившему какой-то низкий поступок или преступление, однако, если человек не сожалеет и не переживает о своём поступке, чудовище не сможет овладеть им. Завладев жертвой, хим питается её негативными переживаниями и эмоциями, но, неспособный насытиться, вызывает эти чувства вновь и вновь, при этом жертва не может даже увидеть монстра.',
-				ability: ' ',
+                descriptionfull: 'Дух, питающийся страхом и страданиями преступника. Хим привязывается к человеку, совершившему какой-то низкий поступок или преступление, однако, если человек не сожалеет и не переживает о своём поступке, чудовище не сможет овладеть им. <br><br>Хим является демоном, обитающим в других мирах, и, в отличие от своих собратьев, не вселяется в какое-либо существо, а появляется в мире в собственном облике, оставаясь, однако, невидимым почти ни для кого.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'bronze',
                 tags: ['specter'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-			{
-                id: 'monsters_unit_6',
+            {
                 name: 'Феникс',
-				namefull: 'Феникс',
+                namefull: 'Феникс',
                 strength: 4,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'phoenix.mp4',
                 description: ' ',
-				descriptionfull: 'Фениксы известны уникальной способностью возрождаться с помощью пепла и эмбриона, развивающегося в их собственных животах.',
-				ability: ' ',
+                descriptionfull: 'Фениксы известны уникальной способностью возрождаться с помощью пепла и эмбриона, развивающегося в их собственных животах. <br><br>Внешне фениксы чем-то похожи на охваченную пламенем трёхметровую птицу с длинным ящерным хвостом, они умеют летать и имеют оперение. Очевидно, эти существа не горят в огне, однако в целом они катастрофически мало изучены. Как и некоторые другие дракониды, фениксы могут дышать огнём. Из-за своей редкости феникс является настолько полумифическим созданием, что в его существование не верят даже многие ведьмаки.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'bronze',
-                tags: ['Драконид'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
+                tags: ['dragon'],
             },
-			{
-                id: 'monsters_unit_7',
+            {
                 name: 'Морвудд',
-				namefull: 'Морвудд',
+                namefull: 'Морвудд',
                 strength: 6,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'morvudd.mp4',
                 description: 'Бес',
-				descriptionfull: 'Тигровый бес, подвид имеет отличный от иных бесов цвет шерсти и полоски на теле, и проживает на самом крупном острове архипелага Скеллиге.',
-				ability: ' ',
+                descriptionfull: 'Тигровый бес, имеет отличный от иных бесов цвет шерсти и полоски на теле, и проживает на самом крупном острове архипелага Скеллиге. <br><br>Благодаря своей прочности и характерному окрасу шкуры, как у тигра, шкура данного беса широко используются в меховой торговле.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'bronze',
-                tags: ['monster'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
+                tags: ['relict'],
             },
-			{
-                id: 'monsters_unit_8',
+            {
                 name: 'Гуль',
-				namefull: 'Гуль',
+                namefull: 'Гуль',
                 strength: 1,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'gool.mp4',
                 description: ' ',
-				descriptionfull: 'Гуль является обыкновенным падальщиком, разорителем могил, пожирающим разлагающиеся останки, не гнушаясь, однако, и какой-либо «свежатинки»: например, он не прочь полакомиться странниками из торгового каравана, забредшего в посещаемые гулями местности. На живых гуль нападает только тогда, когда очень голоден, разъярён или охотится в стае. Излюбленными районами проживания гулей, а значит и особо опасными, считаются некрополи, кладбища, руины, подземелья и лабиринты, а также колодцы и оазисы в пустынях. В особо больших количествах гулей можно встретить на местах схваток, недавних побоищ.',
-				ability: ' ',
-				copy: 3,
+                descriptionfull: 'Гуль является обыкновенным падальщиком, разорителем могил, пожирающим разлагающиеся останки. На живых гуль нападает только тогда, когда очень голоден, разъярён или охотится в стае. Излюбленными районами проживания гулей, а значит и особо опасными, считаются некрополи, кладбища, руины, подземелья и лабиринты, а также колодцы и оазисы в пустынях. В особо больших количествах гулей можно встретить на местах схваток, недавних побоищ.',
+                ability: ' ',
+                copy: 3,
                 position: 'close-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'bronze',
                 tags: ['scavenger'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-			{
-                id: 'monsters_unit_9',
+            {
                 name: 'Полуденница',
-				namefull: 'Полуденница',
+                namefull: 'Полуденница',
                 strength: 3,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'midday.mp4',
-                description: ' ',
-				descriptionfull: 'Дух убитой женщины-невесты, встречающийся днём. Вопреки популярному мнению, крестьяне делают рабочий перерыв в середине дня, чтобы спрятаться не от жары, а от полуденниц.',
-				ability: ' ',
+                description: 'Дух убитой невесты',
+                descriptionfull: 'Эта разновидность призраков, встречается в ясный и погожий день, когда солнце высоко. Родственна полуночницам, появляющимся только в ночное время. Полуденница выглядит как измождённая и скорбная девушка, с очень загорелой кожей и длинными белыми волосами. Веки несчастной зашиты грубой ниткой, одета она в изодранное белое платье.<br><br>Полуденницы в основном обитают на обработанных полях и лугах, где появляются примерно в полдень. Хоть они и являются призраками, но в то же время сохраняют сильную связь с реальным миром, они видят смертных, но не понимают их, потому что мёртвые не могут слышать живых.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'bronze',
                 tags: ['ghost'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-			{
-                id: 'monsters_unit_10',
+            {
                 name: 'Старый Грот',
-				namefull: 'Старый Грот',
+                namefull: 'Старый Грот',
                 strength: 9,
-                type: 'unit',
-                faction: 'monsters',
                 image: 'grot.mp4',
                 description: 'Циклоп',
-				descriptionfull: 'Могущественный циклоп, издревле обитавший в пещере, вход в которую находится на берегу озера к северу от ведьмачьей крепости Каэр Морхен.',
-				ability: ' ',
+                descriptionfull: 'Могущественный циклоп, издревле обитавший в пещере, вход в которую находится на берегу озера к северу от ведьмачьей крепости Каэр Морхен.<br><br>Особенностью внешности Старого Грота являлась тёмная ткань, которую тот носил на голове на манер капюшона.',
+                ability: ' ',
                 position: 'siege-row',
-                positionBanner: 'faction/monsters/banner_position.png',
                 rarity: 'silver',
                 tags: ['ogr'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
         ],
         specials: [
             {
-                id: 'monsters_special_1',
                 name: 'Белый Хлад',
-                type: 'special',
-                faction: 'monsters',
                 image: 'cold.mp4',
-                description: ' ',
-				descriptionfull: 'Это Час Конца. Мир, уничтоженный Белым Хладом.',
-				ability: 'biting_frost',
+                description: 'Это Час Конца.',
+                descriptionfull: 'Одно из предзнаменований конца света и одной из его причин, фигурирующее в пророчестве эльфской Знающей Итлины.',
+                ability: 'biting_frost',
                 rarity: 'silver',
                 tags: ['hazard'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
             {
-                id: 'monsters_special_2',
                 name: 'Вечная жажда',
-                type: 'special',
-                faction: 'monsters',
                 image: 'thirst.mp4',
                 description: ' ',
-				descriptionfull: 'Иной голод ничем не утолить.',
-				ability: 'boost_tag_thirst',
+                descriptionfull: 'Иной голод ничем не утолить.',
+                ability: 'boost_tag_thirst',
                 rarity: 'bronze',
                 tags: ['ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-			{
-                id: 'monsters_special_3',
+            {
                 name: 'Запрещенный ритуал',
-                type: 'special',
-                faction: 'monsters',
                 image: 'corruption.mp4',
                 description: ' ',
-				descriptionfull: 'Черная магия столь же отвратительна, сколь и действенна.',
-				ability: 'damage_row_1',
+                descriptionfull: 'Черная магия столь же отвратительна, сколь и действенна.',
+                ability: 'damage_row_1',
                 rarity: 'bronze',
                 tags: ['ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-		],
+        ],
         tactics: [
-			{
-                id: 'monsters_tactic_1',
+            {
                 name: 'Шабаш ведьм',
-                type: 'tactic',
-                faction: 'monsters',
                 image: 'sabbath.mp4',
                 description: ' ',
-				descriptionfull: 'Для шабаша надо по меньшей мере три ведьмы. Меж двух будет только ругань.',
-				ability: 'boost_row_2',
+                descriptionfull: 'Для шабаша надо по меньшей мере три ведьмы. Меж двух будет только ругань.',
+                ability: 'boost_row_2',
                 rarity: 'bronze',
                 tags: ['ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
-            },],
-		artifacts: [
+            },
+        ],
+        artifacts: [
             {
-                id: 'monsters_artifact_1',
                 name: 'Книга некроманта',
-                type: 'artifact',
-                faction: 'monsters',
                 image: 'book.mp4',
                 description: ' ',
-				descriptionfull: 'Некоторые страницы изготовлены из человеческой кожи, а многочисленные пророчества, похоронные обряды и ритуалы воскрешения записаны кровью.',
-				ability: 'boost_1',
+                descriptionfull: 'Некоторые страницы изготовлены из человеческой кожи, а многочисленные пророчества, похоронные обряды и ритуалы воскрешения записаны кровью.',
+                ability: 'boost_1',
                 rarity: 'bronze',
                 tags: ['treasure'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
             {
-                id: 'monsters_artifact_2',
                 name: 'Руна Девана',
-                type: 'artifact',
-                faction: 'monsters',
                 image: 'devan.mp4',
                 description: ' ',
-				descriptionfull: 'Мое острие ранит... все острее!',
-				ability: 'boost_near_2',
+                descriptionfull: 'Мое острие ранит... все острее!',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
             {
-                id: 'monsters_artifact_3',
                 name: 'Урна теней',
-                type: 'artifact',
-                faction: 'monsters',
                 image: 'urna.mp4',
-                description: ' ',
-				descriptionfull: 'Тьма таится в каждом. Некоторые умеют подчинять ее своей воле…',
-				ability: 'boost_near_2',
+                description: 'Тьма таится в каждом',
+                descriptionfull: 'Это богато инкрустированная бронзового цвета урна, предназначавшаяся, по всей видимости, для ритуальных или церемониальных целей. Венчает её большого размера фигура оскалившейся змеи со светящимися глазами. Вероятно, Урна теней являлась магической и могла использоваться её владельцем для различных целей.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['treasure'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/monsters/banner_bronze.png'
             },
-		]
+        ]
     },
-
+	
     nilfgaard: {
         units: [
             {
-                id: 'nilfgaard_unit_1',
                 name: 'Эмгыр',
-				namefull: 'Эмгыр вар Эмрейс',
+                namefull: 'Эмгыр вар Эмрейс',
                 strength: 10,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'emhyr.mp4',
                 description: 'IV Император Нильфгаарда',
-				descriptionfull: 'Эмгыр вар Эмрейс ради власти был готов на всё. Развязать войну. Убить собственную жену. Причинить вред собственной дочери. И всё это не повышая голоса, без единой слезинки. Его поблекшие холодные глаза не отражали никаких эмоций. Говорили, что даже у служивших в имперской армии големов было больше чувств, чем у него…',
-				ability: ' ',
+                descriptionfull: 'Эмгыр вар Эмрейс ради власти был готов на всё. Развязать войну. Убить собственную жену. Причинить вред собственной дочери. И всё это не повышая голоса, без единой слезинки. <br><br>Его поблекшие холодные глаза не отражали никаких эмоций. Говорили, что даже у служивших в имперской армии големов было больше чувств, чем у него…',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'gold',
                 tags: ['leader', 'king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/nilfgaard/banner_gold.png'
             },
             {
-                id: 'nilfgaard_unit_2',
                 name: 'Воорхис',
-				namefull: 'Морвран Воорхис',
+                namefull: 'Морвран Воорхис',
                 strength: 7,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'morvran.mp4',
                 description: 'V Император Нильфгаарда',
-				descriptionfull: 'Воорхис обычно говаривал, что не нуждается в мече, чтобы выигрывать войны. И в этих словах было много правды. Он строил свою стратегию на шпионах, саботажниках и диверсантах. Возможно, это было не слишком достойно, зато эффективно.',
-				ability: ' ',
+                descriptionfull: 'Воорхис обычно говаривал, что не нуждается в мече, чтобы выигрывать войны. И в этих словах было много правды. Он строил свою стратегию на шпионах, саботажниках и диверсантах. Возможно, это было не слишком достойно, зато эффективно.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
-                id: 'nilfgaard_unit_3',
                 name: 'Ян Кальвейт',
-				namefull: 'Ян Кальвейт',
+                namefull: 'Ян Кальвейт',
                 strength: 7,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'yan.mp4',
                 description: 'VI Император Нильфгаарда',
-				descriptionfull: 'Ян Кальвейт привык наблюдать за сражением, сидя на складном стуле на самом краю поля боя. Он не вставал с него, даже когда вокруг падали горящие стрелы или камни вражеских катапульт. «Все мы когда-нибудь умрем, — говаривал он. — Мой день ещё не настал».',
-				ability: ' ',
+                descriptionfull: 'Ян Кальвейт привык наблюдать за сражением, сидя на складном стуле на самом краю поля боя. Он не вставал с него, даже когда вокруг падали горящие стрелы или камни вражеских катапульт. «Все мы когда-нибудь умрем, — говаривал он. — Мой день ещё не настал».',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
-                id: 'nilfgaard_unit_4',
                 name: 'Узурпатор',
-				namefull: 'Узурпатор',
+                namefull: 'Узурпатор',
                 strength: 4,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'usurper.mp4',
                 description: 'III Император Нильфгаарда',
-				descriptionfull: 'Узурпатор был главарём заговора, в результате которого погиб Фергус вар Эмрейс, а его сын, Эмгыр, подвергся нечеловеческим пыткам. Мы немногое знаем об Узурпаторе. Даже имя его неизвестно. Об этом позаботился Эмгыр вар Эмрейс, который убил Узурпатора и занял его место.',
-				ability: ' ',
+                descriptionfull: 'Узурпатор был главарём заговора, в результате которого погиб Фергус вар Эмрейс, а его сын, Эмгыр, подвергся нечеловеческим пыткам. Мы немногое знаем об Узурпаторе. Даже имя его неизвестно.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king', 'criminal'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
-                id: 'nilfgaard_unit_5',
                 name: 'Вильгефорц',
-				namefull: 'Вильгефорц из Роггевеена',
+                namefull: 'Вильгефорц из Роггевеена',
                 strength: 6,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'vilgefortz.mp4',
-                description: 'Лидер Капитула Чародеев',
-				descriptionfull: 'Могущественный чародей и исследователь, в прошлом ― наёмник и друид, член и один из лидеров Капитула Чародеев и фактический виновник и организатор Танеддского бунта. ',
-				ability: ' ',
+                description: 'Глава Капитула Чародеев',
+                descriptionfull: 'Могущественный чародей и исследователь, в прошлом ― наёмник и друид, член и один из лидеров Капитула Чародеев и фактический виновник и организатор Танеддского бунта.<br><br>Несмотря на свой молодой по меркам чародеев возраст, Вильгефорц был необычайно талантлив, а его могущество было настолько огромным, что он мог на равных биться и даже одерживать верх над безусловно сильными чародейками.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'silver',
                 tags: ['mage'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
-                id: 'nilfgaard_unit_6',
                 name: 'Иоахим',
-				namefull: 'Иоахим де Ветт',
+                namefull: 'Иоахим де Ветт',
                 strength: 5,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'wett.mp4',
                 description: 'Герцог',
-				descriptionfull: 'Иоахим был недоволен политикой Эмгыра и втайне мечтал о свержении самодержца.',
-				ability: ' ',
+                descriptionfull: 'Герцог де Ветт командовал оперативной группой „Верден“ таким образом, для которого определение „неудачно“ следует считать исключительно деликатным.<br><br>Иоахим был недоволен политикой Эмгыра и втайне мечтал о свержении самодержца.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			{
-                id: 'nilfgaard_unit_7',
+            {
                 name: 'Лето',
-				namefull: 'Лето из Гулеты',
+                namefull: 'Лето из Гулеты',
                 strength: 8,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'leto.mp4',
                 description: 'Убийца королей',
-				descriptionfull: 'Опытный и бывалый ведьмак школы Змеи, знающий цену себе и своим способностям. Он смел, уверен в себе, умеет быть как мстительным, так и благодарным, а его чувство юмора нервирует даже его соратников. Лето хладнокровен и довольно сдержан в проявлении эмоций, хотя и не скрывает своего отношения к определённым ситуациям.',
-				ability: ' ',
+                descriptionfull: 'Опытный и бывалый ведьмак школы Змеи, знающий цену себе и своим способностям. Он смел, уверен в себе, умеет быть как мстительным, так и благодарным.<br><br>Охотник за головами и лидер Убийц королей, совершивший ряд потрясших весь Север политических убийств правителей крупнейших государств.',
+                ability: ' ',
                 position: 'any-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'silver',
                 tags: ['witcher', 'mercenary'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			{
-                id: 'nilfgaard_unit_8',
+            {
                 name: 'Рекрут',
-				namefull: 'Рекрут',
+                namefull: 'Рекрут',
                 strength: 1,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'recruit.mp4',
                 description: 'Солдат',
-				descriptionfull: 'Кто-то же должен чистить картошку, чтоб остальные могли сражаться.',
-				ability: ' ',
-				copy: 3,
+                descriptionfull: 'Кто-то же должен чистить картошку, чтоб остальные могли сражаться.',
+                ability: ' ',
+                copy: 3,
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			{
-                id: 'nilfgaard_unit_9',
+            {
                 name: 'Лео Бонарт',
-				namefull: 'Лео Бонарт',
+                namefull: 'Лео Бонарт',
                 strength: 6,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'bonart.mp4',
-                description: 'Охотник на ведьмаков',
-				descriptionfull: 'Профессиональный наёмный убийца и охотник за головами. Из отличительных признаков — ведьмачьи медальоны Школы Кота, Школы Грифона и Школы Волка, которые он носил в качестве трофеев.',
-				ability: ' ',
+                description: 'Охотник за головами',
+                descriptionfull: 'Профессиональный наёмный убийца и охотник за головами. Из отличительных признаков — ведьмачьи медальоны Школы Кота, Школы Грифона и Школы Волка, которые он носил в качестве трофеев.<br><br>О его прошлом упоминается мало: известно, что в молодости он был солдатом, затем занимался торговлей, но потом решил зарабатывать охотой за головами.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'silver',
                 tags: ['mercenary'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			{
-                id: 'nilfgaard_unit_10',
+            {
                 name: 'Кагыр',
-				namefull: 'Кагыр аэп Кеаллах',
+                namefull: 'Кагыр аэп Кеаллах',
                 strength: 6,
-                type: 'unit',
-                faction: 'nilfgaard',
                 image: 'kakr.mp4',
                 description: 'Чёрный рыцарь',
-				descriptionfull: 'Молодой нильфгаардский дворянин и рыцарь из рода Дыффинов, а также порученец императора Эмгыра вар Эмрейса, по заданию Империи занимавшийся поисками Цири.',
-				ability: ' ',
+                descriptionfull: 'Молодой нильфгаардский граф и рыцарь из рода Дыффинов.<br><br>Когда Кагыру было 10 лет, его старший брат, Аиллиль, погиб в ходе военного конфликта с северянами в Назаире. Это побудило юного виковарца пообещать матери, что он всегда будет ненавидеть нордлингов. В определённый момент, возможно, благодаря высокому положению его отца, он вступил в ряды нильфгаардской военной разведки, позже став её офицером.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/nilfgaard/banner_position.png',
                 rarity: 'silver',
                 tags: ['kingser'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
         ],
         specials: [
-			{
-                id: 'nilfgaard_special_1',
+            {
                 name: 'Вечное затмение',
-                type: 'special',
-                faction: 'nilfgaard',
                 image: 'eclipse.mp4',
-                description: ' ',
-				descriptionfull: 'Взгляду непосвященного План предстает лавиной: последовательностью будто бы незначительных происшествий, которые приводят в движение весь склон горы и хоронят под собой старый мир. Только безумцы и дотошные историки, которые будут изучать события этих дней десятки лет спустя, увидят правду: тонкий механизм, работающий как часы и отсчитывающий время до установления нового мирового порядка.',
-				ability: 'damage_row_2',
+                description: 'Секта',
+                descriptionfull: 'Это, вероятно, тайная и закрытая организация, имеющая строгую иерархию и внутренний порядок. Члены организации носили длинные чёрные мантии с капюшонами, а лица закрывали золотистыми масками различного вида. Для новых послушников организации существовал период новициата ― период, во время которого адепты проходили, по всей видимости, определенные испытания, а также получали клеймо раскалённым железом от рук диакона. Объектом их исследований был некий План, возможно, олицетворяющий собой судьбу.',
+                ability: 'damage_row_2',
                 rarity: 'bronze',
                 tags: ['ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			{
-                id: 'nilfgaard_special_2',
+            {
                 name: 'Измена',
-                type: 'special',
-                faction: 'nilfgaard',
                 image: 'treason.mp4',
                 description: ' ',
-				descriptionfull: 'Доверчивые люди — вымирающий вид в Нильфгаарде.',
-				ability: 'damage_2',
+                descriptionfull: 'Доверчивые люди — вымирающий вид в Нильфгаарде.',
+                ability: 'damage_2',
                 rarity: 'bronze',
                 tags: ['scenary'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			{
-                id: 'nilfgaard_special_3',
+            {
                 name: 'Мастерская бронника',
-                type: 'special',
-                faction: 'nilfgaard',
                 image: 'armorer.mp4',
                 description: ' ',
-				descriptionfull: 'Он при желании и из горшка шлем соорудит.',
-				ability: 'boost_1',
+                descriptionfull: 'Он при желании и из горшка шлем соорудит.',
+                ability: 'boost_1',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-			],
+        ],
         tactics: [
             {
-                id: 'nilfgaard_tactic_1',
                 name: 'Военный совет',
-                type: 'tactic',
-                faction: 'nilfgaard',
                 image: 'council.mp4',
                 description: ' ',
-				descriptionfull: 'В каждом бою нильфгаардцы сражаются дважды: сначала на карте, потом в жизни.',
-				ability: 'boost_row_2',
+                descriptionfull: 'В каждом бою нильфгаардцы сражаются дважды: сначала на карте, потом в жизни.',
+                ability: 'boost_row_2',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
-            },],
+            },
+        ],
         artifacts: [
             {
-                id: 'nilfgaard_artifact_1',
-                name: 'Обсидиановое зеркальце',
-                type: 'artifact',
-                faction: 'nilfgaard',
+                name: 'Зеркало Нехалены',
                 image: 'obsidian.mp4',
                 description: ' ',
-				descriptionfull: 'Не стоит слишком долго вглядываться в мягкое сияние обсидиана, ибо неизвестно, что уставится на вас в ответ.',
-				ability: 'boost_1',
+                descriptionfull: 'Довольно редкая и могущественная вещь, нередко служащая пророкам и оракулам. Обладает способностью безошибочно, но очень туманно и запутанно предсказывать будущее.',
+                ability: 'boost_1',
                 rarity: 'bronze',
                 tags: ['transient'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
-                id: 'nilfgaard_artifact_2',
                 name: 'Руна Даждьбог',
-                type: 'artifact',
-                faction: 'nilfgaard',
                 image: 'dazhdbog.mp4',
                 description: ' ',
-				descriptionfull: 'Эта руна, горячее любого пламени.',
-				ability: 'boost_near_2',
+                descriptionfull: 'Эта руна, горячее любого пламени.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
             {
-                id: 'nilfgaard_artifact_3',
                 name: 'Рабский ошейник',
-                type: 'artifact',
-                faction: 'nilfgaard',
                 image: 'rab.mp4',
                 description: ' ',
-				descriptionfull: 'У тех, кто оказывается в долгу у Ван Мурлегемов, остается два варианта: податься в рабство или свести счеты с жизнью. Те, кто поумнее, выбирают второй вариант…',
-				ability: 'boost_near_1',
+                descriptionfull: 'У тех, кто оказывается в долгу у Ван Мурлегемов, остается два варианта: податься в рабство или свести счеты с жизнью.',
+                ability: 'boost_near_1',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/nilfgaard/banner_bronze.png'
             },
-		]
+        ]
     },
 
     realms: {
         units: [
             {
-                id: 'realms_unit_1',
                 name: 'Фольтест',
-				namefull: 'Фольтест Темерский',
+                namefull: 'Фольтест Темерский',
                 strength: 10,
-                type: 'unit',
-                faction: 'realms',
                 image: 'foltest.mp4',
-                description: 'Король Темерии',
-				descriptionfull: 'Предводитель Севера, князь Соддена, правитель Понтарии, сюзерен Махакама и сеньор-протектор Бругге, Ангрена, Заречья и Элландера. И не сосчитать все титули и звания его величества. В ходе своего правления значительно укрепил и стабилизировал страну, установил твёрдую королевскую власть и поддерживал политическую стабильность.',
-				ability: ' ',
+                description: 'Предводитель Севера',
+                descriptionfull: 'Король Темерии, князь Соддена, правитель Понтарии, сюзерен Махакама и сеньор-протектор Бругге, Ангрена, Заречья и Элландера.<br><br>В ходе своего правления значительно укрепил и стабилизировал страну. При поддержке Королевского Совета успешно руководил Темерией и армией в ходе Северных войн, присутствовал на совете в Хагге и участвовал в подписании Цинтрийского мира, занимал одну из лидирующих ролей в коалиции правителей всего Севера.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'gold',
                 tags: ['leader', 'king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/realms/banner_gold.png'
             },
             {
-                id: 'realms_unit_2',
                 name: 'Радовид V',
-				namefull: 'Радовид V Свирепый',
+                namefull: 'Радовид V',
                 strength: 9,
-                type: 'unit',
-                faction: 'realms',
                 image: 'radovid.mp4',
-                description: 'Король Редании',
-				descriptionfull: 'По праву считается одним из могущественнейших правителей Севера. Он строгий и суровый владыка, наделённый несгибаемой волей и твёрдым нравом. При этом он спокоен и рассудителен, при отдаче приказов ему нет нужды повышать голос — люди и без того чувствуют его холодную силу и непоколебимую уверенность в себе.',
-				ability: ' ',
+                description: 'Свирепый',
+                descriptionfull: 'Король Редании, по праву считается одним из могущественнейших правителей Севера. Он строгий и суровый владыка, наделённый несгибаемой волей и твёрдым нравом.<br><br>В ходе своего правления, присоединив во время Третьей Северной войны к Редании ослабленный Каэдвен и часть Хенгфорской Лиги, являлся основным противником Нильфгаарда на Континенте и сумел дать эффективный отпор неприятелю.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
             {
-                id: 'realms_unit_3',
                 name: 'Хенсельт',
-				namefull: 'Хенсельт из Ард Каррайга',
+                namefull: 'Хенсельт из Ард Каррайга',
                 strength: 5,
-                type: 'unit',
-                faction: 'realms',
                 image: 'henselt.mp4',
-                description: 'Король Каэдвена',
-				descriptionfull: 'Хенсельт из Ард Каррайга, по прозвищу Единорог — был талантливым полководцем, не сделал Каэдвен могучей державой. Он не смог ни найти себе союзников, ни закрепить успех после побед. Впрочем, это его не особенно волновало. Он сражался, чтобы сражаться.',
-				ability: ' ',
+                description: 'Единорог',
+                descriptionfull: 'Король Каэдвена, по прозвищу Единорог — был талантливым полководцем, не сделал Каэдвен могучей державой. Он не смог ни найти себе союзников, ни закрепить успех после побед.<br><br>На протяжении долгих лет Хенсельт вёл спор с владыкой Аэдирна, Демавендом, по поводу Долины Понтара. Эту территорию Хенсельт считал исконно каэдвенской и хотел присоединить её к своему королевству. Также он был известен своей ненавистью к нелюдям, из-за чего в Каэдвене часто происходили погромы и массовые казни представителей Старших народов.',
+                ability: ' ',
                 position: 'any-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
             {
-                id: 'realms_unit_4',
                 name: 'Стеннис',
-				namefull: 'Принц Стеннис',
+                namefull: 'Принц Стеннис',
                 strength: 4,
-                type: 'unit',
-                faction: 'realms',
                 image: 'stennis.mp4',
                 description: 'Принц Аэдирна',
-				descriptionfull: 'Личность Стенниса достаточно сложна и неоднозначна. Прежде всего, принц Стеннис — гордый и уверенный в себе аристократ, убеждённый в своей правоте и достоинстве как наследника престола Аэдирна.',
-				ability: ' ',
+                descriptionfull: 'Сын и наследник Демавенда III, соратник Саскии Драконоубийцы. Личность Стенниса достаточно сложна и неоднозначна. Прежде всего, принц Стеннис — гордый и уверенный в себе аристократ, убеждённый в своей правоте и достоинстве как наследника престола Аэдирна.',
+                ability: ' ',
                 position: 'hidden-close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'bronze',
                 tags: ['kingser'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
             {
-                id: 'realms_unit_5',
                 name: 'Вернон Роше',
-				namefull: 'Вернон Роше',
+                namefull: 'Вернон Роше',
                 strength: 7,
-                type: 'unit',
-                faction: 'realms',
                 image: 'roche.mp4',
                 description: 'Безжалостный убийца',
-				descriptionfull: 'Глава темерского военизированного спецподразделения «Синие Полоски» и доверенное лицо короля Фольтеста.',
-				ability: ' ',
+                descriptionfull: 'Глава темерского военизированного спецподразделения «Синие Полоски» и доверенное лицо короля Фольтеста.<br><br>Вернон — хороший фехтовальщик, он умело обращается с одноручным и двуручным мечом, а также умеет стрелять из арбалета, но не чурается использовать и такое оружие, как кинжалы и шестопёр ― по необходимости.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'silver',
                 tags: ['warior'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
             {
-                id: 'realms_unit_6',
-                name: 'Адда Белая',
-				namefull: 'Принцесса Адда',
+                name: 'Адда',
+                namefull: 'Принцесса Адда',
                 strength: 5,
-                type: 'unit',
-                faction: 'realms',
                 image: 'adda.mp4',
-                description: 'Проклятая принцесса Темерии',
-				descriptionfull: 'Темерская принцесса, дочь короля Фольтеста, подвергнувшаяся проклятию и превращённая в стрыгу.',
-				ability: ' ',
+                description: 'Белая',
+                descriptionfull: 'Темерская принцесса, дочь короля Фольтеста, подвергнувшаяся проклятию и превращённая в Стрыгу.<br><br>Родившаяся мертвой девочка, названная Аддой, была захоронена вместе с умершей во время родов матерью в семейной усыпальнице в королевском дворце. Спустя примерно семь лет девочка стала во время полнолуний выбираться из саркофага в виде стрыги, убивая и пожирая подвернувшихся ей людей.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'bronze',
                 tags: ['kingser', 'curse'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-			{
-                id: 'realms_unit_7',
+            {
                 name: 'Пехотинец',
-				namefull: 'Темерийский пехотинец',
+                namefull: 'Темерийский пехотинец',
                 strength: 1,
-                type: 'unit',
-                faction: 'realms',
                 image: 'infantry.mp4',
                 description: ' ',
-				descriptionfull: 'Темерия! Судьба к тебе щедра! Ты сокрушишь врагов своих величием добра!',
-				ability: ' ',
-				copy: 3,
+                descriptionfull: 'Темерия! Судьба к тебе щедра! Ты сокрушишь врагов своих величием добра!',
+                ability: ' ',
+                copy: 3,
                 position: 'close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-			{
-                id: 'realms_unit_8',
+            {
                 name: 'Мэва',
-				namefull: 'Королева Мэва',
+                namefull: 'Королева Мэва',
                 strength: 7,
-                type: 'unit',
-                faction: 'realms',
                 image: 'meva.mp4',
-                description: 'Королева Лирии и Ривии',
-				descriptionfull: 'Мэва известна среди правителей Северных королевств своей мудростью, женской интуицией и красотой. Эти качества, впрочем, не помешали ей наряду с Демавендом, королём Аэдирна, всецело участвовать в полномасштабной войне с Нильфгаардом, едва не закончившейся для неё потерей своего королевства. Как лидер, она всегда ставит интересы своих народов превыше всего.',
-				ability: ' ',
+                description: 'Белая Королева',
+                descriptionfull: 'Вдовствующая королева Лирии и Ривии. Имеет двух сыновей, Виллема и Анси, которых, впрочем, не слишком жалует, почти никак не заботясь об их судьбе.<br><br>Мэва известна среди правителей Северных королевств своей мудростью, женской интуицией и красотой. Как лидер, она всегда ставит интересы своих народов превыше всего.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-			{
-                id: 'realms_unit_9',
+            {
                 name: 'Кейра Мец',
-				namefull: 'Кейра Мец',
+                namefull: 'Кейра Мец из Каррераса',
                 strength: 7,
-                type: 'unit',
-                faction: 'realms',
                 image: 'mec.mp4',
                 description: 'Чародейка',
-				descriptionfull: 'Чародейка из Темерии, бывшая советница короля Фольтеста, позже состоявшая в Ложе Чародеек, а в ходе охоты на ведьм укрывавшаяся в Велене. ',
-				ability: ' ',
+                descriptionfull: 'Чародейка из Темерии, бывшая советница короля Фольтеста, позже состоявшая в Ложе Чародеек, а в ходе охоты на ведьм укрывавшаяся в Велене.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'silver',
                 tags: ['mage'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-			{
-                id: 'realms_unit_10',
+            {
                 name: 'Требушет',
-				namefull: 'Требушет',
+                namefull: 'Требушет',
                 strength: 5,
-                type: 'unit',
-                faction: 'realms',
                 image: 'trebushet.mp4',
                 description: 'Осадное орудие',
-				descriptionfull: 'Чуешь? Земля дрожит, когда «Толстая Берта» стреляет.',
-				ability: ' ',
+                descriptionfull: 'В основе конструкции требушета заложена энергия падающего груза большой массы. Такие осадные орудия используются вооруженными силами для повреждения и разрушения оборонительных сооружений противника, а их, как правило, каменные боеприпасы обладают страшным могуществом. Требушеты могут различаться размерами.',
+                ability: ' ',
                 position: 'siege-row',
-                positionBanner: 'faction/realms/banner_position.png',
                 rarity: 'bronze',
                 tags: ['weapons'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
         ],
         specials: [
             {
-                id: 'realms_special_1',
                 name: 'Руническое слово',
-                type: 'special',
-                faction: 'realms',
                 image: 'runes.mp4',
                 description: ' ',
-				descriptionfull: 'Лучше не произносить его вслух.',
-				ability: 'damage_row_3',
+                descriptionfull: 'Сотворение заклинания требует достаточного навыка и огромной концентрации чародея, поэтому далеко не все из них способны на это. В подавляющем большинстве случаев адептам магии необходимо обучение в одной из магических школ либо под руководством опытного наставника, в противном случае грамотно использовать магический потенциал и управлять энергией Хаоса практически невозможно.',
+                ability: 'damage_row_3',
                 rarity: 'bronze',
                 tags: ['spell'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-			{
-                id: 'realms_special_2',
+            {
                 name: 'Кипящее масло',
-                type: 'special',
-                faction: 'realms',
                 image: 'oil.mp4',
                 description: ' ',
-				descriptionfull: 'Не очень полезно для вашей кожи. ',
-				ability: 'damage_row_2',
+                descriptionfull: 'Не очень полезно для вашей кожи.',
+                ability: 'damage_row_2',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-			{
-                id: 'realms_special_3',
+            {
                 name: 'Посвящение в рыцари',
-                type: 'special',
-                faction: 'realms',
                 image: 'knight.mp4',
                 description: ' ',
-				descriptionfull: 'На колени, простолюдин! Встань, рыцарь!',
-				ability: 'boost_2',
+                descriptionfull: 'На колени, простолюдин! Встань, рыцарь!',
+                ability: 'boost_2',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-		],
+        ],
         tactics: [
             {
-                id: 'realms_tactic_1',
-                name: 'Подкрипление',
-                type: 'tactic',
-                faction: 'realms',
+                name: 'Подкрепление',
                 image: 'tactic.mp4',
                 description: ' ',
-				descriptionfull: 'Трубить отступление! Перегруппироваться и ждать подкрепления!',
-				ability: 'boost_row_2',
+                descriptionfull: 'Трубить отступление! Перегруппироваться и ждать подкрепления!',
+                ability: 'boost_row_2',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-		],
+        ],
         artifacts: [
             {
-                id: 'realms_artifact_1',
                 name: 'Меч Вандергрифта',
-                type: 'artifact',
-                faction: 'realms',
                 image: 'sword.mp4',
                 description: ' ',
-				descriptionfull: 'На рыцарском турнире в Ард Каррайге Зельткирк разломал меч Вандергрифта. После этого взбешенный Вандергрифт заказал себе колдовской клинок, зачарованный могущественными рунами.',
-				ability: 'boost_3',
+                descriptionfull: 'Колдовской клинок, зачарованный могущественными рунами. Этот меч для Вандергрифта создал некий кузнец-чародей после того, как предыдущий меч Домоправителя сломался во время поединка с Зельткирком на турнире в Ард Каррайге, заставив своего хозяина сдаться. Новым клинком Вандергрифт убил впоследствии аэдирнского полководца.',
+                ability: 'boost_3',
                 rarity: 'bronze',
                 tags: ['weapons'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
             {
-                id: 'realms_artifact_2',
                 name: 'Руна Зоря',
-                type: 'artifact',
-                faction: 'realms',
                 image: 'zorya.mp4',
                 description: ' ',
-				descriptionfull: 'От этой руны веет неестественным холодом. Может, кто-то когда-то ранил ее чувства?',
-				ability: 'boost_near_2',
+                descriptionfull: 'От этой руны веет неестественным холодом. Может, кто-то когда-то ранил ее чувства?',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
             {
-                id: 'realms_artifact_3',
                 name: 'Кровавый бич',
-                type: 'artifact',
-                faction: 'realms',
                 image: 'blood.mp4',
                 description: ' ',
-				descriptionfull: 'Некоторые виды оружия были запрещены в королевствах Севера — столь страшны были раны, нанесенные ими.',
-				ability: 'boost_2',
+                descriptionfull: 'Представляет собой внушительных размеров боевой цеп с двумя ударными грузами в виде шипастых бил, соединенных с рукоятью мелкозвенными цепями. Наряду с ламией, из-за страшных повреждений, наносимых им, запрещен к использованию на территории королевств Севера.',
+                ability: 'boost_2',
                 rarity: 'bronze',
                 tags: ['weapons'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/realms/banner_bronze.png'
             },
-		]
+        ]
     },
 
     scoiatael: {
         units: [
             {
-                id: 'scoiatael_unit_1',
                 name: 'Францеска',
-				namefull: 'Францеска Финдабаир',
+                namefull: 'Францеска Финдабаир',
                 strength: 10,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'francesca.mp4',
-                description: 'Княгиня Дол Блатанны',
-				descriptionfull: 'Известная как Маргаритка из Долин. Сильный политический игрок, она умеет плести интриги, хорошо разбирается в нюансах настроений высшего общества Севера, к которому принадлежит. Хитра как лисица и сделает всё ради блага своего народа.',
-				ability: ' ',
+                description: 'Маргаритка из Долин',
+                descriptionfull: 'Княгиня Дол Блатанны. Сильный политический игрок, она умеет плести интриги, хорошо разбирается в нюансах настроений высшего общества Севера, к которому принадлежит.<br><br>Считается самой красивой женщиной в мире из ныне здравствующих. У неё роскошные волосы цвета тёмного золота и огромные, ланьи, голубые глаза.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'gold',
                 tags: ['leader', 'mage', 'elf'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/scoiatael/banner_gold.png'
             },
             {
-                id: 'scoiatael_unit_2',
                 name: 'Филавандрель',
-				namefull: 'Филавандрель',
+                namefull: 'Филавандрель',
                 strength: 6,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'filavandrel.mp4',
-                description: 'Предводитель эльфов Синих гор',
-				descriptionfull: 'В отличие от многих других эльфов, Филавандрель не жил под людским игом, ему не приходилось терпеть унижения и бояться погромов. Он держится так гордо потому, что никто и никогда не принуждал его кланяться.',
-				ability: ' ',
+                description: 'с края света',
+                descriptionfull: 'Представитель знати и один из предводителей эльфов Синих гор, обитающих на границе с Долиной Цветов, а впоследствии ― советник королевы Доль Блатанны Францески Финдабаир.<br><br>В отличие от многих других эльфов, Филавандрель не жил под людским игом, ему не приходилось терпеть унижения и бояться погромов. Он держится так гордо потому, что никто и никогда не принуждал его кланяться.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king', 'elf'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
-                id: 'scoiatael_unit_3',
                 name: 'Брувер',
-				namefull: 'Брувер Гоог',
+                namefull: 'Брувер Гоог',
                 strength: 7,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'goog.mp4',
                 description: 'Старейшина Махакама',
-				descriptionfull: 'Старейшина Махакама, который сумел спасти свой народ и привел его к процветанию. Брувер не только опытный политик, но и хороший воин: если понадобится, он прибегнет к помощи своего верного боевого топора, несмотря на высокое положение.',
-				ability: ' ',
+                descriptionfull: 'Старейшина Махакама, который сумел спасти свой народ и привел его к процветанию. Брувер не только опытный политик, но и хороший воин.<br><br>Несмотря на то что официально весь Махакам находится под властью Темерии и лично короля Фольтеста, любая попытка вмешаться в дела управления анклава гномов и краснолюдов под руководством Гоога чревата остановкой поставок железной руды, доспехов и оружия.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king', 'dwarf'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
-                id: 'scoiatael_unit_4',
                 name: 'Эитнэ',
-				namefull: 'Эитнэ',
+                namefull: 'Эитнэ',
                 strength: 8,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'eitne.mp4',
-                description: 'Правительница Брокилона',
-				descriptionfull: 'Древняя, как сам Брокилон, Эитнэ ― повелительница дриад, не покидающая своей обители в Дуэн Канэлл. Она не признаёт всё, что относится к людям, и пренебрежительно относится к королевствам, находящимся близ границ её леса.',
-				ability: ' ',
+                description: 'Лесная Госпожа',
+                descriptionfull: 'Повелительница дриад и могущественная владычица Брокилона, древняя, как сам Брокилон, известная своей мудростью и непримиримым отношением к людям.<br><br>Она не признаёт всё, что относится к людям, и пренебрежительно относится к королевствам, находящимся близ границ её леса. Их попытки завладеть древним лесом из-за его ценной древесины и легендарных сокровищ привели к многовековому конфликту.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'silver',
                 tags: ['king', 'mage', 'elf'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_unit_5',
+            {
                 name: 'Разведчицы',
-				namefull: 'Эльфийские разведчицы',
+                namefull: 'Эльфийские разведчицы',
                 strength: 1,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'scout.mp4',
                 description: ' ',
-				descriptionfull: 'Говорят, что эльфы не оставляют следов на снегу. Но сдается мне, что это лишь болтовня сельских дурачков.',
-				ability: ' ',
-				copy: 3,
+                descriptionfull: 'Говорят, что эльфы не оставляют следов на снегу. Но сдается мне, что это лишь болтовня сельских дурачков.',
+                ability: ' ',
+                copy: 3,
                 position: 'hidden-ranged-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior', 'elf'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_unit_6',
+            {
                 name: 'Эльдайн',
-				namefull: 'Эльдайн',
+                namefull: 'Эльдайн',
                 strength: 6,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'eldains.mp4',
-                description: 'Командир отряда Скоя\'таэлей',
-				descriptionfull: 'Эльдайн не носил никаких доспехов, не признавал щита. Он скользил по полю боя с грацией танцора, едва касаясь земли, без труда уклоняясь от ударов.',
-				ability: ' ',
+                description: ' ',
+                descriptionfull: 'Лидер и командир крупного отряда скоя\'таэлей, действовавшего в ходе Второй Северной войны в Синявой Пуще, в прошлом ― купец из Аэдирна, ведший дела в городе Гулета, но возненавидевший людей после погрома, в котором потерял семью.<br><br>Эльдайн не носил никаких доспехов, не признавал щита. Он скользил по полю боя с грацией танцора, едва касаясь земли.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior', 'elf'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_unit_7',
+            {
                 name: 'Иорвет',
-				namefull: 'Иорвет',
+                namefull: 'Иорвет',
                 strength: 5,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'yorvet.mp4',
-                description: 'Командир отряда Скоя\'таэлей',
-				descriptionfull: 'Он чертовски меток для парня с одним глазом. ',
-				ability: ' ',
+                description: ' ',
+                descriptionfull: 'Эльф из народа Aen Seidhe, партизан и предводитель крупного отряда скоя\'таэлей в период Второй Северной войны.<br><br>Повсеместно на Севере Иорвет известен как разбойник, убийца и террорист. Даже уважающая Иорвета Саския считает, что массовые убийства и злодеяния, которые он совершил, нельзя так просто забыть, и лишь своими делами на благо народов Континента он сможет заработать прощение и уважение.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior', 'elf'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_unit_8',
+            {
                 name: 'Золтан',
-				namefull: 'Золтан Хивай',
+                namefull: 'Золтан Хивай',
                 strength: 6,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'zoltan.mp4',
                 description: ' ',
-				descriptionfull: 'Деловитый предприниматель-краснолюд и наёмник, один из лучших друзей Геральта, а также герой множества трактирных баек и пересудов. Отношение Золтана к скоя\'таэлям можно было, таким образом, описать как двоякое. Образ светлого завтра его не убеждал... С другой стороны, он охотно навалял бы расистам, которые отравляли жизнь ему и его собратьям.',
-				ability: ' ',
+                descriptionfull: 'Деловитый предприниматель-краснолюд и наёмник, один из лучших друзей Геральта, а также герой множества трактирных баек.<br><br>Отношение Золтана к скоя\'таэлям можно было, таким образом, описать как двоякое. Образ светлого завтра его не убеждал... С другой стороны, он охотно навалял бы расистам, которые отравляли жизнь ему и его собратьям.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'silver',
                 tags: ['dwarf'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_unit_9',
+            {
                 name: 'Великий дуб',
-				namefull: 'Великий дуб',
+                namefull: 'Великий дуб',
                 strength: 7,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'oak.mp4',
                 description: ' ',
-				descriptionfull: 'Древа Брокилона шумят промеж собою о старом дубе, сердце которого насквозь прогрызла ненависть.',
-				ability: ' ',
+                descriptionfull: 'Древа Брокилона шумят промеж собою о старом дубе, сердце которого насквозь прогрызла ненависть.',
+                ability: ' ',
                 position: 'siege-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'silver',
                 tags: ['oak'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_unit_10',
+            {
                 name: 'Ярпен Зигрин',
-				namefull: 'Ярпен Зигрин',
+                namefull: 'Ярпен Зигрин',
                 strength: 4,
-                type: 'unit',
-                faction: 'scoiatael',
                 image: 'zigrin.mp4',
                 description: ' ',
-				descriptionfull: 'Профессиональный охотник на чудовищ и наёмник, участник битвы при Бренне, сторонник людей и хороший друг Геральта. Вместе со своими товарищами убил дракона Оквиста с Кварцевой горы, а позже с собственным отрядом состоял на службе у короля Хенсельта из Каэдвена.',
-				ability: ' ',
+                descriptionfull: 'Профессиональный охотник на чудовищ и наёмник, участник битвы при Бренне, сторонник людей и хороший друг Геральта. Вместе со своими товарищами убил дракона Оквиста с Кварцевой горы, а позже с собственным отрядом состоял на службе у короля Хенсельта из Каэдвена.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/scoiatael/banner_position.png',
                 rarity: 'bronze',
                 tags: ['dwarf', 'mercenary'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
         ],
         specials: [
             {
-                id: 'scoiatael_special_1',
                 name: 'Круг жизни',
-                type: 'special',
-                faction: 'scoiatael',
                 image: 'life.mp4',
                 description: 'Мать Природа',
-				descriptionfull: 'Те, кто хочет сровнять Брокилон с землей, сжечь его деревья и погубить в нем все живое, скоро станут пищей для его почвы.',
-				ability: 'damage_row_1',
+                descriptionfull: 'Те, кто хочет сровнять Брокилон с землей, сжечь его деревья и погубить в нем все живое, скоро станут пищей для его почвы.',
+                ability: 'damage_row_1',
                 rarity: 'bronze',
                 tags: ['weather'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
-                id: 'scoiatael_special_2',
                 name: 'Зов леса',
-                type: 'special',
-                faction: 'scoiatael',
                 image: 'voise.mp4',
                 description: ' ',
-				descriptionfull: 'Брокилон для меня дороже жизни. Мы его дети, и он заботится о нас. Я буду защищать его до последнего вздоха.',
-				ability: 'boost_near_2',
+                descriptionfull: 'Брокилон для меня дороже жизни. Мы его дети, и он заботится о нас. Я буду защищать его до последнего вздоха.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['spell'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-			{
-                id: 'scoiatael_special_3',
+            {
                 name: 'Закалка',
-                type: 'special',
-                faction: 'scoiatael',
                 image: 'tempering.mp4',
                 description: ' ',
-				descriptionfull: 'Краснолюдская сталь очень крепкая. Почти такая же крепкая, как сами краснолюды.',
-				ability: 'boost_tag_dwarf',
+                descriptionfull: 'Краснолюдская сталь очень крепкая. Почти такая же крепкая, как сами краснолюды.',
+                ability: 'boost_tag_dwarf',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-		],
+        ],
         tactics: [
             {
-                id: 'scoiatael_tactic_1',
                 name: 'Притворство',
-                type: 'tactic',
-                faction: 'scoiatael',
                 image: 'feign.mp4',
                 description: 'Засада',
-				descriptionfull: 'Чтобы расставить ловушку, нужно спрятаться… Но бывают и исключения.',
-				ability: 'boost_row_2',
+                descriptionfull: 'Чтобы расставить ловушку, нужно спрятаться… Но бывают и исключения.',
+                ability: 'boost_row_2',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
-            },],
+            },
+        ],
         artifacts: [
             {
-                id: 'scoiatael_artifact_1',
                 name: 'Махакамский рог',
-                type: 'artifact',
-                faction: 'scoiatael',
                 image: 'rog.mp4',
                 description: ' ',
-				descriptionfull: 'Как-то раз в Махакаме устроили конкурс игры на роге. И тогда краснолюды обнаружили, что громкие звуки и покрытые снегом вершины — не самое удачное сочетание.',
-				ability: 'boost_near_2',
+                descriptionfull: 'Как-то раз в Махакаме устроили конкурс игры на роге. И тогда краснолюды обнаружили, что громкие звуки и покрытые снегом вершины — не самое удачное сочетание.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['treasure'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
-                id: 'scoiatael_artifact_2',
                 name: 'Руна Марена',
-                type: 'artifact',
-                faction: 'scoiatael',
                 image: 'marena.mp4',
                 description: ' ',
-				descriptionfull: 'Даже смотреть противно.',
-				ability: 'boost_near_2',
+                descriptionfull: 'Даже смотреть противно.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
             {
-                id: 'scoiatael_artifact_3',
                 name: 'Призматический кулон',
-                type: 'artifact',
-                faction: 'scoiatael',
                 image: 'prism.mp4',
                 description: ' ',
-				descriptionfull: 'Его создатель искал вдохновения в простом чуде природы. Черпать магическую энергию с ним проще, чем дышать.',
-				ability: 'boost_2',
+                descriptionfull: 'Его создатель искал вдохновения в простом чуде природы. Черпать магическую энергию с ним проще, чем дышать.',
+                ability: 'boost_2',
                 rarity: 'bronze',
                 tags: ['treasure'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/scoiatael/banner_bronze.png'
             },
-		]
+        ]
     },
 
     skellige: {
         units: [
             {
-                id: 'skellige_unit_1',
                 name: 'Бран',
-				namefull: 'Бран Тиршах',
+                namefull: 'Бран Тиршах',
                 strength: 10,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'bran.mp4',
                 description: 'Конунг Скеллиге',
-				descriptionfull: 'Говорят, будто легче обуздать море, что омывает берега Скеллиге, чем самих его жителей. Но Брану это удалось. Он подчинил себе Острова — и правил ими железной рукой.',
-				ability: ' ',
+                descriptionfull: 'Король Островов из клана Тиршах, дядя Краха ан Крайта и брат Эйста Тиршаха, а также хороший друг друида Мышовура.<br><br>Говорят, будто легче обуздать море, что омывает берега Скеллиге, чем самих его жителей. Но Брану это удалось. Он подчинил себе Острова — и правил ими железной рукой.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'gold',
                 tags: ['leader', 'king'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/skellige/banner_gold.png'
             },
             {
-                id: 'skellige_unit_2',
                 name: 'Эйст',
-				namefull: 'Эйст Тиршах',
+                namefull: 'Эйст Тиршах',
                 strength: 7,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'eist.mp4',
                 description: 'Ярл клана Тиршах',
-				descriptionfull: 'Эйст приходился братом королю Скеллиге Брану Тиршаху, а также дядей ярлу Краху ан Крайту',
-				ability: ' ',
+                descriptionfull: 'Эйст приходился братом королю Скеллиге Брану Тиршаху, а также дядей ярлу Краху ан Крайту — через мать. Через женитьбу на королеве Калантэ он позднее стал также отчимом принцессы Паветты и дедушкой Цириллы.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'bronze',
                 tags: ['king'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
             {
-                id: 'skellige_unit_3',
                 name: 'Крах',
-				namefull: 'Крах ан Крайт',
+                namefull: 'Крах ан Крайт',
                 strength: 8,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'krah.mp4',
                 description: 'Ярл клана ан Крайт',
-				descriptionfull: 'Имена многих вождей и героев Скеллиге увековечены в сагах, но ни один из них не был столь славен, как Крах, ярл клана Крайт и правитель Каэр Трольде. Скальды воспевали его силу, отвагу, благоразумие, щедрость, верность друзьям и беспощадность к врагам.',
-				ability: ' ',
+                descriptionfull: 'лемянник Брана и Эйста Турсеаха, отец Хьялмара и Керис, ярл Островов Скеллиге и лидер клана Крайтов, в прошлом ― верноподданный королевы Цинтры, Калантэ.<br><br>Имена многих вождей и героев Скеллиге увековечены в сагах, но ни один из них не был столь славен, как Крах, ярл клана Крайт и правитель Каэр Трольде.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
             {
-                id: 'skellige_unit_4',
                 name: 'Харальд Хромой',
-				namefull: 'Харальд Хромой',
+                namefull: 'Харальд ан Крайт',
                 strength: 7,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'harald.mp4',
-                description: 'Древний конунг Скеллиге',
-				descriptionfull: 'Харальд был посредственным воином, пока однажды медведь не покалечил ему ногу. Кость срослась криво, боль преследовала его до конца дней, но… Харальд стал сражаться лучше, чем прежде.',
-				ability: ' ',
+                description: 'Хромой',
+                descriptionfull: 'Жизнь Харальда ан Крайта изменилась навсегда, когда во время охоты на медведя зверь сильно искалечил его ногу. После длительного восстановления кости срослись неправильно, и Харальд до конца дней своих оставался хромым, из-за чего и получил своё прозвище.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'silver',
                 tags: ['king'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_unit_5',
+            {
                 name: 'Фламиника',
-				namefull: 'Фламиника',
+                namefull: 'Фламиника',
                 strength: 3,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'flaminica.mp4',
-                description: 'Друин клана Хэймэй',
-				descriptionfull: 'Фламиника — предводительница круга друидов',
-				ability: ' ',
+                description: 'Друид',
+                descriptionfull: 'Предводительница круга друидов, которая обладает огромной властью и пользуется огромным уважением.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'bronze',
                 tags: ['mage'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_unit_6',
+            {
                 name: 'Керис',
-				namefull: 'Керис ан Крайт',
+                namefull: 'Керис ан Крайт',
                 strength: 5,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'cerys.mp4',
-                description: 'Неустрашимая',
-				descriptionfull: 'Как и её отец, Керис умна, хитра, решительна и упряма. В отличие от своего брата, она куда более обстоятельно обдумывает свои действия и не идёт напролом.',
-				ability: ' ',
+                description: 'Перепёлка',
+                descriptionfull: 'Дочь Краха ан Крайта и сестра Хьяльмара Кривоустого, претендовавшая на трон Скеллиге. Как и её отец, Керис умна, хитра, решительна и упряма. В отличие от своего брата, она куда более обстоятельно обдумывает свои действия.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'bronze',
                 tags: ['kingser'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_unit_7',
+            {
                 name: 'Хольгер',
-				namefull: 'Хольгер Чернорукий',
+                namefull: 'Хольгер Чернорукий',
                 strength: 5,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'blackhand.mp4',
-                description: 'Ярл клана Димун',
-				descriptionfull: 'Хольгер известен своей жестокостью и кровожадностью. Он предводительствует кланом, даже по меркам островитян славящимся свирепостью и безжалостностью.',
-				ability: ' ',
+                description: ' ',
+                descriptionfull: 'Ярл клана Димун, владения которого расположены на острове Фаро. Хольгер известен своей жестокостью и кровожадностью.<br><br>Он предводительствует кланом, даже по меркам островитян славящимся свирепостью.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'bronze',
                 tags: ['kingser'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_unit_8',
+            {
                 name: 'Берсерк',
-				namefull: 'Берсерк',
+                namefull: 'Берсерк',
                 strength: 1,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'berserk.mp4',
                 description: 'Воин клана Друммонд',
-				descriptionfull: 'Это всего лишь царапина!',
-				ability: ' ',
-				copy: 3,
+                descriptionfull: 'Это всего лишь царапина!',
+                ability: ' ',
+                copy: 3,
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'bronze',
                 tags: ['warior'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_unit_9',
+            {
                 name: 'Кракен',
-				namefull: 'Кракен',
+                namefull: 'Кракен',
                 strength: 9,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'kraken.mp4',
                 description: 'Морское чудовище',
-				descriptionfull: 'Огромное создание, живущее в воде, которое может утащить на дно корабль. Предполагается, что сирены могут контролировать этих громадных чудищ. Похоже, это существо представляет собой гигантского кальмара-переростка: огромные щупальца ломают мачту и пробивают днище, помогая отправлять корабль на дно. Однако, официально существование данного чудовище зафиксировано не было ни ведьмаками, ни чародеями.',
-				ability: ' ',
+                descriptionfull: 'Огромное создание, живущее в воде, которое может утащить на дно корабль. Предполагается, что сирены могут контролировать этих громадных чудищ. Похоже, это существо представляет собой гигантского кальмара-переростка: огромные щупальца ломают мачту и пробивают днище, помогая отправлять корабль на дно. Однако, существование данного чудовище зафиксировано не было ни ведьмаками, ни чародеями.',
+                ability: ' ',
                 position: 'siege-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'silver',
                 tags: ['monster'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_unit_10',
+            {
                 name: 'Хьялмар',
-				namefull: 'Хьялмар ан Крайт',
+                namefull: 'Хьялмар ан Крайт',
                 strength: 5,
-                type: 'unit',
-                faction: 'skellige',
                 image: 'hyalmar.mp4',
                 description: 'Морской волк',
-				descriptionfull: 'Воин из клана Крайтов, сын ярла Краха ан Крайта и брат Керис, претендовавший на трон Скеллиге.',
-				ability: ' ',
+                descriptionfull: 'Воин из клана Крайтов, сын ярла Краха ан Крайта и брат Керис, претендовавший на трон Скеллиге.<br><br>С юного возраста Хьялмар в лучших традициях Скеллиге отличался безрассудной смелостью, презрением к боли и смерти, не задумываясь шёл на любой риск.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/skellige/banner_position.png',
                 rarity: 'bronze',
                 tags: ['kingser', 'warior'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
         ],
         specials: [
             {
-                id: 'skellige_special_1',
                 name: 'Шторм Скеллиге',
-                type: 'special',
-                faction: 'skellige',
                 image: 'storm.mp4',
                 description: ' ',
-				descriptionfull: 'Это не простая буря. Это гнев богов.',
-				ability: 'storm',
+                descriptionfull: 'Это не простая буря. Это гнев богов.',
+                ability: 'storm',
                 rarity: 'silver',
                 tags: ['hazard'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_special_2',
+            {
                 name: 'Кровавый орел',
-                type: 'special',
-                faction: 'skellige',
                 image: 'eagle.mp4',
                 description: ' ',
-				descriptionfull: 'Эти крылья унесут тебя далеко-далеко! ',
-				ability: 'damage_3',
+                descriptionfull: 'Эти крылья унесут тебя далеко-далеко!',
+                ability: 'damage_3',
                 rarity: 'bronze',
                 tags: ['execution', 'ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-			{
-                id: 'skellige_special_3',
+            {
                 name: 'Благословение Фрейи',
-                type: 'special',
-                faction: 'skellige',
                 image: 'freya.mp4',
-                description: ' ',
-				descriptionfull: 'Модрон Фрейя, Великая Мать, богиня любви, красоты и урожая.',
-				ability: 'boost_row_3',
+                description: 'Культ богини Фрейи',
+                descriptionfull: 'Распространённая на островах Скеллиге форма организованного почитания богини плодородия, любви и красоты, известной также как Великая Мать.',
+                ability: 'boost_row_3',
                 rarity: 'bronze',
                 tags: ['ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-		],
+        ],
         tactics: [
             {
-                id: 'skellige_tactic_1',
                 name: 'Боевая высадка',
-                type: 'tactic',
-                faction: 'skellige',
                 image: 'assault.mp4',
                 description: 'Стратегия',
-				descriptionfull: 'Здесь корабль, там корабль... Так, глядишь, все королевство захватим!',
-				ability: 'boost_row_3',
+                descriptionfull: 'Здесь корабль, там корабль... Так, глядишь, все королевство захватим!',
+                ability: 'boost_row_3',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
-            },],
+            },
+        ],
         artifacts: [
             {
-                id: 'skellige_artifact_1',
                 name: 'Магический компас',
-                type: 'artifact',
-                faction: 'skellige',
                 image: 'compas.mp4',
                 description: ' ',
-				descriptionfull: 'Поможет найти искомое, даже если оно не очень-то вам и нужно.',
-				ability: 'boost_1',
+                descriptionfull: 'Поможет найти искомое, даже если оно не очень-то вам и нужно.',
+                ability: 'boost_1',
                 rarity: 'bronze',
                 tags: ['treasure'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
             {
-                id: 'skellige_artifact_2',
                 name: 'Руна Стрибог',
-                type: 'artifact',
-                faction: 'skellige',
                 image: 'stribog.mp4',
                 description: ' ',
-				descriptionfull: 'Офирские мастера умеют складывать из слов руны, наделенные большой силой.',
-				ability: 'boost_near_2',
+                descriptionfull: 'Офирские мастера умеют складывать из слов руны, наделенные большой силой.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
             {
-                id: 'skellige_artifact_3',
                 name: 'Слезы сирены',
-                type: 'artifact',
-                faction: 'skellige',
                 image: 'sirena.mp4',
                 description: ' ',
-				descriptionfull: 'Говорят, мол, они плачут только по утерянной любви. Жалко, что влюбляются они раз и на всю жизнь...',
-				ability: 'boost_3',
+                descriptionfull: 'Говорят, мол, они плачут только по утерянной любви. Жалко, что влюбляются они раз и на всю жизнь...',
+                ability: 'boost_3',
                 rarity: 'bronze',
                 tags: ['alchimy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/skellige/banner_bronze.png'
             },
-		]
-    },
+        ]
+    },	
 	
-	syndicate: {
+    syndicate: {
         units: [
             {
-                id: 'syndicate_unit_1',
                 name: 'Тесак',
-				namefull: 'Карл Варезе',
+                namefull: 'Карл Варезе',
                 strength: 10,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'vareze.mp4',
-                description: 'Лидер группировки «Златорубов»',
-				descriptionfull: 'Карло Варезе по прозвищу Тесак — вспыльчивый главарь Златорубов. Это безжалостные «деловые краснолюды», которые постоянно ищут новые возможности.',
-				ability: ' ',
+                description: 'Тесак',
+                descriptionfull: 'Лидер группировки «Златорубов». Это безжалостные «деловые краснолюды», которые постоянно ищут новые возможности.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'gold',
                 tags: ['leader', 'dwarf'],
-                border: 'deck/bord_gold.png',
-                banner: 'faction/syndicate/banner_gold.png'
             },
             {
-                id: 'syndicate_unit_2',
                 name: 'Ублюдок Младший',
-				namefull: 'Киприан Вилли',
+                namefull: 'Киприан Вилли',
                 strength: 8,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'villi.mp4',
-                description: 'Лидер группировки «Сердцеедов»',
-				descriptionfull: 'Киприан Вилли, известный в городе как Ублюдок Младший, ведет за собой жестоких и беспощадных Сердцеедов — это шайка садистов, которые готовы замучить любого, кто перейдет им дорогу.',
-				ability: ' ',
+                description: 'Ублюдок Младший',
+                descriptionfull: 'Лидер группировки «Сердцеедов», ведет за собой жестоких и беспощадных Сердцеедов — это шайка садистов, которые готовы замучить любого, кто перейдет им дорогу.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['criminal'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
             {
-                id: 'syndicate_unit_3',
                 name: 'Король Нищих',
-				namefull: 'Франциск Бедлам',
+                namefull: 'Франциск Бедлам',
                 strength: 9,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'bedlam.mp4',
-                description: 'Лидер группировки «Невидимых»',
-				descriptionfull: 'Франциск Бедлам, известный как Король Нищих, полагается на свою банду Невидимых. Мелкие воришки, продажные женщины, попрошайки и все, кого народ привык не замечать, занимаются лишь тем, что разнюхивают для Короля информацию — главный источник его власти.',
-				ability: ' ',
+                description: 'Король Нищих',
+                descriptionfull: 'Лидер группировки «Невидимых». Мелкие воришки, продажные женщины, попрошайки и все, кого народ привык не замечать, занимаются лишь тем, что разнюхивают для Короля информацию — главный источник его власти.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'silver',
                 tags: ['criminal'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
             {
-                id: 'syndicate_unit_4',
                 name: 'Сиги Ройвен',
-				namefull: 'Сигизмунд Дийкстра',
+                namefull: 'Сигизмунд Дийкстра',
                 strength: 8,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'dijkstra.mp4',
-                description: 'Лидер группировки «Сиги Ройвена»',
-				descriptionfull: 'Член правления Синдиката. Бывший шеф реданской разведки. Именуется графом, дабы не вызывать у окружения подозрений и недоброжелательности',
-				ability: '',
+                description: 'Сиги Ройвен',
+                descriptionfull: 'Лидер группировки «Сиги Ройвена», член правления Синдиката. Бывший глава реданской разведки. Именуется графом, дабы не вызывать у окружения подозрений и недоброжелательности',
+                ability: '',
                 position: 'hidden-close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'silver',
                 tags: ['kingser', 'criminal'],
-                border: 'deck/bord_silver.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_unit_5',
+            {
                 name: 'Яков',
-				namefull: 'Яков из Альдерсберга',
+                namefull: 'Яков из Альдерсберга',
                 strength: 5,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'jakub.mp4',
                 description: 'Магистр Ордена Пылающей Розы',
-				descriptionfull: 'Желая заполучить в свою армию сильнейших солдат, Великий Магистр заключает сделку с Саламандрами- Вызимской бандой убийц и наркоторговцев, во главе с мятежным Зерриканским чародеем Азаром Яведом ',
-				ability: ' ',
+                descriptionfull: 'Желая заполучить в свою армию сильнейших солдат, Великий Магистр заключает сделку с Саламандрами — Вызимской бандой убийц и наркоторговцев, во главе с мятежным Зерриканским чародеем Азаром Яведом',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['kingser'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			/*{
-                id: 'syndicate_unit_6',
-                name: 'Тинбой',
-				namefull: 'Тинбой',
-                strength: 2,
-                type: 'unit',
-                faction: 'syndicate',
-                image: 'tinboy.mp4',
-                description: 'Лидер группы бандитов Короля Нищих',
-				descriptionfull: 'Батя его был лудильщиком. И когда был трезвый, лудил по металлу. А когда пьяный — бывало, и по лицу сынка.',
-				ability: ' ',
-                position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
-                rarity: 'bronze',
-                tags: ['criminal', 'mercenary'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
-            },
-			{
-                id: 'syndicate_unit_7',
-                name: 'Клоук-фрик',
-				namefull: 'Клоук-фрик',
-                strength: 2,
-                type: 'unit',
-                faction: 'syndicate',
-                image: 'freak.mp4',
-                description: 'Фрик из шой уродов Ублюдка младшего',
-				descriptionfull: 'Ты чё такой серьёзный?',
-				ability: ' ',
-                position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
-                rarity: 'bronze',
-                tags: ['criminal'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
-            },*/
-			{
-                id: 'syndicate_unit_8',
+            {
                 name: 'Великий инквизитор',
-				namefull: 'Гелвид',
+                namefull: 'Гелвид',
                 strength: 4,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'helveed.mp4',
                 description: 'Инквизитор Ордена Пылающей Розы',
-				descriptionfull: 'Значимый церковный деятель из Новиграда. По статусу и положении он идет сразу после самого Иерарха.',
-				ability: ' ',
+                descriptionfull: 'Значимый церковный деятель из Новиграда. По статусу и положении он идет сразу после самого Иерарха.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['religy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_unit_9',
+            {
                 name: 'Гвитр и Аэлидия',
-				namefull: 'Гвитр и Аэлидия',
+                namefull: 'Гвитр и Аэлидия',
                 strength: 6,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'hvitr_and_aelydia.mp4',
-                description: 'Пираты из организация «Теней прилива»',
-				descriptionfull: 'Они неразделимы, непобедимы и ненадёжны.',
-				ability: ' ',
+                description: 'Пираты из банды «Теней прилива»',
+                descriptionfull: 'Гвитр вместе со своей подругой Аэлидией состоял в преступной группировке «Тенях прилива». Вскоре, однако, организация распалась, а судьба Гвитра и Аэлидии осталась неизвестной.',
+                ability: ' ',
                 position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['criminal', 'pirat'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_unit_10',
+            {
                 name: 'Приспешница',
-				namefull: 'Приспешница',
+                namefull: 'Приспешница',
                 strength: 1,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'thife.mp4',
-                description: 'Воровка из организация «Саламандры»',
-				descriptionfull: 'По традиции первые пять заданий приспешники выполняют бесплатно. Так они демонстрируют приверженность делу.',
-				ability: ' ',
-				copy: 3,
+                description: 'Воровка из организации «Саламандры»',
+                descriptionfull: 'По традиции первые пять заданий приспешники выполняют бесплатно. Так они демонстрируют приверженность делу.',
+                ability: ' ',
+                copy: 3,
                 position: 'close-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['criminal', 'mercenary'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_unit_11',
+            {
                 name: 'Азар Явед',
-				namefull: 'Азар Явед',
+                namefull: 'Азар Явед',
                 strength: 5,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'yaved.mp4',
-                description: 'Лидер группировки «Саламандр»',
-				descriptionfull: 'Загадочный чародей-отступник из Зеррикании, руководивший нападением на Каэр Морхен и выращиванием солдат-мутантов для Якова из Альдерсберга с целью захвата власти на Севере.',
-				ability: ' ',
+                description: ' ',
+                descriptionfull: 'Лидер группировки «Саламандр». Загадочный чародей-отступник из Зеррикании, руководивший нападением на Каэр Морхен и выращиванием солдат-мутантов для Якова из Альдерсберга с целью захвата власти на Севере.',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['mage'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_unit_12',
+            {
                 name: 'Капитан Яго',
-				namefull: 'Капитан Яго',
+                namefull: 'Капитан Яго',
                 strength: 4,
-                type: 'unit',
-                faction: 'syndicate',
                 image: 'yago.mp4',
                 description: 'Пират из организации «Теней прилива»',
-				descriptionfull: 'Его часто принимают за зерриканского посланника из-за элегантного платья и изысканных манер… но где вы видали дипломата с арбалетом?',
-				ability: ' ',
+                descriptionfull: 'Его часто принимают за зерриканского посланника из-за элегантного платья и изысканных манер… но где вы видали дипломата с арбалетом?',
+                ability: ' ',
                 position: 'ranged-row',
-                positionBanner: 'faction/syndicate/banner_position.png',
                 rarity: 'bronze',
                 tags: ['criminal', 'pirat'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
         ],
         specials: [
-			{
-                id: 'syndicate_special_1',
+            {
                 name: 'Вечные муки',
-                type: 'special',
-                faction: 'syndicate',
                 image: 'damnation.mp4',
                 description: 'Очищение грехов',
-				descriptionfull: 'Из-за этих костров в Новиграде дышать невозможно! Почему нельзя сжигать грешников где-нибудь на окраине?',
-				ability: 'damage_3',
+                descriptionfull: 'Из-за этих костров в Новиграде дышать невозможно! Почему нельзя сжигать грешников где-нибудь на окраине?',
+                ability: 'damage_3',
                 rarity: 'bronze',
                 tags: ['execution', 'ritual'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_special_2',
+            {
                 name: 'Отравленный клинок',
-                type: 'special',
-                faction: 'syndicate',
                 image: 'poisoned.mp4',
                 description: 'Убийственный',
-				descriptionfull: 'Зачем наносить глубокие раны, если хватит одной царапины?',
-				ability: 'damage_2',
+                descriptionfull: 'Зачем наносить глубокие раны, если хватит одной царапины?',
+                ability: 'damage_2',
                 rarity: 'bronze',
                 tags: ['tactic'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			{
-                id: 'syndicate_special_3',
+            {
                 name: 'Колесо фортуны',
-                type: 'special',
-                faction: 'syndicate',
                 image: 'fortuna.mp4',
                 description: 'Убийственный',
-				descriptionfull: 'Здесь меткость — понятие субъективное.',
-				ability: 'boost_2',
+                descriptionfull: 'Здесь меткость — понятие субъективное.',
+                ability: 'boost_2',
                 rarity: 'bronze',
                 tags: ['scenary'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			],
+        ],
         tactics: [
             {
-                id: 'syndicate_tactic_1',
                 name: 'Сговор',
-                type: 'tactic',
-                faction: 'syndicate',
                 image: 'collusion.mp4',
                 description: 'Тактика',
-				descriptionfull: 'В этом городе золота хватит всем. Ну, нам-то уж точно хватит.',
-				ability: 'boost_tag_criminal',
+                descriptionfull: 'В этом городе золота хватит всем. Ну, нам-то уж точно хватит.',
+                ability: 'boost_tag_criminal',
                 rarity: 'bronze',
                 tags: ['criminality'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-		],
+        ],
         artifacts: [
             {
-                id: 'syndicate_artifact_1',
                 name: 'Священное пламя',
-                type: 'artifact',
-                faction: 'syndicate',
                 image: 'flame.mp4',
                 description: ' ',
-				descriptionfull: 'Вечный Огонь — символ надежды, стойкости к несчастьям, света, указывающего путь во тьме, предвещающего прогресс и лучшее завтра.',
-				ability: 'boost_near_2',
+                descriptionfull: 'Вечный Огонь — символ надежды, стойкости к несчастьям, света, указывающего путь во тьме, предвещающего прогресс и лучшее завтра.',
+                ability: 'boost_near_2',
                 rarity: 'bronze',
                 tags: ['religy'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
             {
-                id: 'syndicate_artifact_2',
                 name: 'Контракт наемника',
-                type: 'artifact',
-                faction: 'syndicate',
                 image: 'contract.mp4',
                 description: 'Контракт',
-				descriptionfull: 'Вот тут подпиши… На кровь не обращай внимания.',
-				ability: 'boost_2',
+                descriptionfull: 'Вот тут подпиши… На кровь не обращай внимания.',
+                ability: 'boost_2',
                 rarity: 'bronze',
                 tags: ['scenary'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
             {
-                id: 'syndicate_artifact_3',
                 name: 'Кольцо покровительства',
-                type: 'artifact',
-                faction: 'syndicate',
                 image: 'ring.mp4',
                 description: ' ',
-				descriptionfull: 'Надев его, владелец может рассчитывать на удачную встречу с незнакомцем или особо ценную находку. Впрочем, поговаривают, что такие оказии — чистой воды случайность.',
-				ability: 'boost_1',
+                descriptionfull: 'Надев его, владелец может рассчитывать на удачную встречу с незнакомцем или особо ценную находку. Впрочем, поговаривают, что такие оказии — чистой воды случайность.',
+                ability: 'boost_1',
                 rarity: 'bronze',
                 tags: ['treasure'],
-                border: 'deck/bord_bronze.png',
-                banner: 'faction/syndicate/banner_bronze.png'
             },
-			]
+        ],
     },
 
 };
 
+const cardsData = {};
+
+cardsData.neutral = createFactionCards('neutral', minimalCardsData.neutral || { units: [], specials: [], artifacts: [], tactics: [] });
+cardsData.monsters = createFactionCards('monsters', minimalCardsData.monsters || { units: [], specials: [], artifacts: [], tactics: [] });
+cardsData.nilfgaard = createFactionCards('nilfgaard', minimalCardsData.nilfgaard || { units: [], specials: [], artifacts: [], tactics: [] });
+cardsData.realms = createFactionCards('realms', minimalCardsData.realms || { units: [], specials: [], artifacts: [], tactics: [] });
+cardsData.scoiatael = createFactionCards('scoiatael', minimalCardsData.scoiatael || { units: [], specials: [], artifacts: [], tactics: [] });
+cardsData.skellige = createFactionCards('skellige', minimalCardsData.skellige || { units: [], specials: [], artifacts: [], tactics: [] });
+cardsData.syndicate = createFactionCards('syndicate', minimalCardsData.syndicate || { units: [], specials: [], artifacts: [], tactics: [] });
+
+const cardsCache = {
+    allCardsFlat: null,
+    allCardsByFaction: null,
+    allCardsByTag: null
+};
+
 function getFactionCards(factionId) {
     if (!cardsData[factionId]) {
-        return {
-            units: [],
-            specials: [],
-            artifacts: [],
-            tactics: []
-        };
+        return { units: [], specials: [], artifacts: [], tactics: [] };
+    }
+
+    if (cardsCache.allCardsByFaction?.[factionId]) {
+        return cardsCache.allCardsByFaction[factionId];
+    }
+
+    if (!cardsCache.allCardsByFaction) {
+        cardsCache.allCardsByFaction = {};
     }
 
     const factionCards = {
@@ -2180,15 +1555,25 @@ function getFactionCards(factionId) {
         tactics: [...(cardsData[factionId].tactics || [])]
     };
 
-    factionCards.units.push(...(cardsData.neutral.units || []));
-    factionCards.specials.push(...(cardsData.neutral.specials || []));
-    factionCards.artifacts.push(...(cardsData.neutral.artifacts || []));
-    factionCards.tactics.push(...(cardsData.neutral.tactics || []));
+    if (cardsData.neutral) {
+        factionCards.units.push(...(cardsData.neutral.units || []));
+        factionCards.specials.push(...(cardsData.neutral.specials || []));
+        factionCards.artifacts.push(...(cardsData.neutral.artifacts || []));
+        factionCards.tactics.push(...(cardsData.neutral.tactics || []));
+    }
 
+    cardsCache.allCardsByFaction[factionId] = factionCards;
     return factionCards;
 }
 
 function getCardById(cardId) {
+    if (!cardId) return null;
+
+    if (cardsCache.allCardsFlat) {
+        const cachedCard = cardsCache.allCardsFlat.find(c => c.id === cardId);
+        if (cachedCard) return cachedCard;
+    }
+
     for (const faction in cardsData) {
         for (const type in cardsData[faction]) {
             if (Array.isArray(cardsData[faction][type])) {
@@ -2200,7 +1585,36 @@ function getCardById(cardId) {
     return null;
 }
 
+function getAllCardsFlat() {
+    if (cardsCache.allCardsFlat) {
+        return cardsCache.allCardsFlat;
+    }
+
+    const allCards = [];
+    
+    for (const faction in cardsData) {
+        for (const type in cardsData[faction]) {
+            if (Array.isArray(cardsData[faction][type])) {
+                allCards.push(...cardsData[faction][type]);
+            }
+        }
+    }
+    
+    cardsCache.allCardsFlat = allCards;
+    return allCards;
+}
+
 function getCardsByTag(tag) {
+    if (!tag) return { units: [], specials: [], artifacts: [], tactics: [] };
+
+    if (cardsCache.allCardsByTag?.[tag]) {
+        return cardsCache.allCardsByTag[tag];
+    }
+
+    if (!cardsCache.allCardsByTag) {
+        cardsCache.allCardsByTag = {};
+    }
+
     const result = {
         units: [],
         specials: [],
@@ -2212,7 +1626,7 @@ function getCardsByTag(tag) {
         for (const type in cardsData[faction]) {
             if (Array.isArray(cardsData[faction][type])) {
                 cardsData[faction][type].forEach(card => {
-                    if (card.tags && card.tags.includes(tag)) {
+                    if (card.tags?.includes(tag)) {
                         result[type].push(card);
                     }
                 });
@@ -2220,6 +1634,7 @@ function getCardsByTag(tag) {
         }
     }
 
+    cardsCache.allCardsByTag[tag] = result;
     return result;
 }
 
@@ -2227,18 +1642,125 @@ function getAllCards() {
     return cardsData;
 }
 
-function getAllCardsFlat() {
-    const allCards = [];
+function getCardCopyCount(cardId) {
+    const card = getCardById(cardId);
+    return card?.copy ?? 1;
+}
+
+function isHeroCard(card) {
+    if (!card?.tags) return false;
+    return card.tags.includes('hero') || card.tags.includes('Герой');
+}
+
+function getFactionCardsOnly(factionId) {
+    if (!cardsData[factionId]) {
+        return { units: [], specials: [], artifacts: [], tactics: [] };
+    }
+
+    return {
+        units: [...(cardsData[factionId].units || [])],
+        specials: [...(cardsData[factionId].specials || [])],
+        artifacts: [...(cardsData[factionId].artifacts || [])],
+        tactics: [...(cardsData[factionId].tactics || [])]
+    };
+}
+
+function getNeutralCards() {
+    if (!cardsData.neutral) {
+        return { units: [], specials: [], artifacts: [], tactics: [] };
+    }
+
+    return {
+        units: [...(cardsData.neutral.units || [])],
+        specials: [...(cardsData.neutral.specials || [])],
+        artifacts: [...(cardsData.neutral.artifacts || [])],
+        tactics: [...(cardsData.neutral.tactics || [])]
+    };
+}
+
+function getAllLeaders() {
+    const leaders = [];
     
     for (const faction in cardsData) {
+        const units = cardsData[faction]?.units;
+        if (units && Array.isArray(units)) {
+            const factionLeaders = units.filter(unit => 
+                unit.tags?.includes('leader') || unit.type === 'leader'
+            );
+            leaders.push(...factionLeaders);
+        }
+    }
+    
+    return leaders;
+}
+
+function getCardsByType(cardType, factionId = null) {
+    const result = [];
+    
+    const factions = factionId ? [factionId] : Object.keys(cardsData);
+    
+    for (const faction of factions) {
+        const cards = cardsData[faction]?.[`${cardType}s`];
+        if (cards && Array.isArray(cards)) {
+            result.push(...cards);
+        }
+    }
+    
+    return result;
+}
+
+function getCardsByRarity(rarity, factionId = null) {
+    const result = [];
+    
+    const factions = factionId ? [factionId] : Object.keys(cardsData);
+    
+    for (const faction of factions) {
         for (const type in cardsData[faction]) {
             if (Array.isArray(cardsData[faction][type])) {
-                allCards.push(...cardsData[faction][type]);
+                const filtered = cardsData[faction][type].filter(card => card.rarity === rarity);
+                result.push(...filtered);
             }
         }
     }
     
-    return allCards;
+    return result;
+}
+
+function getCardsByPosition(position, factionId = null) {
+    const result = [];
+    
+    const factions = factionId ? [factionId] : Object.keys(cardsData);
+    
+    for (const faction of factions) {
+        const units = cardsData[faction]?.units;
+        if (units && Array.isArray(units)) {
+            const filtered = units.filter(card => card.position === position);
+            result.push(...filtered);
+        }
+    }
+    
+    return result;
+}
+
+function getFactionStats(factionId) {
+    const cards = getFactionCards(factionId);
+    
+    return {
+        totalUnits: cards.units.length,
+        totalSpecials: cards.specials.length,
+        totalArtifacts: cards.artifacts.length,
+        totalTactics: cards.tactics.length,
+        totalCards: cards.units.length + cards.specials.length + cards.artifacts.length + cards.tactics.length,
+        goldCards: [...cards.units, ...cards.specials, ...cards.artifacts, ...cards.tactics].filter(c => c.rarity === 'gold').length,
+        silverCards: [...cards.units, ...cards.specials, ...cards.artifacts, ...cards.tactics].filter(c => c.rarity === 'silver').length,
+        bronzeCards: [...cards.units, ...cards.specials, ...cards.artifacts, ...cards.tactics].filter(c => c.rarity === 'bronze').length
+    };
+}
+
+function invalidateCardsCache() {
+    cardsCache.allCardsFlat = null;
+    cardsCache.allCardsByFaction = null;
+    cardsCache.allCardsByTag = null;
 }
 
 window.cardsModule = {
@@ -2247,5 +1769,15 @@ window.cardsModule = {
     getCardsByTag,
     getAllCards,
     getAllCardsFlat,
-    cardsData
+    cardsData,
+    getCardCopyCount,
+    isHeroCard,
+    getFactionCardsOnly,
+    getNeutralCards,
+    getAllLeaders,
+    getCardsByType,
+    getCardsByRarity,
+    getCardsByPosition,
+    getFactionStats,
+    invalidateCardsCache
 };
