@@ -93,6 +93,14 @@ function playFactionVoice(factionId) {
     });
 }
 
+function preloadFactionVoice(factionId) {
+    const voicePath = `faction/${factionId}/voice.mp3`;
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.src = voicePath;
+    return audio;
+}
+
 function getElement(selector) {
     if (!cachedElements[selector]) {
         cachedElements[selector] = document.querySelector(selector);
