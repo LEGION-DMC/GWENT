@@ -434,10 +434,7 @@ const gameModule = {
         this.mulliganHiddenElements = null;
     },
 
-    createMulliganControls: function() {
-		const playerHand = document.getElementById('playerHand');
-		if (!playerHand) return;
-		
+	createMulliganControls: function() {
 		const existingControls = document.getElementById('mulliganControls');
 		if (existingControls) {
 			existingControls.remove();
@@ -455,7 +452,9 @@ const gameModule = {
 		
 		const infoText = document.createElement('div');
 		infoText.id = 'mulliganInfoText';
-		infoText.textContent = 'Выбрано: 0/2 карт';
+		
+		const availableMulligans = this.gameState.mulligan.player.available;
+		infoText.textContent = `Выбрано: 0/${availableMulligans} карт`;
 		
 		infoPanel.appendChild(infoText);
 		
@@ -532,6 +531,9 @@ const gameModule = {
 		
 		const playerMulliganCanceled = this.gameState.mulligan.player.available === 0;
 		
+		const isPlayerRealms = this.gameState.player.faction === 'realms';
+		const hasExtraMulligan = isPlayerRealms && this.gameState.mulligan.player.available === 3;
+		
 		if (playerMulliganCanceled) {
 			audioManager.playSound('lock');
 			
@@ -574,11 +576,9 @@ const gameModule = {
 		}
 
 		const frameWrapper = document.createElement('div');
-		frameWrapper.id = 'mulligan-frame-wrapper';
 		frameWrapper.className = 'mulligan-frame-wrapper';
 		
 		const cardsContainer = document.createElement('div');
-		cardsContainer.id = 'mulligan-cards-container';
 		cardsContainer.className = 'mulligan-cards-container';
 		
 		const innerCardsContainer = document.createElement('div');
@@ -593,10 +593,30 @@ const gameModule = {
 		frameWrapper.appendChild(cardsContainer);
 		handContainer.appendChild(frameWrapper);
 		
+		if (hasExtraMulligan) {
+			const existingInfo = document.querySelector('.mulligan-faction-info');
+			if (existingInfo) {
+				existingInfo.remove();
+			}
+			
+			const infoBanner = document.createElement('div');
+			infoBanner.className = 'mulligan-faction-info';
+			infoBanner.innerHTML = `
+				<div class="mulligan-faction-info__icon">
+					<img src="board/mulligan.png" alt="Муллиган">
+				</div>
+				<div class="mulligan-faction-info__title">ДОПОЛНИТЕЛЬНАЯ МУЛЛИГАНА</div>
+				<div class="mulligan-faction-info__description">Способность фракции Королевства Севера</div>
+			`;
+			
+			document.body.appendChild(infoBanner);
+		}
+		
 		handContainer.style.cssText = originalStyles;
 		handContainer.style.display = 'flex';
 		handContainer.style.justifyContent = 'center';
 		handContainer.style.alignItems = 'center';
+		handContainer.style.flexDirection = 'column';
 	},
 
     createMulliganCardElement: function(card, index) {
@@ -707,30 +727,30 @@ const gameModule = {
 		}
 	},
 
-    updateMulliganInfo: function() {
-        const infoText = document.getElementById('mulliganInfoText');
-        const infoPanel = document.getElementById('mulliganInfo');
-        
-        if (!infoText || !infoPanel) {
-            return;
-        }
-        
-        const mulliganState = this.gameState.mulligan.player;
-        const selectedCount = mulliganState.cards.length;
-        const availableCount = mulliganState.available;
-        
-        infoText.textContent = `Выбрано: ${selectedCount}/${availableCount} карт`;
-        
-        if (selectedCount > 0) {
-            infoPanel.style.borderColor = '#4CAF50';
-            infoPanel.style.color = '#4CAF50';
-            infoPanel.style.boxShadow = '0 0 10px rgba(76, 175, 80, 0.3)';
-        } else {
-            infoPanel.style.borderColor = '#d4af37';
-            infoPanel.style.color = '#d4af37';
-            infoPanel.style.boxShadow = 'none';
-        }
-    },
+	updateMulliganInfo: function() {
+		const infoText = document.getElementById('mulliganInfoText');
+		const infoPanel = document.getElementById('mulliganInfo');
+		
+		if (!infoText || !infoPanel) {
+			return;
+		}
+		
+		const mulliganState = this.gameState.mulligan.player;
+		const selectedCount = mulliganState.cards.length;
+		const availableCount = mulliganState.available;
+		
+		infoText.textContent = `Выбрано: ${selectedCount}/${availableCount} карт`;
+		
+		if (selectedCount > 0) {
+			infoPanel.style.borderColor = '#4CAF50';
+			infoPanel.style.color = '#4CAF50';
+			infoPanel.style.boxShadow = '0 0 10px rgba(76, 175, 80, 0.3)';
+		} else {
+			infoPanel.style.borderColor = '#d4af37';
+			infoPanel.style.color = '#d4af37';
+			infoPanel.style.boxShadow = 'none';
+		}
+	},
 
 	resetPlayerMulliganSelection: function() {
 		const mulliganState = this.gameState.mulligan.player;
@@ -864,26 +884,32 @@ const gameModule = {
 		this.completeMulliganPhase();
 	},
 
-    removeMulliganInterface: function() {
-        this.restoreGameBoardAfterMulligan();
-        
-        const controls = document.getElementById('mulliganControls');
-        if (controls) {
-            controls.remove();
-        }
-        
-        const frameWrapper = document.getElementById('mulligan-frame-wrapper');
-        if (frameWrapper) {
-            frameWrapper.remove();
-        }
-        
-        const handContainer = document.getElementById('playerHand');
-        if (handContainer) {
-            handContainer.classList.remove('mulligan-active');
-            handContainer.innerHTML = '';
-            this.displayPlayerHand();
-        }
-    },
+	removeMulliganInterface: function() {
+		this.restoreGameBoardAfterMulligan();
+		
+		const controls = document.getElementById('mulliganControls');
+		if (controls) {
+			controls.remove();
+		}
+		
+		const frameWrapper = document.querySelector('.mulligan-frame-wrapper');
+		if (frameWrapper) {
+			frameWrapper.remove();
+		}
+		
+		const factionInfo = document.querySelector('.mulligan-faction-info');
+		if (factionInfo) {
+			factionInfo.remove();
+		}
+		
+		const handContainer = document.getElementById('playerHand');
+		if (handContainer) {
+			handContainer.classList.remove('mulligan-active');
+			handContainer.innerHTML = '';
+			handContainer.style.flexDirection = '';
+			this.displayPlayerHand();
+		}
+	},
 
     completeMulliganPhase: function() {
         this.gameState.mulligan.phase = 'completed';

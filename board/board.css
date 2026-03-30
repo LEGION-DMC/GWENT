@@ -1449,6 +1449,112 @@
     letter-spacing: 1px;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.mulligan-faction-info {
+    position: fixed;
+    left: 54%;
+    transform: translateX(-50%);
+    bottom: 23%;
+    text-align: center;
+    z-index: 1001;
+    animation: factionInfoAppear 0.3s ease-out;
+}
+
+.mulligan-faction-info__icon img {
+    width: 80px;
+    height: 80px;
+    display: block;
+    margin: 0 auto;
+    margin-bottom: 12px;
+}
+
+.mulligan-faction-info__title {
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 
+        2px 2px 4px rgba(0, 0, 0, 0.5),
+        0 0 8px rgba(165, 124, 44, 0.4);
+    position: relative;
+    padding-bottom: 8px;
+}
+
+.mulligan-faction-info__title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #cfaa4a, #e5c168, #cfaa4a, transparent);
+}
+
+.mulligan-faction-info__description {
+    color: #d4d4d4;
+    font-size: 12px;
+    line-height: 1.3;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+    padding-top: 8px;
+    position: relative;
+}
+
+.mulligan-faction-info__description::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 250px;
+    height: 1px;
+}
+
+@keyframes factionInfoAppear {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #gameMessages {
     position: fixed;
     top: 20px;
