@@ -4444,14 +4444,20 @@ const gameModule = {
 		});
 	},
 
-    returnToMainMenu: function() {
-        window.location.reload();
-    },
+	returnToMainMenu: function() {
+		if (window.audioManager) {
+			window.audioManager.restoreSavedMusic();
+		}
+		window.location.reload();
+	},
 
 	redeckGame: function() {
 		const playerDeck = window.deckModule?.currentDeck;
 		
 		if (!playerDeck || !playerDeck.faction) {
+			if (window.audioManager) {
+				window.audioManager.restoreSavedMusic();
+			}
 			window.location.reload();
 			return;
 		}
@@ -4460,6 +4466,9 @@ const gameModule = {
 		const factionData = window.factionModule?.factionsData[factionId];
 		
 		if (!factionData) {
+			if (window.audioManager) {
+				window.audioManager.restoreSavedMusic();
+			}
 			window.location.reload();
 			return;
 		}
@@ -4478,6 +4487,10 @@ const gameModule = {
 		
 		const deckBuilding = document.querySelector('.deck-building');
 		if (deckBuilding) deckBuilding.remove();
+		
+		if (window.audioManager) {
+			window.audioManager.restoreSavedMusic();
+		}
 		
 		if (window.deckModule && window.deckModule.initDeckBuilding) {
 			window.deckModule.initDeckBuilding(factionData);

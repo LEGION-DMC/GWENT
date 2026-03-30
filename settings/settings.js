@@ -3,7 +3,8 @@ const settingsModule = {
         soundEnabled: true,
         musicEnabled: true,
         cardDisplayMode: 'static',
-        gameMode: 'classic'
+        gameMode: 'classic',
+        musicTrack: 'northern'
     },
     _musicFirstInit: true,
     _storageKey: 'gwentSettings',
@@ -40,10 +41,14 @@ const settingsModule = {
             audioManager.soundEnabled = this.settings.soundEnabled;
             audioManager.musicEnabled = this.settings.musicEnabled;
             
+            if (audioManager.currentMusicTrack !== this.settings.musicTrack) {
+                audioManager.changeMusicTrack(this.settings.musicTrack);
+            }
+            
             if (this.settings.musicEnabled) {
                 if (this._musicFirstInit) {
                     audioManager.playBackgroundMusic();
-                } else if (!audioManager._wasMusicPlaying) {
+                } else if (!audioManager._wasMusicPlaying && !audioManager._musicPlaying) {
                     audioManager.resumeBackgroundMusic?.();
                 }
             } else {
@@ -61,7 +66,13 @@ const settingsModule = {
     getCardDisplayMode() { return this.settings.cardDisplayMode; },
     setCardDisplayMode(mode) { this.settings.cardDisplayMode = mode; this.saveSettings(); },
     getGameMode() { return this.settings.gameMode; },
-    setGameMode(mode) { this.settings.gameMode = mode; this.saveSettings(); }
+    setGameMode(mode) { this.settings.gameMode = mode; this.saveSettings(); },
+    getMusicTrack() { return this.settings.musicTrack; },
+    setMusicTrack(track) { 
+        if (this.settings.musicTrack === track) return;
+        this.settings.musicTrack = track; 
+        this.saveSettings();
+    }
 };
 
 window.settingsModule = settingsModule;
@@ -90,58 +101,74 @@ function showSettingsModal() {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'settings-modal-overlay';
     const isFullscreenActive = fullscreenAPI.isActive();
-    const { cardDisplayMode, gameMode } = settingsModule.settings;
+    const { cardDisplayMode, gameMode, musicTrack } = settingsModule.settings;
     const { soundEnabled, musicEnabled } = audioManager;
     
-    modalOverlay.innerHTML = `
-        <div class="settings-modal">
-            <div class="settings-modal__title">НАСТРОЙКИ</div>
-            <div class="settings-controls">
-                <div class="settings-title">ЗВУК</div>
-                <div class="settings-control">
-                    <div class="settings-control__label">Звуковые эффекты</div>
-                    <div class="settings-control__buttons">
-                        <button class="settings-control__btn ${soundEnabled ? 'active' : ''}" id="modalSoundOn">🕪</button>
-                        <button class="settings-control__btn ${!soundEnabled ? 'active' : ''}" id="modalSoundOff">✖</button>
-                    </div>
-                </div>
-                <div class="settings-control">
-                    <div class="settings-control__label">Фоновая музыка</div>
-                    <div class="settings-control__buttons">
-                        <button class="settings-control__btn ${musicEnabled ? 'active' : ''}" id="modalMusicOn">♬</button>
-                        <button class="settings-control__btn ${!musicEnabled ? 'active' : ''}" id="modalMusicOff">✖</button>
-                    </div>
-                </div>
-                <div class="settings-title">ГРАФИКА</div>
-                <div class="settings-control">
-                    <div class="settings-control__label">Режим экрана</div>
-                    <div class="settings-control__buttons">
-                        <button class="settings-control__btn ${!isFullscreenActive ? 'active' : ''}" id="modalFullscreenOff">❐</button>
-                        <button class="settings-control__btn ${isFullscreenActive ? 'active' : ''}" id="modalFullscreenOn">⛶</button>
-                    </div>
-                </div>
-                <div class="settings-control">
-                    <div class="settings-control__label">Вид карт</div>
-                    <div class="settings-control__buttons">
-                        <select id="cardDisplayMode" class="settings-select">
-                            <option value="static" ${cardDisplayMode === 'static' ? 'selected' : ''}>Статические</option>
-                            <option value="animated" ${cardDisplayMode === 'animated' ? 'selected' : ''}>Анимированные</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="settings-title">ИГРА</div>
-                <div class="settings-control">
-                    <div class="settings-control__label">Режим игры</div>
-                    <div class="settings-control__buttons">
-                        <select id="gameMode" class="settings-select">
-                            <option value="classic" ${gameMode === 'classic' ? 'selected' : ''}>Классический</option>
-                            <option value="cdpred" ${gameMode === 'cdpred' ? 'selected' : ''}>CD Project Red</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    const trackNames = {
+        northern: 'Northern Realms',
+        seadogs: 'Sea Dogs'
+    };
+    
+	modalOverlay.innerHTML = `
+		<div class="settings-modal">
+			<div class="settings-modal__title">НАСТРОЙКИ</div>
+			<div class="settings-controls">
+				<div class="settings-title">ЗВУК</div>
+				<div class="settings-control">
+					<div class="settings-control__label">Звуковые эффекты</div>
+					<div class="settings-control__buttons">
+						<button class="settings-control__btn ${soundEnabled ? 'active' : ''}" id="modalSoundOn">🕪</button>
+						<button class="settings-control__btn ${!soundEnabled ? 'active' : ''}" id="modalSoundOff">✖</button>
+					</div>
+				</div>
+				<div class="settings-control">
+					<div class="settings-control__label">Фоновая музыка</div>
+					<div class="settings-control__buttons">
+						<button class="settings-control__btn ${musicEnabled ? 'active' : ''}" id="modalMusicOn">♬</button>
+						<button class="settings-control__btn ${!musicEnabled ? 'active' : ''}" id="modalMusicOff">✖</button>
+					</div>
+				</div>
+				<div class="settings-control" style="justify-content: center;">
+					<div class="settings-control__buttons" style="width: 100%; display: flex; justify-content: center;">
+						<div class="music-track-selector">
+							<button class="music-track-arrow" id="prevTrackBtn"><</button>
+							<div class="music-track-name">
+								<span class="music-track-text" id="currentTrackName">${trackNames[musicTrack] || 'Northern Realms'}</span>
+							</div>
+							<button class="music-track-arrow" id="nextTrackBtn">></button>
+						</div>
+					</div>
+				</div>
+				<div class="settings-title">ГРАФИКА</div>
+				<div class="settings-control">
+					<div class="settings-control__label">Режим экрана</div>
+					<div class="settings-control__buttons">
+						<button class="settings-control__btn ${!isFullscreenActive ? 'active' : ''}" id="modalFullscreenOff">❐</button>
+						<button class="settings-control__btn ${isFullscreenActive ? 'active' : ''}" id="modalFullscreenOn">⛶</button>
+					</div>
+				</div>
+				<div class="settings-control">
+					<div class="settings-control__label">Вид карт</div>
+					<div class="settings-control__buttons">
+						<select id="cardDisplayMode" class="settings-select">
+							<option value="static" ${cardDisplayMode === 'static' ? 'selected' : ''}>Статические</option>
+							<option value="animated" ${cardDisplayMode === 'animated' ? 'selected' : ''}>Анимированные</option>
+						</select>
+					</div>
+				</div>
+				<div class="settings-title">ИГРА</div>
+				<div class="settings-control">
+					<div class="settings-control__label">Режим игры</div>
+					<div class="settings-control__buttons">
+						<select id="gameMode" class="settings-select">
+							<option value="classic" ${gameMode === 'classic' ? 'selected' : ''}>Классический</option>
+							<option value="cdpred" ${gameMode === 'cdpred' ? 'selected' : ''}>CD Project Red</option>
+						</select>
+					</div>
+				</div>
+			</div>
+		</div>
+	`;
     
     document.body.appendChild(modalOverlay);
     setTimeout(() => modalOverlay.classList.add('active'), 10);
@@ -149,6 +176,15 @@ function showSettingsModal() {
 }
 
 function setupSettingsModalEventListeners(modalOverlay) {
+    const trackNames = {
+        northern: 'Northern Realms',
+        seadogs: 'Sea Dogs'
+    };
+    
+    const tracks = ['northern', 'seadogs'];
+    let currentTrackIndex = tracks.indexOf(settingsModule.settings.musicTrack);
+    if (currentTrackIndex === -1) currentTrackIndex = 0;
+    
     const closeModal = () => {
         modalOverlay.classList.remove('active');
         setTimeout(() => {
@@ -206,6 +242,35 @@ function setupSettingsModalEventListeners(modalOverlay) {
         if (fullscreenOff) fullscreenOff.classList.toggle('active', !isFull);
     };
     
+    const animateTrackChange = (direction, newTrackId) => {
+        const trackText = document.getElementById('currentTrackName');
+        if (!trackText) return;
+        
+        trackText.classList.add(direction === 'next' ? 'slide-left' : 'slide-right');
+        
+        setTimeout(() => {
+            trackText.textContent = trackNames[newTrackId];
+            trackText.classList.remove(direction === 'next' ? 'slide-left' : 'slide-right');
+        }, 150);
+        
+        audioManager.changeMusicTrack(newTrackId);
+        settingsModule.setMusicTrack(newTrackId);
+    };
+    
+    const nextTrack = () => {
+        currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+        const newTrack = tracks[currentTrackIndex];
+        animateTrackChange('next', newTrack);
+        audioManager.playSound('button');
+    };
+    
+    const prevTrack = () => {
+        currentTrackIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+        const newTrack = tracks[currentTrackIndex];
+        animateTrackChange('prev', newTrack);
+        audioManager.playSound('button');
+    };
+    
     Object.entries(handlers).forEach(([id, handler]) => {
         const btn = document.getElementById(id);
         if (btn) btn.addEventListener('click', handler);
@@ -220,6 +285,11 @@ function setupSettingsModalEventListeners(modalOverlay) {
         settingsModule.setGameMode(e.target.value);
         audioManager.playSound('button');
     });
+    
+    const prevBtn = document.getElementById('prevTrackBtn');
+    const nextBtn = document.getElementById('nextTrackBtn');
+    if (prevBtn) prevBtn.addEventListener('click', prevTrack);
+    if (nextBtn) nextBtn.addEventListener('click', nextTrack);
     
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) closeModal();

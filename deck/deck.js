@@ -2356,6 +2356,10 @@ function showMessage(text) {
 
 function startGame() {
     if (window.boardModule && window.boardModule.initGameBoard) {
+        if (window.audioManager) {
+            window.audioManager.setBattleMusic();
+        }
+        
         const deckBuildingSection = document.querySelector('.deck-building');
         if (deckBuildingSection) {
             deckBuildingSection.style.opacity = '0';

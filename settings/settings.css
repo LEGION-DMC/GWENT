@@ -31,8 +31,8 @@
     padding-left: 25px;   
     padding-right: 25px;   
     padding-bottom: 15px;     
-    height: 430px;
-    max-width: 340px;              
+    height: 480px;
+    max-width: 350px;              
     width: 100%;
     transform: scale(0.9);
     opacity: 0;
@@ -49,14 +49,10 @@
     margin-bottom: 10px;
     text-transform: uppercase;
     text-align: center;
-    
-    /* Благородное золото с градиентом */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    /* Мягкая тень для объема */
     text-shadow: 
         1px 1px 2px rgba(0, 0, 0, 0.4),
         0 0 5px rgba(165, 124, 44, 0.3);
@@ -64,14 +60,10 @@
 
 .settings-title {
     font-size: 18px;
-    
-    /* Благородное золото с градиентом */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    /* Мягкая тень для объема */
     text-shadow: 
         1px 1px 1px rgba(0, 0, 0, 0.3),
         0 0 4px rgba(165, 124, 44, 0.2);
@@ -80,7 +72,8 @@
 .settings-controls {
     display: flex;
     flex-direction: column;
-    gap: 10px;                     
+    gap: 10px;     
+    padding: 5px;                
 }
 
 .settings-control {
@@ -96,6 +89,92 @@
 .settings-control__label {
     color: #ccc;
     font-size: 16px;
+}
+
+.music-track-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.music-track-arrow {
+    background: none;
+    border: none;
+    width: 40px;
+    height: 15px;
+    font-size: 31px;
+    font-family: 'Gwent', 'Arial', sans-serif;
+    cursor: url('../ui/cursor_hover.png'), pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d4af37;
+    transition: all 0.3s ease;
+}
+
+.music-track-arrow:hover {
+    transform: translateX(-3px);
+    color: #e5c168;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
+}
+
+.music-track-arrow:active {
+    transform: translateX(1px);
+}
+
+.music-track-arrow:last-child:hover {
+    transform: translateX(3px);
+}
+
+.music-track-arrow:last-child:active {
+    transform: translateX(-1px);
+}
+
+.music-track-name {
+    min-width: 180px;
+    text-align: center;
+    font-size: 16px;
+    overflow: hidden;
+    position: relative;
+    font-family: 'Gwent', sans-serif;
+}
+
+.music-track-text {
+    display: inline-block;
+    transition: transform 0.3s ease, opacity 0.2s ease;
+    background: linear-gradient(135deg, #cfaa4a, #e5c168);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+.music-track-text.slide-left {
+    transform: translateX(-40px);
+    opacity: 0;
+}
+
+.music-track-text.slide-right {
+    transform: translateX(-40px);
+    opacity: 0;
+}
+
+.settings-control:has(.music-track-selector) {
+    justify-content: center;
+    min-height: 10px;
+}
+
+.settings-control:has(.music-track-selector) .settings-control__label {
+    display: none;
+}
+
+.settings-control:has(.music-track-selector) .settings-control__buttons {
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 
 .settings-control__buttons {

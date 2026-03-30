@@ -2,21 +2,56 @@ const audioManager = {
     soundEnabled: true,
     musicEnabled: true,
     backgroundMusic: null,
+    currentMusicTrack: 'seadogs', 
     sounds: {},
     isFirstInteractionHandled: false,
     soundCooldowns: {},
     cooldownTime: 150,
     _musicPlaying: false,
     _wasMusicPlaying: false,
+    _savedMusicTrack: 'seadogs', 
+    
+    musicTracks: {
+        northern: 'sfx/northern.mp3',
+        seadogs: 'sfx/seadogs.mp3',
+        glory: 'sfx/glory.mp3'
+    },
     
     init() {
+        this.loadSettings();
         this.createAudioElements();
         this.setupEventListeners();
-        this.loadSettings();
+    },
+    
+    loadSettings() {
+        try {
+            const savedSettings = localStorage.getItem('gwentSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                this.soundEnabled = settings.soundEnabled ?? true;
+                this.musicEnabled = settings.musicEnabled ?? true;
+                this.currentMusicTrack = settings.musicTrack ?? 'seadogs'; 
+                this._savedMusicTrack = this.currentMusicTrack;
+            } else {
+                this.currentMusicTrack = 'seadogs';
+                this._savedMusicTrack = 'seadogs';
+            }
+        } catch (e) {}
+    },
+    
+    saveAudioSettings() {
+        try {
+            const currentSettings = JSON.parse(localStorage.getItem('gwentSettings') || '{}');
+            currentSettings.soundEnabled = this.soundEnabled;
+            currentSettings.musicEnabled = this.musicEnabled;
+            currentSettings.musicTrack = this.currentMusicTrack;
+            localStorage.setItem('gwentSettings', JSON.stringify(currentSettings));
+        } catch (e) {}
     },
     
     createAudioElements() {
-        this.backgroundMusic = new Audio('sfx/fon.mp3');
+        const trackPath = this.musicTracks[this.currentMusicTrack] || this.musicTracks.seadogs;
+        this.backgroundMusic = new Audio(trackPath);
         this.backgroundMusic.loop = true;
         this.backgroundMusic.volume = 0.3;
         
@@ -48,11 +83,90 @@ const audioManager = {
             this.sounds[key].volume = 0.5;
         }
         
-        // Настройка громкости для погодных эффектов
         ['weatherFrost', 'weatherFog', 'weatherRain'].forEach(key => {
             if (this.sounds[key]) this.sounds[key].volume = 0.4;
         });
         if (this.sounds.weatherClear) this.sounds.weatherClear.volume = 0.6;
+    },
+    
+    changeMusicTrack(trackId) {
+        if (trackId === this.currentMusicTrack) return;
+        
+        const wasPlaying = this._musicPlaying;
+        
+        this.currentMusicTrack = trackId;
+        this._savedMusicTrack = trackId;
+        this.saveAudioSettings();
+        
+        const newTrackPath = this.musicTracks[trackId];
+        const newTrack = new Audio(newTrackPath);
+        newTrack.loop = true;
+        newTrack.volume = this.backgroundMusic ? this.backgroundMusic.volume : 0.3;
+        
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+            this.backgroundMusic.currentTime = 0;
+            this.backgroundMusic = null;
+        }
+        
+        this.backgroundMusic = newTrack;
+        
+        if (this.musicEnabled && wasPlaying) {
+            this._musicPlaying = true;
+            this.backgroundMusic.play().catch(() => {});
+        }
+    },
+    
+    setBattleMusic() {
+        if (!this.musicEnabled) return;
+        
+        const wasPlaying = this._musicPlaying;
+        
+        this._savedMusicTrack = this.currentMusicTrack;
+        
+        const battleTrack = new Audio(this.musicTracks.glory);
+        battleTrack.loop = true;
+        battleTrack.volume = this.backgroundMusic ? this.backgroundMusic.volume : 0.3;
+        
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+            this.backgroundMusic.currentTime = 0;
+            this.backgroundMusic = null;
+        }
+        
+        this.backgroundMusic = battleTrack;
+        this.currentMusicTrack = 'glory';
+        
+        if (wasPlaying) {
+            this._musicPlaying = true;
+            this.backgroundMusic.play().catch(() => {});
+        }
+    },
+    
+    restoreSavedMusic() {
+        if (!this.musicEnabled) return;
+        
+        const wasPlaying = this._musicPlaying;
+        const savedTrack = this._savedMusicTrack || 'seadogs';
+        
+        const savedTrackPath = this.musicTracks[savedTrack] || this.musicTracks.seadogs;
+        const newTrack = new Audio(savedTrackPath);
+        newTrack.loop = true;
+        newTrack.volume = this.backgroundMusic ? this.backgroundMusic.volume : 0.3;
+        
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+            this.backgroundMusic.currentTime = 0;
+            this.backgroundMusic = null;
+        }
+        
+        this.backgroundMusic = newTrack;
+        this.currentMusicTrack = savedTrack;
+        
+        if (wasPlaying) {
+            this._musicPlaying = true;
+            this.backgroundMusic.play().catch(() => {});
+        }
     },
     
     setupEventListeners() {
@@ -65,29 +179,9 @@ const audioManager = {
     handleFirstInteraction() {
         if (this.isFirstInteractionHandled) return;
         this.isFirstInteractionHandled = true;
-        if (this.musicEnabled && this.backgroundMusic.paused) {
+        if (this.musicEnabled && this.backgroundMusic && this.backgroundMusic.paused) {
             this.playBackgroundMusic();
         }
-    },
-    
-    loadSettings() {
-        try {
-            const savedSettings = localStorage.getItem('gwentSettings');
-            if (savedSettings) {
-                const settings = JSON.parse(savedSettings);
-                this.soundEnabled = settings.soundEnabled ?? true;
-                this.musicEnabled = settings.musicEnabled ?? true;
-            }
-        } catch (e) {}
-    },
-    
-    saveAudioSettings() {
-        try {
-            const currentSettings = JSON.parse(localStorage.getItem('gwentSettings') || '{}');
-            currentSettings.soundEnabled = this.soundEnabled;
-            currentSettings.musicEnabled = this.musicEnabled;
-            localStorage.setItem('gwentSettings', JSON.stringify(currentSettings));
-        } catch (e) {}
     },
     
     playBackgroundMusic() {
@@ -108,7 +202,8 @@ const audioManager = {
     
     resumeBackgroundMusic() {
         if (this.musicEnabled && !this._musicPlaying && this.backgroundMusic) {
-            this.playBackgroundMusic();
+            this._musicPlaying = true;
+            this.backgroundMusic.play().catch(() => {});
         }
     },
     
@@ -176,6 +271,15 @@ const audioManager = {
             sound.volume = this.sounds[soundKey].volume;
             sound.play().catch(() => {});
         }
+    },
+    
+    getCurrentMusicTrack() {
+        return this.currentMusicTrack;
+    },
+    
+    getMusicTrackDisplayName() {
+        return this.currentMusicTrack === 'northern' ? 'Northern Realms' : 
+               this.currentMusicTrack === 'glory' ? 'Battle Theme' : 'Sea Dogs';
     }
 };
 
