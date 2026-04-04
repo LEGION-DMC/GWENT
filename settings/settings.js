@@ -3,8 +3,8 @@ const settingsModule = {
         soundEnabled: true,
         musicEnabled: true,
         cardDisplayMode: 'static',
-        gameMode: 'classic',
-        musicTrack: 'northern'
+        gameMode: 'cdpred',
+        musicTrack: 'seadogs' 
     },
     _musicFirstInit: true,
     _storageKey: 'gwentSettings',
@@ -22,7 +22,7 @@ const settingsModule = {
                 this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
             }
         } catch (e) {
-            console.warn('Failed to load settings:', e);
+            console.warn('Ошибка загрузки настроек:', e);
         }
     },
 
@@ -32,7 +32,7 @@ const settingsModule = {
             this.applyAudioSettings();
             this.notifySettingsChange();
         } catch (e) {
-            console.warn('Failed to save settings:', e);
+            console.warn('Ошибка загрузки настроек:', e);
         }
     },
 
@@ -41,7 +41,8 @@ const settingsModule = {
             audioManager.soundEnabled = this.settings.soundEnabled;
             audioManager.musicEnabled = this.settings.musicEnabled;
             
-            if (audioManager.currentMusicTrack !== this.settings.musicTrack) {
+            if (audioManager.currentMusicTrack !== this.settings.musicTrack && 
+                audioManager.currentMusicTrack !== 'glory') {
                 audioManager.changeMusicTrack(this.settings.musicTrack);
             }
             
@@ -109,66 +110,66 @@ function showSettingsModal() {
         seadogs: 'Sea Dogs'
     };
     
-	modalOverlay.innerHTML = `
-		<div class="settings-modal">
-			<div class="settings-modal__title">НАСТРОЙКИ</div>
-			<div class="settings-controls">
-				<div class="settings-title">ЗВУК</div>
-				<div class="settings-control">
-					<div class="settings-control__label">Звуковые эффекты</div>
-					<div class="settings-control__buttons">
-						<button class="settings-control__btn ${soundEnabled ? 'active' : ''}" id="modalSoundOn">🕪</button>
-						<button class="settings-control__btn ${!soundEnabled ? 'active' : ''}" id="modalSoundOff">✖</button>
-					</div>
-				</div>
-				<div class="settings-control">
-					<div class="settings-control__label">Фоновая музыка</div>
-					<div class="settings-control__buttons">
-						<button class="settings-control__btn ${musicEnabled ? 'active' : ''}" id="modalMusicOn">♬</button>
-						<button class="settings-control__btn ${!musicEnabled ? 'active' : ''}" id="modalMusicOff">✖</button>
-					</div>
-				</div>
-				<div class="settings-control" style="justify-content: center;">
-					<div class="settings-control__buttons" style="width: 100%; display: flex; justify-content: center;">
-						<div class="music-track-selector">
-							<button class="music-track-arrow" id="prevTrackBtn"><</button>
-							<div class="music-track-name">
-								<span class="music-track-text" id="currentTrackName">${trackNames[musicTrack] || 'Northern Realms'}</span>
-							</div>
-							<button class="music-track-arrow" id="nextTrackBtn">></button>
-						</div>
-					</div>
-				</div>
-				<div class="settings-title">ГРАФИКА</div>
-				<div class="settings-control">
-					<div class="settings-control__label">Режим экрана</div>
-					<div class="settings-control__buttons">
-						<button class="settings-control__btn ${!isFullscreenActive ? 'active' : ''}" id="modalFullscreenOff">❐</button>
-						<button class="settings-control__btn ${isFullscreenActive ? 'active' : ''}" id="modalFullscreenOn">⛶</button>
-					</div>
-				</div>
-				<div class="settings-control">
-					<div class="settings-control__label">Вид карт</div>
-					<div class="settings-control__buttons">
-						<select id="cardDisplayMode" class="settings-select">
-							<option value="static" ${cardDisplayMode === 'static' ? 'selected' : ''}>Статические</option>
-							<option value="animated" ${cardDisplayMode === 'animated' ? 'selected' : ''}>Анимированные</option>
-						</select>
-					</div>
-				</div>
-				<div class="settings-title">ИГРА</div>
-				<div class="settings-control">
-					<div class="settings-control__label">Режим игры</div>
-					<div class="settings-control__buttons">
-						<select id="gameMode" class="settings-select">
-							<option value="classic" ${gameMode === 'classic' ? 'selected' : ''}>Классический</option>
-							<option value="cdpred" ${gameMode === 'cdpred' ? 'selected' : ''}>CD Project Red</option>
-						</select>
-					</div>
-				</div>
-			</div>
-		</div>
-	`;
+    modalOverlay.innerHTML = `
+        <div class="settings-modal">
+            <div class="settings-modal__title">НАСТРОЙКИ</div>
+            <div class="settings-controls">
+                <div class="settings-title">ЗВУК</div>
+                <div class="settings-control">
+                    <div class="settings-control__label">Звуковые эффекты</div>
+                    <div class="settings-control__buttons">
+                        <button class="settings-control__btn ${soundEnabled ? 'active' : ''}" id="modalSoundOn">🕪</button>
+                        <button class="settings-control__btn ${!soundEnabled ? 'active' : ''}" id="modalSoundOff">✖</button>
+                    </div>
+                </div>
+                <div class="settings-control">
+                    <div class="settings-control__label">Фоновая музыка</div>
+                    <div class="settings-control__buttons">
+                        <button class="settings-control__btn ${musicEnabled ? 'active' : ''}" id="modalMusicOn">♬</button>
+                        <button class="settings-control__btn ${!musicEnabled ? 'active' : ''}" id="modalMusicOff">✖</button>
+                    </div>
+                </div>
+                <div class="settings-control" style="justify-content: center;">
+                    <div class="settings-control__buttons" style="width: 100%; display: flex; justify-content: center;">
+                        <div class="music-track-selector">
+                            <button class="music-track-arrow" id="prevTrackBtn"><</button>
+                            <div class="music-track-name">
+                                <span class="music-track-text" id="currentTrackName">${trackNames[musicTrack] || 'Sea Dogs'}</span>
+                            </div>
+                            <button class="music-track-arrow" id="nextTrackBtn">></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-title">ГРАФИКА</div>
+                <div class="settings-control">
+                    <div class="settings-control__label">Режим экрана</div>
+                    <div class="settings-control__buttons">
+                        <button class="settings-control__btn ${!isFullscreenActive ? 'active' : ''}" id="modalFullscreenOff">❐</button>
+                        <button class="settings-control__btn ${isFullscreenActive ? 'active' : ''}" id="modalFullscreenOn">⛶</button>
+                    </div>
+                </div>
+                <div class="settings-control">
+                    <div class="settings-control__label">Вид карт</div>
+                    <div class="settings-control__buttons">
+                        <select id="cardDisplayMode" class="settings-select">
+                            <option value="static" ${cardDisplayMode === 'static' ? 'selected' : ''}>Статические</option>
+                            <option value="animated" ${cardDisplayMode === 'animated' ? 'selected' : ''}>Анимированные</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-title">ИГРА</div>
+                <div class="settings-control">
+                    <div class="settings-control__label">Режим игры</div>
+                    <div class="settings-control__buttons">
+                        <select id="gameMode" class="settings-select">
+                            <option value="classic" ${gameMode === 'classic' ? 'selected' : ''}>Классический</option>
+                            <option value="cdpred" ${gameMode === 'cdpred' ? 'selected' : ''}>CD Project Red</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
     
     document.body.appendChild(modalOverlay);
     setTimeout(() => modalOverlay.classList.add('active'), 10);
@@ -181,7 +182,7 @@ function setupSettingsModalEventListeners(modalOverlay) {
         seadogs: 'Sea Dogs'
     };
     
-    const tracks = ['northern', 'seadogs'];
+    const tracks = ['seadogs', 'northern'];
     let currentTrackIndex = tracks.indexOf(settingsModule.settings.musicTrack);
     if (currentTrackIndex === -1) currentTrackIndex = 0;
     

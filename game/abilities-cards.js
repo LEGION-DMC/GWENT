@@ -429,7 +429,7 @@ const skillSystem = {
 		'boost_tag_thirst': {
 			name: 'Жажда крови',
 			type: 'special',
-			description: 'Усиливает все карты с тегом "Кровопийца" в одном ряду на 2 ед. силы',
+			description: 'Усиливает все карты с тегом "Вампир" в одном ряду на 2 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
@@ -452,6 +452,227 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		}, 	
+		
+		'flock': {
+			name: 'Стая',
+			type: 'special',
+			description: 'Призывает из руки и колоды все копии данного отряда',
+			effect: {
+				type: 'flock',
+				target: 'self'
+			}
+		},
+	},
+
+	applyFlockEffect: function(effect, context) {
+		const playedCard = context.playedCard;
+		
+		if (!playedCard || !playedCard.tags || playedCard.tags.length === 0) {
+			return { success: false, message: 'Карта не имеет тега для призыва стаи' };
+		}
+		
+		const flockTag = playedCard.tags.find(tag => 
+			tag !== 'hero' && tag !== 'герой' && 
+			!playedCard.usedFlockTag
+		);
+		
+		if (!flockTag) {
+			return { success: false, message: 'Не найден тег для призыва стаи' };
+		}
+		
+		playedCard.usedFlockTag = flockTag;
+		
+		let summonedCount = 0;
+		const summonedCards = [];
+		
+		const handCards = [...context.playerHand];
+		handCards.forEach(card => {
+			if (card.id !== playedCard.id && 
+				card.tags && 
+				card.tags.includes(flockTag) &&
+				card.type === 'unit') {
+				
+				const targetRow = this.getBestRowForCard(card, context);
+				if (targetRow) {
+					const cardIndex = context.playerHand.findIndex(c => c.id === card.id);
+					if (cardIndex !== -1) {
+						context.playerHand.splice(cardIndex, 1);
+					}
+					
+					const placedCard = this.placeSummonedCard(card, targetRow, context);
+					if (placedCard) {
+						summonedCards.push(placedCard);
+						summonedCount++;
+					}
+				}
+			}
+		});
+		
+		const deckCards = [...context.playerDeck];
+		deckCards.forEach(card => {
+			if (card.id !== playedCard.id &&
+				card.tags && 
+				card.tags.includes(flockTag) &&
+				card.type === 'unit') {
+				
+				const targetRow = this.getBestRowForCard(card, context);
+				if (targetRow) {
+					const cardIndex = context.playerDeck.findIndex(c => c.id === card.id);
+					if (cardIndex !== -1) {
+						context.playerDeck.splice(cardIndex, 1);
+					}
+					
+					const placedCard = this.placeSummonedCard(card, targetRow, context);
+					if (placedCard) {
+						summonedCards.push(placedCard);
+						summonedCount++;
+					}
+				}
+			}
+		});
+		
+		if (window.gameModule) {
+			window.gameModule.displayPlayerHand();
+			window.gameModule.displayPlayerDeck();
+			
+			const rows = ['close', 'ranged', 'siege'];
+			rows.forEach(row => {
+				window.gameModule.updateRowStrength(row, 'player');
+			});
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('flock');
+		}
+		
+		return {
+			success: true,
+			message: `Призвано ${summonedCount} карт из стаи`,
+			summonedCount: summonedCount,
+			summonedCards: summonedCards,
+			flockTag: flockTag
+		};
+	},
+
+	getBestRowForCard: function(card, context) {
+		let availableRows = [];
+		
+		if (card.position === 'any-row' || card.position === 'any') {
+			availableRows = ['close', 'ranged', 'siege'];
+		} else if (Array.isArray(card.position)) {
+			availableRows = card.position.map(pos => pos.replace('-row', ''));
+		} else if (typeof card.position === 'string') {
+			availableRows = [card.position.replace('-row', '')];
+		} else {
+			availableRows = ['close', 'ranged', 'siege'];
+		}
+		
+		const freeRows = availableRows.filter(row => 
+			context.playerState.rows[row].cards.length < 9
+		);
+		
+		if (freeRows.length === 0) return null;
+		
+		let bestRow = freeRows[0];
+		let bestSynergy = -1;
+		
+		freeRows.forEach(row => {
+			let synergy = 0;
+			const rowCards = context.playerState.rows[row].cards;
+			
+			rowCards.forEach(existingCard => {
+				if (existingCard.tags && card.tags) {
+					const commonTags = card.tags.filter(tag => existingCard.tags.includes(tag));
+					synergy += commonTags.length * 2;
+				}
+			});
+			
+			if (!context.weatherState.effects[row]) {
+				synergy += 3;
+			}
+			
+			if (synergy > bestSynergy) {
+				bestSynergy = synergy;
+				bestRow = row;
+			}
+		});
+		
+		return bestRow;
+	},
+
+	placeSummonedCard: function(card, row, context) {
+		const rowState = context.playerState.rows[row];
+		
+		if (rowState.cards.length >= 9) return null;
+		
+		const cardCopy = window.gameModule ? 
+			window.gameModule.createCardCopy(card) : { 
+				...card, 
+				uniqueId: `${card.id}_flock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+				baseStrength: card.strength,
+				currentStrength: card.strength,
+				modifiedStrength: card.strength,
+				underWeather: false,
+				summonedByFlock: true
+			};
+		
+		rowState.cards.push(cardCopy);
+		
+		if (window.gameModule) {
+			window.gameModule.displayCardOnRow(row, cardCopy, 'player', rowState.cards.length - 1);
+		}
+		
+		this.createSummonVisualEffect(cardCopy, row);
+		
+		return cardCopy;
+	},
+
+	createSummonVisualEffect: function(card, row) {
+		if (!window.gameModule) return;
+		
+		const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+		if (!cardElement) return;
+		
+		cardElement.style.opacity = '0';
+		cardElement.style.transform = 'scale(0.5)';
+		
+		setTimeout(() => {
+			cardElement.style.transition = 'all 0.3s ease-out';
+			cardElement.style.opacity = '1';
+			cardElement.style.transform = 'scale(1)';
+			
+			setTimeout(() => {
+				cardElement.style.transition = '';
+			}, 300);
+		}, 10);
+		
+		const flashOverlay = document.createElement('div');
+		flashOverlay.style.cssText = `
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,215,0,0) 70%);
+			pointer-events: none;
+			z-index: 50;
+			animation: flockFlash 0.5s ease-out forwards;
+		`;
+		
+		cardElement.appendChild(flashOverlay);
+		
+		setTimeout(() => {
+			if (flashOverlay.parentNode) {
+				flashOverlay.remove();
+			}
+		}, 500);
+	},
+
+	capitalizeFirst: function(string) {
+		return string.charAt(0).toUpperCase() + string.slice(1);
 	},
 
 	applyBoostCardEffect: function(effect, context) {
@@ -841,24 +1062,18 @@ const skillSystem = {
 		};
 	},
 
-    activateAbility: function(abilityId, context) {
-        const ability = this.abilities[abilityId];
-        if (!ability) {
-            return { success: false, message: 'Способность не найдена' };
-        }
+	canActivateAbility: function(ability, context) {
+		if (ability.type === 'leader' && context.leaderUsed) {
+			return false;
+		}
+		
+		if (ability.id === 'flock' || (ability.effect && ability.effect.type === 'flock')) {
+			return true;
+		}
 
-        if (!this.canActivateAbility(ability, context)) {
-            return { success: false, message: 'Невозможно активировать способность' };
-        }
-
-        const result = this.applyEffect(ability.effect, context);
-        
-        if (result.success) {
-            this.onAbilityActivated(ability, context);
-        }
-        
-        return result;
-    },
+		const targets = this.findTargets(ability.effect, context);
+		return targets.length > 0 || ability.effect.type === 'clear_weather';
+	},
 
     canActivateAbility: function(ability, context) {
         if (ability.type === 'leader' && context.leaderUsed) {
@@ -892,6 +1107,8 @@ const skillSystem = {
                     return this.applyRevealEffect(effect, context);
                 case 'swap_with_hand':
 					return this.applySwapEffect(effect, context);
+				case 'flock':
+					return this.applyFlockEffect(effect, context);
 				default:
                     return { success: false, message: 'Неизвестный тип эффекта' };
             }

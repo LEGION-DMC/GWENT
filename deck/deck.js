@@ -28,7 +28,7 @@ const localization = {
 		kingser: 'Знать',
 		mage: 'Чародей',
 		witcher: 'Ведьмак',
-		warior: 'Воин',
+		warrior: 'Воин',
 		monster: 'Чудовище',
 		weather: 'Погода',
 		tactic: 'Военное искуство',
@@ -55,7 +55,8 @@ const localization = {
 		alchimy: 'Алхимия',
 		scenary: 'Сценарий',
 		treasure: 'Сокровище',
-		relict: 'Реликт'
+		relict: 'Реликт',
+		blood: 'Вампир'
     }
 };
 

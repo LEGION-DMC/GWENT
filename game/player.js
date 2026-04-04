@@ -6,22 +6,18 @@ const playerModule = {
     },
 
 	initializeCardFields: function(card) {
-		// Базовая сила - никогда не меняется
 		if (card.baseStrength === undefined) {
 			card.baseStrength = card.strength;
 		}
 		
-		// Модифицированная сила - сила после урона/усиления (без учета погоды)
 		if (card.modifiedStrength === undefined) {
 			card.modifiedStrength = card.strength;
 		}
 		
-		// Текущая отображаемая сила (с учетом погоды)
 		if (card.currentStrength === undefined) {
 			card.currentStrength = card.strength;
 		}
 		
-		// Флаг погоды
 		if (card.underWeather === undefined) {
 			card.underWeather = false;
 		}
@@ -69,9 +65,8 @@ const playerModule = {
 		if (this.isWeatherCard(card)) {
 			this.playWeatherCard(card);
 		} else {
-			// Проверяем, является ли карта шпионом
 			const isSpy = window.gameModule && window.gameModule.isSpyCard(card);
-			
+
 			switch (card.type) {
 				case 'tactic':
 					if (card.ability && card.ability.startsWith('boost_')) {
@@ -97,7 +92,6 @@ const playerModule = {
 					} else if (card.ability && card.ability.startsWith('damage_')) {
 						this.startDamageCardPlacement(card);
 					} else if (card.ability && card.ability.startsWith('boost_')) {
-						// НОВОЕ: обработка специальных карт усиления
 						this.startSpecialBoostPlacement(card);
 					} else {
 						this.startUnitCardPlacement(card);
@@ -114,6 +108,230 @@ const playerModule = {
 					this.cancelCardSelection();
 			}
 		}
+	},
+
+	playFlockCard: function(card) {
+		console.log('=== playFlockCard вызван ===');
+		console.log('Карта:', card.name, card.tags, card.ability);
+		
+		let flockTag = null;
+		if (card.tags && card.tags.length > 0) {
+			for (let tag of card.tags) {
+				if (tag !== 'hero' && tag !== 'герой') {
+					flockTag = tag;
+					break;
+				}
+			}
+		}
+		
+		if (!flockTag) {
+			this.showMessage(`Карта ${card.name} не имеет тега для стаи`);
+			this.cancelCardSelection();
+			return;
+		}
+		
+		console.log(`Тег стаи: ${flockTag}`);
+		
+		let availableRows = [];
+		
+		if (card.position === 'any-row') {
+			availableRows = ['close', 'ranged', 'siege'];
+		} else if (Array.isArray(card.position)) {
+			availableRows = card.position.map(pos => pos.replace('-row', ''));
+		} else if (card.position) {
+			availableRows = [card.position.replace('-row', '')];
+		} else {
+			availableRows = ['close', 'ranged', 'siege'];
+		}
+		
+		availableRows = availableRows.filter(row => 
+			this.gameState.player.rows[row].cards.length < 9
+		);
+		
+		if (availableRows.length === 0) {
+			this.showMessage('Нет доступных рядов для размещения карты!');
+			this.cancelCardSelection();
+			return;
+		}
+		
+		let targetRow = availableRows[0];
+		
+		const rowState = this.gameState.player.rows[targetRow];
+		
+		const cardCopy = {
+			...card,
+			uniqueId: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			baseStrength: card.strength,
+			currentStrength: card.strength,
+			modifiedStrength: card.strength,
+			underWeather: false,
+			owner: 'player',
+			row: targetRow
+		};
+		
+		rowState.cards.push(cardCopy);
+		this.removeCardFromHand(card);
+		
+		if (window.gameModule) {
+			window.gameModule.displayCardOnRow(targetRow, cardCopy, 'player', rowState.cards.length - 1);
+			window.gameModule.updateRowStrength(targetRow, 'player');
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('card_close');
+		}
+		
+		// Активируем способность стаи ПОСЛЕ размещения карты
+		setTimeout(() => {
+			this.activateFlockAbility(cardCopy, flockTag);
+		}, 200);
+	},
+
+	activateFlockAbility: function(playedCard, flockTag) {
+		console.log(`Активация стаи: тег="${flockTag}", карта="${playedCard.name}"`);
+		
+		let summonedCount = 0;
+		const cardsToSummon = [];
+		
+		for (let i = 0; i < this.gameState.player.hand.length; i++) {
+			const handCard = this.gameState.player.hand[i];
+			
+			const hasMatchingFlockTag = handCard.tagsflock && 
+				handCard.tagsflock.some(tag => tag === flockTag);
+			
+			if (handCard.id !== playedCard.id && 
+				handCard.type === 'unit' &&
+				hasMatchingFlockTag) {
+				
+				cardsToSummon.push({ card: handCard, source: 'hand', index: i });
+			}
+		}
+		
+		for (let i = 0; i < this.gameState.player.deck.length; i++) {
+			const deckCard = this.gameState.player.deck[i];
+			
+			const hasMatchingFlockTag = deckCard.tagsflock && 
+				deckCard.tagsflock.some(tag => tag === flockTag);
+			
+			if (deckCard.id !== playedCard.id &&
+				deckCard.type === 'unit' &&
+				hasMatchingFlockTag) {
+				
+				cardsToSummon.push({ card: deckCard, source: 'deck', index: i });
+			}
+		}
+		
+		for (let i = cardsToSummon.length - 1; i >= 0; i--) {
+			const { card: summonCard, source, index } = cardsToSummon[i];
+			
+			let targetRow = this.getBestRowForSummon(summonCard);
+			
+			if (targetRow && this.gameState.player.rows[targetRow].cards.length < 9) {
+				if (source === 'hand') {
+					this.gameState.player.hand.splice(index, 1);
+				} else if (source === 'deck') {
+					this.gameState.player.deck.splice(index, 1);
+				}
+				
+				const summonCopy = {
+					...summonCard,
+					uniqueId: `${summonCard.id}_flock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+					baseStrength: summonCard.strength,
+					currentStrength: summonCard.strength,
+					modifiedStrength: summonCard.strength,
+					underWeather: false,
+					owner: 'player',
+					row: targetRow,
+					summonedByFlock: true
+				};
+				
+				this.gameState.player.rows[targetRow].cards.push(summonCopy);
+				
+				if (window.gameModule) {
+					window.gameModule.displayCardOnRow(targetRow, summonCopy, 'player', 
+						this.gameState.player.rows[targetRow].cards.length - 1);
+					window.gameModule.updateRowStrength(targetRow, 'player');
+				}
+				
+				summonedCount++;
+			}
+		}
+		
+		if (window.gameModule) {
+			window.gameModule.displayPlayerHand();
+			window.gameModule.displayPlayerDeck();
+		}
+		
+		if (summonedCount > 0 && window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('card_draw');
+		}
+		
+		if (window.gameModule && !playedCard.completeCalled) {
+			playedCard.completeCalled = true;
+			setTimeout(() => {
+				window.gameModule.completeCardPlay();
+			}, 500);
+		}
+	},
+
+	getBestRowForSummon: function(card) {
+		let availableRows = [];
+		
+		if (card.position === 'any-row' || card.position === 'any') {
+			availableRows = ['close', 'ranged', 'siege'];
+		} else if (Array.isArray(card.position)) {
+			availableRows = card.position.map(pos => pos.replace('-row', ''));
+		} else if (typeof card.position === 'string') {
+			availableRows = [card.position.replace('-row', '')];
+		} else {
+			availableRows = ['close', 'ranged', 'siege'];
+		}
+		
+		availableRows = availableRows.filter(row => 
+			this.gameState.player.rows[row].cards.length < 9
+		);
+		
+		if (availableRows.length === 0) return null;
+		
+		let bestRow = availableRows[0];
+		let maxStrength = this.gameState.player.rows[bestRow].strength;
+		
+		for (let row of availableRows) {
+			const rowStrength = this.gameState.player.rows[row].strength;
+			if (rowStrength > maxStrength) {
+				maxStrength = rowStrength;
+				bestRow = row;
+			}
+		}
+		
+		return bestRow;
+	},
+
+	createFlockVisualEffect: function(row) {
+		const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		const effect = document.createElement('div');
+		effect.style.cssText = `
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, rgba(255,215,0,0) 70%);
+			pointer-events: none;
+			z-index: 40;
+			animation: flockFlash 0.5s ease-out forwards;
+		`;
+		
+		rowElement.style.position = 'relative';
+		rowElement.appendChild(effect);
+		
+		setTimeout(() => {
+			if (effect.parentNode) {
+				effect.remove();
+			}
+		}, 500);
 	},
 
 	startSpecialBoostPlacement: function(card) {
@@ -2828,16 +3046,16 @@ const playerModule = {
 			}
 		}
 
-		// Используем createCardCopy из gameModule
-		const cardCopy = window.gameModule ? 
-			window.gameModule.createCardCopy(card) : { 
-				...card, 
-				uniqueId: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-				baseStrength: card.strength,
-				currentStrength: card.strength,
-				modifiedStrength: card.strength,
-				underWeather: false
-			};
+		const cardCopy = {
+			...card,
+			uniqueId: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			baseStrength: card.strength,
+			currentStrength: card.strength,
+			modifiedStrength: card.strength,
+			underWeather: false,
+			owner: 'player',
+			row: row
+		};
 		
 		rowState.cards.splice(insertIndex, 0, cardCopy);
 		
@@ -2862,8 +3080,24 @@ const playerModule = {
 		
 		if (window.gameModule) {
 			window.gameModule.displayCardOnRow(row, cardCopy, 'player', insertIndex);
-			window.gameModule.updateRowStrength(row);
-			window.gameModule.completeCardPlay();
+			window.gameModule.updateRowStrength(row, 'player');
+			
+			if (card.ability === 'flock') {
+				let flockTag = null;
+				if (card.tagsflock && card.tagsflock.length > 0) {
+					flockTag = card.tagsflock[0]; 
+				}
+				
+				if (flockTag) {
+					setTimeout(() => {
+						this.activateFlockAbility(cardCopy, flockTag);
+					}, 300);
+				} else {
+					window.gameModule.completeCardPlay();
+				}
+			} else {
+				window.gameModule.completeCardPlay();
+			}
 		}
 	},
 

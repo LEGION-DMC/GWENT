@@ -44,14 +44,14 @@ const collectionModule = (function() {
         },
         tags: {
             leader: 'Лидер', hero: 'Герой', wild_hunt: 'Дикая Охота', king: 'Правитель',
-            kingser: 'Знать', mage: 'Чародей', witcher: 'Ведьмак', warior: 'Воин',
+            kingser: 'Знать', mage: 'Чародей', witcher: 'Ведьмак', warrior: 'Воин',
             monster: 'Чудовище', weather: 'Погода', tactic: 'Военное искуство', spell: 'Заклятие',
             hazard: 'Бедствие', ritual: 'Ритуал', execution: 'Наказание', criminal: 'Преступник',
             criminality: 'Преступление', scavenger: 'Трупоед', ghost: 'Призрак', artifact: 'Артефакт',
             dragon: 'Драконид', specter: 'Дух', dwarf: 'Краснолюд', mercenary: 'Наёмник',
             elf: 'Ельф', oak: 'Древень', curse: 'Проклятие', religy: 'Религия',
             weapons: 'Оружие', ogr: 'Огройд', pirat: 'Пират', alchimy: 'Алхимия',
-            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт'
+            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт', blood: 'Вампир'
         }
     };
     
