@@ -188,7 +188,9 @@ const playerModule = {
 	},
 
 	activateFlockAbility: function(playedCard, flockTag) {
-		console.log(`Активация стаи: тег="${flockTag}", карта="${playedCard.name}"`);
+		console.log(`=== activateFlockAbility ===`);
+		console.log(`Ищем карты с tagsflock включающим "${flockTag}"`);
+		console.log(`В руке ${this.gameState.player.hand.length} карт, в колоде ${this.gameState.player.deck.length} карт`);
 		
 		let summonedCount = 0;
 		const cardsToSummon = [];
@@ -199,10 +201,13 @@ const playerModule = {
 			const hasMatchingFlockTag = handCard.tagsflock && 
 				handCard.tagsflock.some(tag => tag === flockTag);
 			
-			if (handCard.id !== playedCard.id && 
+			const isSameCard = handCard.uniqueId === playedCard.uniqueId;
+			
+			if (!isSameCard && 
 				handCard.type === 'unit' &&
 				hasMatchingFlockTag) {
 				
+				console.log(`Найдена карта в руке: ${handCard.name}, id: ${handCard.id}, uniqueId: ${handCard.uniqueId}`);
 				cardsToSummon.push({ card: handCard, source: 'hand', index: i });
 			}
 		}
@@ -213,13 +218,13 @@ const playerModule = {
 			const hasMatchingFlockTag = deckCard.tagsflock && 
 				deckCard.tagsflock.some(tag => tag === flockTag);
 			
-			if (deckCard.id !== playedCard.id &&
-				deckCard.type === 'unit' &&
-				hasMatchingFlockTag) {
-				
+			if (deckCard.type === 'unit' && hasMatchingFlockTag) {
+				console.log(`Найдена карта в колоде: ${deckCard.name}, id: ${deckCard.id}`);
 				cardsToSummon.push({ card: deckCard, source: 'deck', index: i });
 			}
 		}
+		
+		console.log(`Найдено карт для призыва: ${cardsToSummon.length}`);
 		
 		for (let i = cardsToSummon.length - 1; i >= 0; i--) {
 			const { card: summonCard, source, index } = cardsToSummon[i];
@@ -1166,26 +1171,19 @@ const playerModule = {
 	},
 
 	applyBoostToCard: function(card, boostValue, row, player = 'player') {
-		// Инициализируем поля для отслеживания состояний
 		this.initializeCardFields(card);
 		
-		// Применяем усиление к модифицированной силе
 		card.modifiedStrength += boostValue;
 		
-		// ВАЖНО: Если карта под погодой, её отображаемая сила должна увеличиваться!
 		if (card.underWeather) {
-			// Под погодой сила обычно 1, но при усилении она должна стать 1 + boostValue
 			card.currentStrength = 1 + boostValue;
 		} else {
-			// Если карта не под погодой, обновляем текущую силу до модифицированной
 			card.currentStrength = card.modifiedStrength;
 			card.strength = card.modifiedStrength;
 		}
 		
-		// Визуальный эффект
 		this.createBoostVisualEffect(card, row, boostValue);
 		
-		// ВАЖНО: Обновляем отображение силы на карте
 		if (window.gameModule) {
 			window.gameModule.updateCardStrengthDisplay(card, row, player);
 			window.gameModule.updateRowStrength(row, player);

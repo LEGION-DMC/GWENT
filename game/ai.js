@@ -2433,33 +2433,31 @@ const aiModule = {
 		const rowState = this.gameState.player.rows[row];
 		let insertIndex = rowState.cards.length;
 		
-		// Вставляем карту (обычно в конец ряда для простоты)
-		const cardCopy = { ...card };
-		cardCopy.owner = 'player';
-		cardCopy.row = row;
-		cardCopy.isSpy = true;
+		const cardCopy = { 
+			...card,
+			uniqueId: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			owner: 'player',
+			row: row,
+			isSpy: true
+		};
+		
+		this.removeCardFromHand(card);
 		
 		rowState.cards.splice(insertIndex, 0, cardCopy);
 		
-		// Отображаем карту
 		if (window.gameModule) {
 			window.gameModule.displayCardOnRow(row, cardCopy, 'player', insertIndex);
 			window.gameModule.updateRowStrength(row, 'player');
-			window.gameModule.updateTotalScoreDisplays(); // Обновляем общий счет
+			window.gameModule.updateTotalScoreDisplays();
 		}
 		
-		// Увеличиваем счетчик сыгранных карт (ВАЖНО!)
 		this.gameState.cardsPlayedThisTurn++;
 		
-		// Добор карты для ИИ
 		setTimeout(() => {
 			this.drawCardForAISpy(card);
 			
-			// Завершаем ход ИИ после добора карты
 			setTimeout(() => {
 				this.isMakingMove = false;
-				
-				// Завершаем ход в gameModule
 				if (window.gameModule) {
 					window.gameModule.completeCardPlay();
 				}
@@ -3182,6 +3180,13 @@ const aiModule = {
 			const rowState = this.gameState.opponent.rows[bestRow];
 			let insertIndex = rowState.cards.length;
 			
+			const cardCopy = { 
+				...card,
+				uniqueId: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+				owner: 'opponent',
+				row: bestRow
+			};
+			
 			if (rowState.cards.length > 0) {
 				const synergyResult = this.findBestCardForSynergy(card, rowState.cards);
 				
@@ -3255,10 +3260,8 @@ const aiModule = {
 			}
 			
 			if (window.gameModule) {
-				window.gameModule.displayCardOnRow(bestRow, card, 'opponent', insertIndex);
-				if (window.gameModule.updateRowStrength) {
-					window.gameModule.updateRowStrength(bestRow, 'opponent');
-				}
+				window.gameModule.displayCardOnRow(bestRow, cardCopy, 'opponent', insertIndex);
+				window.gameModule.updateRowStrength(bestRow, 'opponent');
 				
 				setTimeout(() => {
 					if (window.gameModule.completeCardPlay) {

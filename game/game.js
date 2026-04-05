@@ -713,12 +713,13 @@ const gameModule = {
 		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
 		if (!rowElement) return;
 		
-		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
+		const selector = card.uniqueId 
+			? `[data-unique-id="${card.uniqueId}"]`
+			: `[data-card-id="${card.id}"]`;
+		const cardElement = rowElement.querySelector(selector);
+		
 		if (cardElement) {
-			// Добавляем анимацию исчезновения
 			cardElement.style.animation = 'cardDestroy 0.5s ease-out forwards';
-			
-			// Удаляем через 0.5 секунды
 			setTimeout(() => {
 				if (cardElement.parentNode === rowElement) {
 					rowElement.removeChild(cardElement);
@@ -1769,12 +1770,9 @@ const gameModule = {
 		rows.forEach(row => {
 			players.forEach(player => {
 				this.gameState[player].rows[row].cards.forEach(card => {
-					// Проверяем, была ли карта под погодой
 					if (card.underWeather) {
-						// Снимаем флаг погоды
 						card.underWeather = false;
 						
-						// Восстанавливаем силу до модифицированной (после урона/усиления)
 						if (card.modifiedStrength !== undefined) {
 							card.currentStrength = card.modifiedStrength;
 							card.strength = card.modifiedStrength;
@@ -1786,13 +1784,11 @@ const gameModule = {
 						
 						this.updateCardStrengthDisplay(card, row, player);
 					}
-					// Если карта не была под погодой, просто обновляем отображение
 					else {
 						this.updateCardStrengthDisplay(card, row, player);
 					}
 				});
 				
-				// ВАЖНО: Обновляем силу ряда
 				this.updateRowStrength(row, player);
 			});
 		});
@@ -1811,7 +1807,6 @@ const gameModule = {
 		
 		this.displayWeatherCards();
 		
-		// ВАЖНО: Обновляем общую силу после снятия погоды
 		this.updateTotalScoreDisplays();
 	},
 
@@ -1861,7 +1856,6 @@ const gameModule = {
 		rows.forEach(row => {
 			players.forEach(player => {
 				this.gameState[player].rows[row].cards.forEach(card => {
-					// Восстанавливаем силу до модифицированной (после урона/усиления)
 					if (card.modifiedStrength !== undefined) {
 						card.currentStrength = card.modifiedStrength;
 						card.strength = card.modifiedStrength;
@@ -1873,18 +1867,15 @@ const gameModule = {
 						delete card._displayStrength;
 					}
 					
-					// Снимаем флаг погоды
 					card.underWeather = false;
 					
 					this.updateCardStrengthDisplay(card, row, player);
 				});
 				
-				// ВАЖНО: Обновляем силу ряда
 				this.updateRowStrength(row, player);
 			});
 		});
 		
-		// ВАЖНО: Обновляем общую силу
 		this.updateTotalScoreDisplays();
 	},
 
@@ -1894,7 +1885,6 @@ const gameModule = {
 				return;
 			}
 			
-			// Инициализируем поля, если их нет
 			if (card.baseStrength === undefined) {
 				card.baseStrength = card.strength || 0;
 			}
@@ -1905,11 +1895,8 @@ const gameModule = {
 				card.currentStrength = card.strength || 0;
 			}
 			
-			// Сохраняем, что карта под погодой
 			card.underWeather = true;
 			
-			// ВАЖНО: Устанавливаем силу под погодой в 1
-			// Если карта была усилена, её модифицированная сила сохранена в modifiedStrength
 			card.currentStrength = 1;
 			
 			this.updateCardStrengthDisplay(card, row, player);
@@ -2297,27 +2284,8 @@ const gameModule = {
 	updateRowStrength: function(row, player = 'player') {
 		const rowState = this.gameState[player].rows[row];
 		
-		// Используем currentStrength если есть, иначе силу карты
 		const totalStrength = rowState.cards.reduce((sum, card) => {
-			let cardStrength;
-			
-			// Если есть currentStrength (новая система)
-			if (card.currentStrength !== undefined) {
-				cardStrength = card.currentStrength;
-			}
-			// Если есть displayStrength (старая система)
-			else if (card._displayStrength !== undefined) {
-				cardStrength = card._displayStrength;
-			}
-			// Если карта под погодой (проверяем по флагу или оригинальной силе)
-			else if (card.underWeather || (card.originalStrength !== undefined && card.strength === 1)) {
-				cardStrength = 1;
-			}
-			// Иначе оригинальную силу
-			else {
-				cardStrength = card.strength || 0;
-			}
-			
+			let cardStrength = card.currentStrength !== undefined ? card.currentStrength : (card.strength || 0);
 			return sum + cardStrength;
 		}, 0);
 		
@@ -2326,11 +2294,12 @@ const gameModule = {
 		const strengthElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Strength`);
 		if (strengthElement) {
 			strengthElement.textContent = totalStrength;
-			strengthElement.classList.add('strength-update');
-			setTimeout(() => strengthElement.classList.remove('strength-update'), 500);
 		}
 		
-		// ВАЖНО: Инвалидируем кэш общего счета, чтобы при следующем запросе он пересчитался
+		rowState.cards.forEach(card => {
+			this.updateCardStrengthDisplay(card, row, player);
+		});
+		
 		this.invalidateScoreCache(player);
 	},
 
@@ -2445,10 +2414,13 @@ const gameModule = {
         return cardElement;
     },
 
-    createBoardCardElement: function(card, cardType) {
-        const cardElement = document.createElement('div');
-        cardElement.className = `board-card ${cardType} ${card.rarity}`;
-        cardElement.dataset.cardId = card.id;
+	createBoardCardElement: function(card, cardType) {
+		const cardElement = document.createElement('div');
+		cardElement.className = `board-card ${cardType} ${card.rarity}`;
+		cardElement.dataset.cardId = card.id;
+		if (card.uniqueId) {
+			cardElement.dataset.uniqueId = card.uniqueId; 
+		}
         
 		cardElement.style.animation = 'cardAppear 0.5s ease-out';
 		cardElement.addEventListener('animationend', function() {
@@ -3491,10 +3463,13 @@ const gameModule = {
         rowElement.appendChild(newCardElement);
     },
 
-    createOpponentBoardCardElement: function(card) {
-        const cardElement = document.createElement('div');
-        cardElement.className = `board-card opponent-card ${card.type} ${card.rarity}`;
-        cardElement.dataset.cardId = card.id;
+	createOpponentBoardCardElement: function(card) {
+		const cardElement = document.createElement('div');
+		cardElement.className = `board-card opponent-card ${card.type} ${card.rarity}`;
+		cardElement.dataset.cardId = card.id;
+		if (card.uniqueId) {
+			cardElement.dataset.uniqueId = card.uniqueId; 
+		}
         
         const { mediaPath, isVideo } = this.getCardMediaPath(card);
 
@@ -3848,12 +3823,14 @@ const gameModule = {
 		const rowElement = document.getElementById(`${player}${this.capitalizeFirst(row)}Row`);
 		if (!rowElement) return;
 		
-		const cardElements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+		const selector = card.uniqueId 
+			? `[data-unique-id="${card.uniqueId}"]`
+			: `[data-card-id="${card.id}"]`;
+		const cardElements = rowElement.querySelectorAll(selector);
 		
 		cardElements.forEach(cardElement => {
 			const strengthElement = cardElement.querySelector('.board-card-strength');
 			
-			// Если это Чучело или другая карта без силы, скрываем элемент силы
 			if (card.type === 'special' && card.ability === 'decoy') {
 				if (strengthElement) {
 					strengthElement.style.display = 'none';
@@ -3867,7 +3844,6 @@ const gameModule = {
 				let isBoosted = false;
 				let isUnderWeather = false;
 				
-				// Определяем текущую силу для отображения
 				if (card.currentStrength !== undefined) {
 					displayValue = card.currentStrength;
 				} else if (card._displayStrength !== undefined) {
@@ -3877,42 +3853,33 @@ const gameModule = {
 				}
 				
 				strengthElement.textContent = displayValue;
-				strengthElement.style.display = ''; // Показываем элемент силы
+				strengthElement.style.display = '';
 				
-				// Определяем базовую силу для сравнения
 				const baseStrength = card.baseStrength || card.originalStrength || card.strength || 0;
 				
-				// Проверяем статусы
 				isUnderWeather = card.underWeather === true;
 				
-				// Проверяем урон (текущая сила меньше базовой)
 				if (displayValue < baseStrength && !isUnderWeather) {
 					isDamaged = true;
 				}
 				
-				// Проверяем усиление (текущая сила больше базовой)
 				if (displayValue > baseStrength && !isUnderWeather) {
 					isBoosted = true;
 				}
 				
-				// Применяем цвета в зависимости от статуса
 				if (isUnderWeather) {
-					// Под погодой - красный (негативный эффект)
 					strengthElement.style.color = '#ff4444';
 					strengthElement.style.animation = 'strengthReduced 2s infinite';
 					cardElement.dataset.strengthStatus = 'weather';
 				} else if (isDamaged) {
-					// Повреждена - красный
 					strengthElement.style.color = '#ff4444';
 					strengthElement.style.animation = 'strengthReduced 2s infinite';
 					cardElement.dataset.strengthStatus = 'damaged';
 				} else if (isBoosted) {
-					// Усилена - зеленый
 					strengthElement.style.color = '#4CAF50';
 					strengthElement.style.animation = 'strengthBoosted 2s infinite';
 					cardElement.dataset.strengthStatus = 'boosted';
 				} else {
-					// Обычная сила - белый
 					strengthElement.style.color = 'white';
 					strengthElement.style.animation = 'none';
 					cardElement.dataset.strengthStatus = 'normal';
