@@ -1,5 +1,6 @@
 const aiModule = {
     gameState: null,
+	usedCardInstances: new Map(),
     usedCardIds: new Set(),
     isMakingMove: false,
 	
@@ -36,33 +37,20 @@ const aiModule = {
 		}
 		
 		if (this.gameState.player.passed) {
-			if (this.gameState.cardsPlayedThisTurn > 0) {
-				this.isMakingMove = false;
-				this.pass();
-				return;
-			}
-			
 			const playableCards = this.getPlayableCards();
 			if (playableCards.length > 0) {
 				const bestCard = this.selectBestCard(playableCards);
-				if (bestCard && bestCard.strength > 5) {
+				if (bestCard) {
 					this.playCard(bestCard);
-					
 					setTimeout(() => {
 						this.isMakingMove = false;
-						this.pass();
-					}, 1500);
-					return;
-				} else {
-					this.isMakingMove = false;
-					this.pass();
+					}, 100);
 					return;
 				}
-			} else {
-				this.isMakingMove = false;
-				this.pass();
-				return;
 			}
+			this.isMakingMove = false;
+			this.pass();
+			return;
 		}
 		
 		if (this.gameState.opponent.hand.length === 0) {
@@ -74,6 +62,16 @@ const aiModule = {
 		const playableCards = this.getPlayableCards();
 		
 		if (playableCards.length === 0) {
+			this.isMakingMove = false;
+			this.pass();
+			return;
+		}
+		
+		const playerScore = this.calculateTotalScore('player');
+		const opponentScore = this.calculateTotalScore('opponent');
+		const scoreDifference = opponentScore - playerScore;
+		
+		if (scoreDifference > 15 && this.gameState.opponent.hand.length <= 2) {
 			this.isMakingMove = false;
 			this.pass();
 			return;
@@ -114,8 +112,17 @@ const aiModule = {
 		const seenIds = new Set();
 		
 		this.gameState.opponent.hand.forEach(card => {
-			if (this.usedCardIds.has(card.id) || seenIds.has(card.id)) {
-				return;
+			const cardInstanceId = `${card.id}_${card.uniqueId || ''}`;
+			
+			if (this.usedCardInstances.has(cardInstanceId) || seenIds.has(card.id)) {
+				if (card.copy && card.copy > 1) {
+					const usedCount = this.usedCardInstances.get(card.id) || 0;
+					if (usedCount >= card.copy) {
+						return;
+					}
+				} else {
+					return;
+				}
 			}
 			seenIds.add(card.id);
 			
@@ -390,23 +397,28 @@ const aiModule = {
 	evaluateCardScore: function(card) {
 		let baseScore = 0;
 		
+		const copyBonus = (card.copy && card.copy > 1) ? card.copy * 5 : 0;
+		
 		if (card.ability === 'flock') {
 			baseScore = this.evaluateFlockCard(card);
-		} else if (this.isWeatherCard(card)) {
-			baseScore = this.evaluateWeatherCard(card);
-		} else if (card.type === 'tactic') {
-			if (card.ability && card.ability.startsWith('boost_')) {
-				baseScore = this.evaluateBoostCard(card);
-			} else {
-				baseScore = this.evaluateTacticCard(card);
-			}
-		} else if (card.type === 'artifact') {
+		} 
+		else if (card.type === 'artifact') {
+			baseScore = 15;
 			if (card.ability && card.ability.startsWith('boost_')) {
 				baseScore = this.evaluateArtifactBoostCard(card);
+			} else if (card.ability === 'damage') {
+				baseScore = 12;
 			} else {
-				baseScore = this.evaluateUnitCard(card);
+				baseScore = 10;
 			}
-		} else if (card.type === 'unit') {
+		}
+		else if (card.type === 'tactic') {
+			baseScore = 12;
+			if (card.ability && card.ability.startsWith('boost_')) {
+				baseScore = this.evaluateBoostCard(card);
+			}
+		}
+		else if (card.type === 'unit') {
 			const isSpy = window.gameModule && window.gameModule.isSpyCard(card);
 			
 			if (isSpy) {
@@ -414,16 +426,28 @@ const aiModule = {
 			} else {
 				baseScore = this.evaluateUnitCard(card);
 			}
-		} else if (card.ability === 'decoy') {
+		} 
+		else if (card.ability === 'decoy') {
 			baseScore = this.evaluateDecoyCard(card);
-		} else if (card.ability === 'destroy') {
+		} 
+		else if (card.ability === 'destroy') {
 			baseScore = this.evaluateDestroyCard(card);
-		} else if (card.ability === 'destroy_artf') {
+		} 
+		else if (card.ability === 'destroy_artf') {
 			baseScore = this.evaluateDestroyArtifactCard(card);
-		} else if (card.ability && card.ability.startsWith('damage_')) {
+		} 
+		else if (card.ability && card.ability.startsWith('damage_')) {
 			baseScore = this.evaluateDamageCard(card);
-		} else {
+		} 
+		else {
 			baseScore = 5;
+		}
+		
+		baseScore += copyBonus;
+		
+		const instanceId = `${card.id}_${card.uniqueId || ''}`;
+		if (!this.usedCardInstances.has(instanceId)) {
+			baseScore += 3;
 		}
 		
 		if (card.rarity === 'gold') {
@@ -2171,7 +2195,14 @@ const aiModule = {
 	},
 
 	playCard: function(card) {
-		this.usedCardIds.add(card.id);
+		const instanceId = `${card.id}_${card.uniqueId || Date.now()}`;
+		this.usedCardInstances.set(instanceId, true);
+		
+		if (card.copy && card.copy > 1) {
+			const usedCount = this.usedCardInstances.get(card.id) || 0;
+			this.usedCardInstances.set(card.id, usedCount + 1);
+		}
+		
 		this.removeCardFromHand(card);
 		
 		if (card.ability === 'flock') {
@@ -2348,7 +2379,6 @@ const aiModule = {
 		}
 		
 		if (window.gameModule) {
-			window.gameModule.displayOpponentHand();
 			window.gameModule.displayOpponentDeck();
 			window.gameModule.completeCardPlay();
 		}
