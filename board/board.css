@@ -777,14 +777,10 @@
    font-weight: bold;
    text-transform: uppercase;
    letter-spacing: 3px;
-   
-   /* Благородное золото с градиентом */
    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
    -webkit-background-clip: text;
    background-clip: text;
    color: transparent;
-   
-   /* Мягкая тень для объема */
    text-shadow: 
        1px 1px 2px rgba(0, 0, 0, 0.4),
        0 0 8px rgba(165, 124, 44, 0.3);
@@ -858,7 +854,6 @@
    animation: coinTossUp 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* Результат подбрасывания монеты */
 .coin-result {
    font-size: 25px;
    font-weight: bold;
@@ -868,14 +863,10 @@
    opacity: 0;
    transform: translateY(-10px);
    transition: opacity 0.3s ease, transform 0.3s ease;
-   
-   /* Благородное золото для текста результата */
    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
    -webkit-background-clip: text;
    background-clip: text;
    color: transparent;
-   
-   /* Мягкая тень для объема */
    text-shadow: 
        1px 1px 2px rgba(0, 0, 0, 0.4),
        0 0 8px rgba(165, 124, 44, 0.3);
@@ -887,7 +878,6 @@
    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Анимация монеты */
 @keyframes smoothCoinToss {
     0% {
         transform: translateY(0) rotateX(0deg);
@@ -916,7 +906,6 @@
     transform-origin: center center;
 }
 
-/* Для отображения стороны монеты (победа/поражение) */
 .coin-side-win,
 .coin-side-lose {
     font-weight: bold;
@@ -1012,7 +1001,6 @@
     transform: scale(1.02);
 }
 
-/* Модальное окно выбора первого хода */
 .turn-choice-modal {
     text-align: center;
     margin-bottom: 150px;
@@ -1079,14 +1067,10 @@
     min-width: 180px;
     margin-top: 20px;
     margin-bottom: 20px;
-    
-    /* Благородное золото с градиентом */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    /* Мягкая тень для объема */
     text-shadow: 
         1px 1px 2px rgba(0, 0, 0, 0.4),
         0 0 5px rgba(165, 124, 44, 0.3);
@@ -1137,7 +1121,6 @@
     display: block;
 }
 
-/* Кнопка выбора игрока */
 .player-choice .choice-btn__value {
     background: linear-gradient(135deg, #4caf50 0%, #6fbf6f 100%);
     background-clip: text;
@@ -1147,7 +1130,6 @@
     transform: scale(1.03);
 }
 
-/* Кнопка выбора противника */
 .opponent-choice .choice-btn__value {
     background: linear-gradient(135deg, #f44336 0%, #ff6b5e 100%);
     background-clip: text;
@@ -1449,24 +1431,6 @@
     letter-spacing: 1px;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 .mulligan-faction-info {
     position: fixed;
     left: 54%;
@@ -1541,19 +1505,6 @@
         transform: translateX(-50%) translateY(0);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #gameMessages {
     position: fixed;
@@ -1658,7 +1609,6 @@
 }
 
 .game-result-container {
-    /*! text-align: center; */
     animation: resultAppear 0.5s ease-out;
     display: flex;
     flex-direction: column;
@@ -1708,15 +1658,11 @@
     position: relative;
     width: 200px;
     overflow: hidden;
-    
-    /* Градиент для текста */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: #a57c2c;
-    
-    /* Убираем все свечения и тени */
     text-shadow: none;
     box-shadow: none;
     outline: none;

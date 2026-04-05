@@ -431,7 +431,7 @@ const skillSystem = {
 			type: 'special',
 			description: 'Усиливает все карты с тегом "Вампир" в одном ряду на 2 ед. силы',
 			effect: {
-				type: 'boost_tag',
+				type: 'special_tag_boost',
 				target: 'unit',
 				condition: 'ally',
 				value: 2,
@@ -970,7 +970,6 @@ const skillSystem = {
 	executeTagBoost: function(tag, boostValue, selectedRow, context) {
 		let boostedCards = 0;
 		
-		// Усиливаем карты только в выбранном ряду
 		const rowState = context.gameState.player.rows[selectedRow];
 		
 		rowState.cards.forEach(card => {

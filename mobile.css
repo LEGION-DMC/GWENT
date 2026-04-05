@@ -14,7 +14,7 @@
     
     .player-hand-area { bottom: 2%; left: 29.7%; }
     
-    .board-card { top: -14px;} 
+    .board-card { top: -3px;} 
   
     .game-controls { bottom: 18%; right: 5%; }
     #mulliganControls { bottom: 18% !important }
@@ -27,24 +27,24 @@
     .opponent-rows-area { bottom: 61.8%; width: 950px; }
     .opponent-rows-area .battle-row #opponentSiegeStrength { margin-top: 7.2%; margin-left: 0.7%; font-size: 35px; } 
     .opponent-rows-area .battle-row #opponentSiegeTactics { margin-top: 7.8%; }
-    .opponent-rows-area .battle-row #opponentSiegeRow { margin-top: 8.6%; margin-left: -5%; }
+    .opponent-rows-area .battle-row #opponentSiegeRow { margin-top: 6.6%; margin-left: -5%; }
     .opponent-rows-area .battle-row #opponentRangedStrength { margin-top: 5.2%; margin-left: 0.7%; font-size: 35px; } 
     .opponent-rows-area .battle-row #opponentRangedTactics { margin-top: 5.3%; }
-    .opponent-rows-area .battle-row #opponentRangedRow { margin-top: 6.3%; margin-left: -5%; }
+    .opponent-rows-area .battle-row #opponentRangedRow { margin-top: 4.5%; margin-left: -5%; }
     .opponent-rows-area .battle-row #opponentCloseStrength { margin-top: 5.1%; margin-left: 0.7%; font-size: 35px; } 
     .opponent-rows-area .battle-row #opponentCloseTactics { margin-top: 3.5%; }
-    .opponent-rows-area .battle-row #opponentCloseRow { margin-top: 5.5%; margin-left: -5%; }
+    .opponent-rows-area .battle-row #opponentCloseRow { margin-top: 4%; margin-left: -5%; }
   
     .player-rows-area { bottom: 23.2%; width: 950px; } 
     .player-rows-area .battle-row #playerSiegeStrength { margin-top: 15%; margin-left: 0.7%; font-size: 35px; } 
     .player-rows-area .battle-row #playerSiegeTactics { margin-top: 14.8%; }
-    .player-rows-area .battle-row #playerSiegeRow { margin-top: 15%; margin-left: -5%; }
+    .player-rows-area .battle-row #playerSiegeRow { margin-top: 13%; margin-left: -5%; }
     .player-rows-area .battle-row #playerRangedStrength { margin-top: 14.6%; margin-left: 0.7%; font-size: 35px; } 
     .player-rows-area .battle-row #playerRangedTactics { margin-top: 14.2%; }
-    .player-rows-area .battle-row #playerRangedRow { margin-top: 15%; margin-left: -5%; }
+    .player-rows-area .battle-row #playerRangedRow { margin-top: 13%; margin-left: -5%; }
     .player-rows-area .battle-row #playerCloseStrength { margin-top: 14.9%; margin-left: 0.7%; font-size: 35px; } 
-    .player-rows-area .battle-row #playerCloseTactics { margin-top: 15.5%; }
-    .player-rows-area .battle-row #playerCloseRow { margin-top: 16%; margin-left: -5%; }
+    .player-rows-area .battle-row #playerCloseTactics { margin-top: 16.5%; }
+    .player-rows-area .battle-row #playerCloseRow { margin-top: 13.5%; margin-left: -5%; }
 }
 
 @media (max-width: 1848px) {
@@ -346,5 +346,5 @@
     .player-rows-area .battle-row #playerRangedRow { margin-top: 21%; margin-left: -7%; }
     .player-rows-area .battle-row #playerCloseStrength { margin-top: 29.3%; margin-left: 0.6%; }
     .player-rows-area .battle-row #playerCloseTactics { margin-top: 27.3%; }
-    .player-rows-area .battle-row #playerCloseRow { margin-top: 27.3%; margin-left: -7%; }
+    .player-rows-area .battle-row #playerCloseRow { margin-top: 25.3%; margin-left: -7%; }
 }

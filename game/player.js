@@ -188,10 +188,6 @@ const playerModule = {
 	},
 
 	activateFlockAbility: function(playedCard, flockTag) {
-		console.log(`=== activateFlockAbility ===`);
-		console.log(`Ищем карты с tagsflock включающим "${flockTag}"`);
-		console.log(`В руке ${this.gameState.player.hand.length} карт, в колоде ${this.gameState.player.deck.length} карт`);
-		
 		let summonedCount = 0;
 		const cardsToSummon = [];
 		
@@ -207,7 +203,6 @@ const playerModule = {
 				handCard.type === 'unit' &&
 				hasMatchingFlockTag) {
 				
-				console.log(`Найдена карта в руке: ${handCard.name}, id: ${handCard.id}, uniqueId: ${handCard.uniqueId}`);
 				cardsToSummon.push({ card: handCard, source: 'hand', index: i });
 			}
 		}
@@ -219,12 +214,9 @@ const playerModule = {
 				deckCard.tagsflock.some(tag => tag === flockTag);
 			
 			if (deckCard.type === 'unit' && hasMatchingFlockTag) {
-				console.log(`Найдена карта в колоде: ${deckCard.name}, id: ${deckCard.id}`);
 				cardsToSummon.push({ card: deckCard, source: 'deck', index: i });
 			}
 		}
-		
-		console.log(`Найдено карт для призыва: ${cardsToSummon.length}`);
 		
 		for (let i = cardsToSummon.length - 1; i >= 0; i--) {
 			const { card: summonCard, source, index } = cardsToSummon[i];
@@ -347,10 +339,8 @@ const playerModule = {
 		} else if (ability.startsWith('boost_tag_')) {
 			this.startSpecialTagBoostPlacement(card);
 		} else if (ability.startsWith('boost_') && !ability.startsWith('boost_near_')) {
-			// Для усиления конкретной карты
 			this.startSpecialCardBoostPlacement(card);
 		} else if (ability.startsWith('boost_near_')) {
-			// Для усиления соседей
 			this.startSpecialNearBoostPlacement(card);
 		} else {
 			this.cancelCardSelection();
@@ -373,7 +363,28 @@ const playerModule = {
 					unitCard.tags && 
 					unitCard.tags.includes(tag)) {
 					
-					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player');
+					let cardElement = null;
+					
+					if (unitCard.uniqueId) {
+						cardElement = rowElement.querySelector(`[data-unique-id="${unitCard.uniqueId}"]`);
+					}
+					
+					if (!cardElement) {
+						const possibleCards = rowElement.querySelectorAll(`[data-card-id="${unitCard.id}"]`);
+						for (let el of possibleCards) {
+							if (!cardElement) {
+								cardElement = el;
+							}
+						}
+					}
+					
+					if (!cardElement) {
+						const allCards = rowElement.querySelectorAll('.board-card');
+						if (allCards[index]) {
+							cardElement = allCards[index];
+						}
+					}
+					
 					if (cardElement) {
 						cardElement.classList.add('boost-target');
 						cardElement.classList.add('tag-boost-target-card');
@@ -381,6 +392,8 @@ const playerModule = {
 						cardElement.dataset.boostTag = tag;
 						this.setupSpecialTagCardBoostHandler(cardElement, unitCard, row, index, boostValue);
 						hasAvailableCards = true;
+					} else {
+						console.warn(`Card element not found for ${unitCard.name} (id: ${unitCard.id}, uniqueId: ${unitCard.uniqueId})`);
 					}
 				}
 			});
@@ -396,7 +409,6 @@ const playerModule = {
 	setupSpecialTagCardBoostHandler: function(cardElement, targetCard, row, position, boostValue) {
 		const clickHandler = () => {
 			if (this.gameState.selectingRow && this.gameState.placementType === 'special_tag_boost') {
-				// Для специальных карт с усилением по тегу - применяем ко всем картам с тегом в ряду
 				this.applySpecialTagBoostToRow(this.gameState.boostCard, row, boostValue, this.gameState.boostTag);
 				cardElement.removeEventListener('click', clickHandler);
 			}
@@ -420,7 +432,9 @@ const playerModule = {
 		const rowState = this.gameState.player.rows[row];
 		let boostedCards = 0;
 		
-		rowState.cards.forEach(card => {
+		const cardsToBoost = [...rowState.cards];
+		
+		cardsToBoost.forEach(card => {
 			if (card.type === 'unit' && 
 				!this.isHeroCard(card) && 
 				card.tags && 
@@ -431,10 +445,8 @@ const playerModule = {
 		});
 		
 		if (boostedCards > 0) {
-			// Удаляем специальную карту из руки
 			this.removeCardFromHand(boostCard);
 			
-			// Добавляем карту в сброс
 			const boostCardCopy = { ...boostCard };
 			this.gameState.player.discard.push(boostCardCopy);
 			
@@ -458,6 +470,7 @@ const playerModule = {
 		const tagNames = {
 			'witcher': 'Ведьмак',
 			'criminal': 'Преступник',
+			'blood': 'Вампир',
 			'dwarf': 'Краснолюд',
 			'blood': 'Кровопийца',
 			'elf': 'Эльф',
@@ -499,6 +512,9 @@ const playerModule = {
 		} else if (card.ability === 'boost_tag_dwarf') {
 			tag = 'dwarf';
 			boostValue = 1;
+		} else if (card.ability === 'boost_tag_thirst') {
+			tag = 'blood';
+			boostValue = 2;
 		}
 		
 		if (!tag) {
@@ -510,7 +526,6 @@ const playerModule = {
 		this.gameState.boostTag = tag;
 		this.gameState.boostTagValue = boostValue;
 		
-		// Подсвечиваем карты с нужным тегом
 		this.highlightPlayerCardsForSpecialTagBoost(tag, boostValue);
 	},
 
@@ -671,11 +686,15 @@ const playerModule = {
 			boostValue = 2;
 		} else if (boostCard.ability === 'boost_tag_dwarf') {
 			boostValue = 1;
+		} else if (boostCard.ability === 'boost_tag_thirst') { 
+			boostValue = 2;
 		}
 		
 		let boostedCards = 0;
 		
-		rowState.cards.forEach(card => {
+		const cardsToBoost = [...rowState.cards];
+		
+		cardsToBoost.forEach(card => {
 			if (card.type === 'unit' && 
 				!this.isHeroCard(card) && 
 				card.tags && 
@@ -686,10 +705,8 @@ const playerModule = {
 		});
 		
 		if (boostedCards > 0) {
-			// Удаляем специальную карту из руки
 			this.removeCardFromHand(boostCard);
 			
-			// Добавляем карту в сброс
 			const boostCardCopy = { ...boostCard };
 			this.gameState.player.discard.push(boostCardCopy);
 			
@@ -702,6 +719,9 @@ const playerModule = {
 			if (window.audioManager && window.audioManager.playSound) {
 				audioManager.playSound('card_boost');
 			}
+		} else {
+			const tagName = this.getTagRussianName(tag);
+			this.showMessage(`В этом ряду нет карт с тегом "${tagName}" для усиления!`);
 		}
 		
 		this.cancelSpecialBoostSelection();
@@ -1320,35 +1340,58 @@ const playerModule = {
 		const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
 		if (!rowElement) return;
 		
-		const cardElement = rowElement.querySelector(`[data-card-id="${card.id}"]`);
-		if (!cardElement) return;
+		let cardElements = [];
 		
-		// Создаем эффект усиления
-		const boostOverlay = document.createElement('div');
-		boostOverlay.className = 'card-boost-overlay';
-		boostOverlay.textContent = `+${boostValue}`;
-		boostOverlay.style.cssText = `
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			color: green;
-			font-size: 24px;
-			font-weight: bold;
-			text-shadow: 0 0 5px black;
-			z-index: 100;
-			pointer-events: none;
-			animation: boostAnimation 0.8s ease-out forwards;
-		`;
-		
-		cardElement.appendChild(boostOverlay);
-		
-		// Удаляем эффект через 0.8 секунды
-		setTimeout(() => {
-			if (boostOverlay.parentNode) {
-				boostOverlay.remove();
+		if (card.uniqueId) {
+			const uniqueElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			if (uniqueElement) {
+				cardElements = [uniqueElement];
 			}
-		}, 800);
+		}
+		
+		if (cardElements.length === 0) {
+			cardElements = Array.from(rowElement.querySelectorAll(`[data-card-id="${card.id}"]`));
+		}
+		
+		if (cardElements.length === 0) {
+			const rowState = this.gameState.player.rows[row];
+			const cardIndex = rowState.cards.findIndex(c => 
+				c.id === card.id && c.uniqueId === card.uniqueId
+			);
+			if (cardIndex !== -1) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				if (allCards[cardIndex]) {
+					cardElements = [allCards[cardIndex]];
+				}
+			}
+		}
+		
+		cardElements.forEach(cardElement => {
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = `+${boostValue}`;
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				color: green;
+				font-size: 24px;
+				font-weight: bold;
+				text-shadow: 0 0 5px black;
+				z-index: 100;
+				pointer-events: none;
+				animation: boostAnimation 0.8s ease-out forwards;
+			`;
+			
+			cardElement.appendChild(boostOverlay);
+			
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+			}, 800);
+		});
 	},
 
 	cancelBoostSelection: function() {

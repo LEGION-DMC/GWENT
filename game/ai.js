@@ -21,6 +21,7 @@ const aiModule = {
 	},
 
 	makeMove: function() {
+																							this.debugDetailedAICards();
 		if (this.isMakingMove) return;
 		this.isMakingMove = true;
 		
@@ -174,7 +175,60 @@ const aiModule = {
 		
 		return uniqueCards;
 	},
- 
+
+																					 debugDetailedAICards: function() {
+																						console.group('Рука');
+																						if (this.gameState.opponent.hand.length === 0) {
+																							console.log('  (empty)');
+																						} else {
+																							this.gameState.opponent.hand.forEach((card, idx) => {
+																								console.log(`${idx + 1}.`, {
+																									name: card.name,
+																									strength: card.strength,
+																									position: card.position
+																								});
+																							});
+																						}
+																						console.groupEnd();
+																						
+																						console.group('Колода');
+																						if (this.gameState.opponent.deck.length === 0) {
+																							console.log('  (empty)');
+																						} else {
+																							const units = this.gameState.opponent.deck.filter(c => c.type === 'unit');
+																							const specials = this.gameState.opponent.deck.filter(c => c.type === 'special');
+																							const artifacts = this.gameState.opponent.deck.filter(c => c.type === 'artifact');
+																							const tactics = this.gameState.opponent.deck.filter(c => c.type === 'tactic');
+																							
+																							if (units.length) console.log(`Отряды (${units.length}):`, units.map(c => `${c.name}(${c.strength})`).join(', '));
+																							if (specials.length) console.log(`Спец. (${specials.length}):`, specials.map(c => c.name).join(', '));
+																							if (artifacts.length) console.log(`Артефакты (${artifacts.length}):`, artifacts.map(c => c.name).join(', '));
+																							if (tactics.length) console.log(`Тактики (${tactics.length}):`, tactics.map(c => c.name).join(', '));
+																						}
+																						console.groupEnd();
+																						
+																						console.group('СТАТИСТИКА');
+																						console.log(`Всего карт: ${this.gameState.opponent.hand.length + this.gameState.opponent.deck.length}`);
+																						console.log(`Рука: ${this.gameState.opponent.hand.length}`);
+																						console.log(`Колода: ${this.gameState.opponent.deck.length}`);
+																						console.log(`Сброс: ${this.gameState.opponent.discard.length}`);
+																						console.groupEnd();
+																						
+																						console.groupEnd();
+																					},
+
+																					formatCardInfo: function(card) {
+																						let info = `[${card.id}] ${card.name || 'Unknown'}`;
+																						
+																						if (card.type) info += ` | Type: ${card.type}`;
+																						if (card.strength !== undefined) info += ` | Str: ${card.strength}`;
+																						if (card.ability) info += ` | Ability: ${card.ability}`;
+																						if (card.rarity) info += ` | ${card.rarity.toUpperCase()}`;
+																						if (card.copy && card.copy > 1) info += ` | Copy x${card.copy}`;
+																						
+																						return info;
+																					},
+
 	canPlayFlockCard: function(card) {
 		let availableRows = [];
 		
