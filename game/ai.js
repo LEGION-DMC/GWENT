@@ -969,7 +969,6 @@ const aiModule = {
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 	},
@@ -1070,7 +1069,6 @@ const aiModule = {
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 	},
@@ -2230,17 +2228,51 @@ const aiModule = {
 		const rows = ['close', 'ranged', 'siege'];
 		
 		rows.forEach(row => {
-			this.gameState.opponent.rows[row].cards.forEach(card => {
+			this.gameState.opponent.rows[row].cards.forEach((card, index) => {
 				if (this.isHeroCard(card)) {
 					return;
 				}
 				
-				if (card.type === 'unit' && card.strength < 4) {
-					weakCards.push({
-						card: card,
-						row: row,
-						score: 10 - card.strength
-					});
+				if (card.type === 'unit') {
+					let currentStrength = card.currentStrength;
+					if (currentStrength === undefined && card.modifiedStrength !== undefined) {
+						currentStrength = card.modifiedStrength;
+					}
+					if (currentStrength === undefined) {
+						currentStrength = card.strength;
+					}
+					
+					const baseStrength = card.baseStrength || card.strength || 0;
+					const isVeryWeak = currentStrength <= 3;
+					const isDamaged = currentStrength < baseStrength;
+					const isUnderWeatherButValuable = card.underWeather === true && baseStrength >= 6;
+					
+					if (isVeryWeak || isDamaged || isUnderWeatherButValuable) {
+						let score = 10 - currentStrength;
+						
+						if (isDamaged) {
+							score += (baseStrength - currentStrength) * 2;
+						}
+						
+						if (isUnderWeatherButValuable) {
+							score += baseStrength;
+						}
+						
+						if (card.rarity === 'gold') {
+							score += 15;
+						} else if (card.rarity === 'silver') {
+							score += 8;
+						}
+						
+						weakCards.push({
+							card: card,
+							row: row,
+							position: index,
+							currentStrength: currentStrength,
+							baseStrength: baseStrength,
+							score: score
+						});
+					}
 				}
 			});
 		});
@@ -2549,7 +2581,20 @@ const aiModule = {
 		}, 500);
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
+			// Используем те же звуки, что и для обычных карт отрядов
+			switch(row) {
+				case 'close':
+					audioManager.playSound('card_close');
+					break;
+				case 'ranged':
+					audioManager.playSound('card_range');
+					break;
+				case 'siege':
+					audioManager.playSound('card_siege');
+					break;
+				default:
+					audioManager.playSound('card_close');
+			}
 		}
 	},
 
@@ -2684,7 +2729,6 @@ const aiModule = {
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 	},
@@ -2781,7 +2825,6 @@ const aiModule = {
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 	},
@@ -2993,10 +3036,7 @@ const aiModule = {
 		
 		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
-			setTimeout(() => {
-				audioManager.playSound('card_destroy');
-			}, 300);
+			audioManager.playSound('card_destroy');
 		}
 		
 		// Обновляем сбросы
@@ -3082,10 +3122,7 @@ const aiModule = {
 			
 			// Воспроизводим звук
 			if (window.audioManager && window.audioManager.playSound) {
-				audioManager.playSound('artefact');
-				setTimeout(() => {
-					audioManager.playSound('scorch');
-				}, 300);
+				audioManager.playSound('scorch');
 			}
 		}
 	},
@@ -3138,41 +3175,61 @@ const aiModule = {
 		
 		if (targetIndex === -1) return;
 		
-		// Создаем копию для возврата в руку
 		const cardCopy = { ...targetCard };
 		cardCopy.playedThisRound = false;
 		
-		// Восстанавливаем оригинальную силу, если карта была под погодой
 		if (cardCopy.originalStrength !== undefined) {
 			cardCopy.strength = cardCopy.originalStrength;
 			delete cardCopy.originalStrength;
 		}
 		
-		// Удаляем Чучело из руки
+		if (cardCopy.baseStrength !== undefined) {
+			cardCopy.strength = cardCopy.baseStrength;
+			cardCopy.currentStrength = cardCopy.baseStrength;
+			cardCopy.modifiedStrength = cardCopy.baseStrength;
+		}
+		
+		cardCopy.underWeather = false;
+		
 		this.removeCardFromHand(decoyCard);
 		
-		// Добавляем карту обратно в руку
+		rowState.cards.splice(targetIndex, 1);
+		
 		this.gameState.opponent.hand.push(cardCopy);
 		
-		// Заменяем на поле
 		const placedDecoy = { ...decoyCard };
 		placedDecoy.owner = 'opponent';
 		placedDecoy.row = row;
-		placedDecoy.currentStrength = 1;
 		
-		rowState.cards[targetIndex] = placedDecoy;
+		delete placedDecoy.strength;
+		delete placedDecoy.currentStrength;
+		delete placedDecoy.modifiedStrength;
+		delete placedDecoy.baseStrength;
+		delete placedDecoy._displayStrength;
+		delete placedDecoy.originalStrength;
 		
-		// Обновляем отображение
+		placedDecoy.underWeather = false;
+		placedDecoy.uniqueId = `decoy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		
+		rowState.cards.splice(targetIndex, 0, placedDecoy);
+		
 		if (window.gameModule) {
-			window.gameModule.displayCardOnRow(row, placedDecoy, 'opponent', targetIndex);
-			window.gameModule.updateRowStrength(row, 'opponent');
+			window.gameModule.removeCardFromBoardVisual(targetCard, row, 'opponent');
 			
-			// Завершаем ход через небольшую задержку
 			setTimeout(() => {
-				if (window.gameModule.completeCardPlay) {
-					window.gameModule.completeCardPlay();
+				window.gameModule.displayCardOnRow(row, placedDecoy, 'opponent', targetIndex);
+				window.gameModule.updateRowStrength(row, 'opponent');
+				
+				if (window.gameModule.displayOpponentDeck) {
+					window.gameModule.displayOpponentDeck();
 				}
-			}, 1000);
+				
+				setTimeout(() => {
+					if (window.gameModule.completeCardPlay) {
+						window.gameModule.completeCardPlay();
+					}
+				}, 1000);
+			}, 300);
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {

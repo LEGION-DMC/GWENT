@@ -133,7 +133,16 @@ const skillSystem = {
 				condition: 'ally'
 			}
 		},
-		
+		'flock': {
+			name: 'Стая',
+			type: 'special',
+			description: 'Призывает из руки и колоды все копии данного отряда',
+			effect: {
+				type: 'flock',
+				target: 'self'
+			}
+		},
+
 		'damage_1': {
 			name: 'Атака I',
 			type: 'special',
@@ -453,15 +462,6 @@ const skillSystem = {
 			}
 		}, 	
 		
-		'flock': {
-			name: 'Стая',
-			type: 'special',
-			description: 'Призывает из руки и колоды все копии данного отряда',
-			effect: {
-				type: 'flock',
-				target: 'self'
-			}
-		},
 	},
 
 	applyFlockEffect: function(effect, context) {
@@ -539,10 +539,6 @@ const skillSystem = {
 			rows.forEach(row => {
 				window.gameModule.updateRowStrength(row, 'player');
 			});
-		}
-		
-		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('flock');
 		}
 		
 		return {
@@ -1248,7 +1244,7 @@ const skillSystem = {
 		targetElement.appendChild(destroyEffect);
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact_destroy');
+			audioManager.playSound('card_destroy');
 		}
 		
 		setTimeout(() => {

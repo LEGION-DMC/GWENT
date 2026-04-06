@@ -1021,7 +1021,7 @@ const gameModule = {
 			coinElement.classList.add('smooth-coin-toss');
 			
 			if (audioManager && audioManager.playSound) {
-				audioManager.playSound('coinToss');
+				audioManager.playSound('coin');
 			}
 		}, 500);
 		
@@ -2713,9 +2713,21 @@ const gameModule = {
 		// Обновляем силу ряда противника - ЭТО ВАЖНО!
 		this.updateRowStrength(row, opponent);
 		
-		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
+			// Используем те же звуки, что и для обычных карт отрядов
+			switch(row) {
+				case 'close':
+					audioManager.playSound('card_close');
+					break;
+				case 'ranged':
+					audioManager.playSound('card_range');
+					break;
+				case 'siege':
+					audioManager.playSound('card_siege');
+					break;
+				default:
+					audioManager.playSound('card_close');
+			}
 		}
 		
 		// Выполняем добор карты

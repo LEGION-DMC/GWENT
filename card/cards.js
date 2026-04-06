@@ -1132,7 +1132,7 @@ const minimalCardsData = {
                 descriptionfull: 'Те, кто хочет сровнять Брокилон с землей, сжечь его деревья и погубить в нем все живое, скоро станут пищей для его почвы.',
                 ability: 'damage_row_1',
                 rarity: 'bronze',
-                tags: ['weather'],
+                tags: ['spell'],
             },
             {
                 name: 'Зов леса',

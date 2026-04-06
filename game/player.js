@@ -1241,7 +1241,6 @@ const playerModule = {
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 		
@@ -1328,7 +1327,6 @@ const playerModule = {
 		
 		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 		
@@ -1960,7 +1958,6 @@ const playerModule = {
 		
 		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 		
@@ -2038,7 +2035,6 @@ const playerModule = {
 		
 		// Воспроизводим звук
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('artefact');
 			audioManager.playSound('card_boost');
 		}
 		
