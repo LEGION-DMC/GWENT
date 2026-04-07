@@ -1546,7 +1546,7 @@ const playerModule = {
 			return parseInt(rowDamageMatch[1]);
 		}
 		
-		return 1; // Значение по умолчанию
+		return 1;
 	},
 
 	setupDamageSelectionHandler: function(cardElement, damageCard, targetCard, row) {

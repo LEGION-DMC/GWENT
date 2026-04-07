@@ -179,6 +179,31 @@ const skillSystem = {
 				requiresSelection: true
 			}
 		},
+		'damage_4': {
+			name: 'Атака IV',
+			type: 'special',
+			description: 'Наносит 4 ед. урона выбранной карте противника',
+			effect: {
+				type: 'damage',
+				target: 'unit',
+				condition: 'enemy',
+				value: 4,
+				requiresSelection: true
+			}
+		},
+		'damage_5': {
+			name: 'Атака V',
+			type: 'special',
+			description: 'Наносит 5 ед. урона выбранной карте противника',
+			effect: {
+				type: 'damage',
+				target: 'unit',
+				condition: 'enemy',
+				value: 5,
+				requiresSelection: true
+			}
+		},
+		
 		'damage_row_1': {
 			name: 'Атака по ряду I',
 			type: 'special',
@@ -215,7 +240,31 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		},
-	
+		'damage_row_4': {
+			name: 'Атака по ряду IV',
+			type: 'special',
+			description: 'Наносит 4 ед. урона всем картам в выбранном ряду противника',
+			effect: {
+				type: 'damage_row',
+				target: 'row',
+				condition: 'enemy',
+				value: 4,
+				requiresRowSelection: true
+			}
+		},
+		'damage_row_5': {
+			name: 'Атака по ряду V',
+			type: 'special',
+			description: 'Наносит 5 ед. урона всем картам в выбранном ряду противника',
+			effect: {
+				type: 'damage_row',
+				target: 'row',
+				condition: 'enemy',
+				value: 5,
+				requiresRowSelection: true
+			}
+		},
+
 		'boost_1': {
 			name: 'Усиление I',
 			type: 'artifact',
@@ -276,6 +325,7 @@ const skillSystem = {
 				requiresSelection: true
 			}
 		},
+		
 		'boost_near_1': {
 			name: 'Усиление союза I',
 			type: 'artifact',
@@ -336,6 +386,7 @@ const skillSystem = {
 				requiresSelection: true
 			}
 		},
+		
 		'boost_row_1': {
 			name: 'Усиление ряда I',
 			type: 'tactic',
@@ -396,6 +447,7 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		},
+		
 		'boost_tag_witcher_2': {
 			name: 'Подготовка ведьмаков',
 			type: 'special',
