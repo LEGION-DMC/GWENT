@@ -197,7 +197,8 @@ const playerModule = {
 			const hasMatchingFlockTag = handCard.tagsflock && 
 				handCard.tagsflock.some(tag => tag === flockTag);
 			
-			const isSameCard = handCard.uniqueId === playedCard.uniqueId;
+			const isSameCard = handCard.uniqueId === playedCard.uniqueId || 
+							   (handCard.id === playedCard.id && handCard.uniqueId === playedCard.uniqueId);
 			
 			if (!isSameCard && 
 				handCard.type === 'unit' &&
@@ -239,7 +240,7 @@ const playerModule = {
 					underWeather: false,
 					owner: 'player',
 					row: targetRow,
-					summonedByFlock: true
+					summonedByFlock: true 
 				};
 				
 				this.gameState.player.rows[targetRow].cards.push(summonCopy);
@@ -1196,18 +1197,74 @@ const playerModule = {
 		card.modifiedStrength += boostValue;
 		
 		if (card.underWeather) {
-			card.currentStrength = 1 + boostValue;
+			card.currentStrength = 1;
 		} else {
 			card.currentStrength = card.modifiedStrength;
 			card.strength = card.modifiedStrength;
 		}
 		
-		this.createBoostVisualEffect(card, row, boostValue);
+		this.createBoostVisualEffectImproved(card, row, boostValue);
 		
 		if (window.gameModule) {
 			window.gameModule.updateCardStrengthDisplay(card, row, player);
 			window.gameModule.updateRowStrength(row, player);
 		}
+	},
+
+	createBoostVisualEffectImproved: function(card, row, boostValue) {
+		const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+		if (!rowElement) return;
+		
+		let cardElement = null;
+		
+		// Ищем по uniqueId
+		if (card.uniqueId) {
+			cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+		}
+		
+		if (!cardElement) {
+			const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+			if (elements.length === 1) {
+				cardElement = elements[0];
+			} else if (elements.length > 1) {
+				const rowState = this.gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && elements[position]) {
+					cardElement = elements[position];
+				} else {
+					cardElement = elements[0];
+				}
+			}
+		}
+		
+		if (!cardElement) return;
+		
+		const boostOverlay = document.createElement('div');
+		boostOverlay.className = 'card-boost-overlay';
+		boostOverlay.textContent = `+${boostValue}`;
+		boostOverlay.style.cssText = `
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			color: green;
+			font-size: 24px;
+			font-weight: bold;
+			text-shadow: 0 0 5px black;
+			z-index: 100;
+			pointer-events: none;
+			animation: boostAnimation 0.8s ease-out forwards;
+		`;
+		
+		cardElement.appendChild(boostOverlay);
+		
+		setTimeout(() => {
+			if (boostOverlay.parentNode) {
+				boostOverlay.remove();
+			}
+		}, 800);
 	},
 
 	applyRowBoostCard: function(boostCard, row) {
@@ -1632,6 +1689,8 @@ const playerModule = {
 	highlightAvailableCardsForBoost: function(card) {
 		const rows = ['close', 'ranged', 'siege'];
 		let hasAvailableCards = false;
+		const boostMatch = card.ability.match(/boost_(\d+)/);
+		const boostValue = boostMatch ? parseInt(boostMatch[1]) : 1;
 		
 		rows.forEach(row => {
 			const rowState = this.gameState.player.rows[row];
@@ -1641,11 +1700,28 @@ const playerModule = {
 			
 			rowState.cards.forEach((unitCard, index) => {
 				if (unitCard.type === 'unit' && !this.isHeroCard(unitCard)) {
-					const cardElement = this.getCardElementOnBoard(unitCard, row, 'player');
+					const cardElement = this.getCardElementOnBoardImproved(unitCard, row, rowElement);
 					if (cardElement) {
 						cardElement.classList.add('boost-target');
+						cardElement.dataset.boostValue = boostValue;
 						this.setupCardBoostSelectionHandler(cardElement, unitCard, row, index);
 						hasAvailableCards = true;
+					} else {
+						const allCards = rowElement.querySelectorAll('.board-card');
+						for (let i = 0; i < allCards.length; i++) {
+							const el = allCards[i];
+							const strengthEl = el.querySelector('.board-card-strength');
+							if (strengthEl && !el.classList.contains('artifact')) {
+								const existingCardId = el.dataset.cardId;
+								if (existingCardId === unitCard.id) {
+									el.classList.add('boost-target');
+									el.dataset.boostValue = boostValue;
+									this.setupCardBoostSelectionHandler(el, unitCard, row, index);
+									hasAvailableCards = true;
+									break;
+								}
+							}
+						}
 					}
 				}
 			});
@@ -1655,6 +1731,34 @@ const playerModule = {
 			this.showMessage('Нет карт для усиления!');
 			this.cancelCardSelection();
 		}
+	},
+
+	getCardElementOnBoardImproved: function(card, row, rowElement) {
+		if (!rowElement) {
+			rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+			if (!rowElement) return null;
+		}
+		
+		if (card.uniqueId) {
+			const uniqueElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			if (uniqueElement) return uniqueElement;
+		}
+		
+		const cardElements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+		if (cardElements.length === 1) return cardElements[0];
+		
+		if (cardElements.length > 1) {
+			const rowState = this.gameState.player.rows[row];
+			const positionInRow = rowState.cards.findIndex(c => 
+				c.id === card.id && c.uniqueId === card.uniqueId
+			);
+			if (positionInRow !== -1 && cardElements[positionInRow]) {
+				return cardElements[positionInRow];
+			}
+			return cardElements[0];
+		}
+		
+		return null;
 	},
 
 	highlightAvailableSlotsForNearBoost: function(card) {
@@ -2651,35 +2755,37 @@ const playerModule = {
 			return;
 		}
 		
-		// Создаем копию карты для возврата в руку с ВОССТАНОВЛЕННОЙ базовой силой
 		const cardCopy = { ...targetCard };
 		cardCopy.playedThisRound = false;
 		
-		// Восстанавливаем силу до базовой (baseStrength)
+		delete cardCopy.summonedByFlock;
+		delete cardCopy.usedFlockTag;
+		delete cardCopy.completeCalled;
+		delete cardCopy.uniqueId;           
+		delete cardCopy._displayStrength;
+		delete cardCopy.currentStrength;    
+		delete cardCopy.modifiedStrength;  
+		delete cardCopy.underWeather;
+		delete cardCopy.owner;
+		delete cardCopy.row;
+		delete cardCopy.positionInRow;
+		
 		if (cardCopy.baseStrength !== undefined) {
 			cardCopy.strength = cardCopy.baseStrength;
-			cardCopy.currentStrength = cardCopy.baseStrength;
-			cardCopy.modifiedStrength = cardCopy.baseStrength;
+			cardCopy.baseStrength = undefined;  
 		} else if (cardCopy.originalStrength !== undefined) {
 			cardCopy.strength = cardCopy.originalStrength;
 			delete cardCopy.originalStrength;
 		}
 		
-		// Сбрасываем флаг погоды
-		cardCopy.underWeather = false;
-		
-		// Удаляем Чучело из руки
 		this.removeCardFromHand(decoyCard);
 		
-		// Добавляем карту обратно в руку
 		this.gameState.player.hand.push(cardCopy);
 		
-		// Создаем Чучело для размещения на поле - у него НЕТ СИЛЫ
 		const placedDecoy = { ...decoyCard };
 		placedDecoy.owner = 'player';
 		placedDecoy.row = row;
 		
-		// ВАЖНО: Убираем все поля силы у Чучела
 		delete placedDecoy.strength;
 		delete placedDecoy.currentStrength;
 		delete placedDecoy.modifiedStrength;
@@ -2690,7 +2796,6 @@ const playerModule = {
 		placedDecoy.underWeather = false;
 		placedDecoy.uniqueId = `decoy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 		
-		// Заменяем карту на поле Чучелом
 		rowState.cards[targetIndex] = placedDecoy;
 		
 		if (window.gameModule) {
@@ -2704,10 +2809,8 @@ const playerModule = {
 				
 				oldCardElement.remove();
 				
-				// Создаем элемент Чучела (специальная карта без силы)
 				const decoyElement = window.gameModule.createBoardCardElement(placedDecoy, 'special');
 				
-				// Убеждаемся, что элемент не отображает силу
 				const strengthElement = decoyElement.querySelector('.board-card-strength');
 				if (strengthElement) {
 					strengthElement.remove();

@@ -1602,6 +1602,16 @@ const gameModule = {
 		
 		rows.forEach(row => {
 			this.gameState.player.rows[row].cards.forEach(card => {
+				delete card.summonedByFlock;
+				delete card._originalId;
+			});
+			
+			this.gameState.opponent.rows[row].cards.forEach(card => {
+				delete card.summonedByFlock;
+				delete card._originalId;
+			});
+			
+			this.gameState.player.rows[row].cards.forEach(card => {
 				this.addCardToDiscard(card, 'player');
 			});
 			
@@ -2310,22 +2320,12 @@ const gameModule = {
 	},
 
 	createCardCopy: function(card) {
-		// Создаем глубокую копию карты
 		const copy = JSON.parse(JSON.stringify(card));
 		
-		// Добавляем уникальный ID для отслеживания
 		copy.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-		
-		// Сохраняем базовую (оригинальную) силу карты - это значение НИКОГДА не меняется
 		copy.baseStrength = card.strength;
-		
-		// Текущая отображаемая сила (после всех модификаторов)
 		copy.currentStrength = card.strength;
-		
-		// Сила после урона/усиления (без учета погоды)
 		copy.modifiedStrength = card.strength;
-		
-		// Флаг, что карта под погодой
 		copy.underWeather = false;
 		
 		return copy;

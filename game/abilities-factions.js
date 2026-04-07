@@ -179,24 +179,27 @@ const factionAbilitiesModule = {
             applyEffect: function(gameState) {
                 return true;
             },
-            keepRandomCard: function(gameState, player) {
+			keepRandomCard: function(gameState, player) {
 				const rows = ['close', 'ranged', 'siege'];
 				let allCards = [];
 				
 				rows.forEach(row => {
 					const rowCards = gameState[player].rows[row].cards;
-					// Берем копию карт, чтобы не модифицировать оригиналы
 					rowCards.forEach(card => {
+						const cardCopy = JSON.parse(JSON.stringify(card));
+						cardCopy._originalId = card.id;
 						allCards.push({
-							card: JSON.parse(JSON.stringify(card)), // Глубокая копия
+							card: cardCopy,
 							row: row,
-							type: 'unit'
+							type: 'unit',
+							originalIndex: rowCards.indexOf(card),
+							uniqueId: card.uniqueId
 						});
 					});
 					
 					if (gameState[player].rows[row].tactic) {
 						allCards.push({ 
-							card: JSON.parse(JSON.stringify(gameState[player].rows[row].tactic)), // Глубокая копия
+							card: JSON.parse(JSON.stringify(gameState[player].rows[row].tactic)),
 							row: row, 
 							type: 'tactic' 
 						});
@@ -205,8 +208,14 @@ const factionAbilitiesModule = {
 				
 				if (allCards.length === 0) return null;
 				
-				const randomIndex = Math.floor(Math.random() * allCards.length);
-				const selected = allCards[randomIndex];
+				const sortedCards = [...allCards].sort((a, b) => {
+					if (a.card.summonedByFlock && !b.card.summonedByFlock) return 1;
+					if (!a.card.summonedByFlock && b.card.summonedByFlock) return -1;
+					return 0;
+				});
+				
+				const randomIndex = Math.floor(Math.random() * Math.min(3, sortedCards.length));
+				const selected = sortedCards[randomIndex];
 				
 				return selected;
 			}
@@ -333,9 +342,10 @@ const factionAbilitiesModule = {
         return Math.random() < 0.5 ? 'player' : 'opponent';
     },
 
-    handleRoundEndForMonsters: function(gameState) {
+	handleRoundEndForMonsters: function(gameState) {
 		const players = ['player', 'opponent'];
 		const cardsToReturn = [];
+		
 		players.forEach(player => {
 			const faction = gameState[player].faction;
 			if (faction === 'monsters') {
@@ -347,63 +357,91 @@ const factionAbilitiesModule = {
 							player: player,
 							card: keptCard.card,
 							row: keptCard.row,
-							type: keptCard.type
+							type: keptCard.type,
+							uniqueId: keptCard.uniqueId
 						});
 					}
 				}
 			}
 		});
-		cardsToReturn.forEach(item => {
-			const rowIndex = gameState[item.player].rows[item.row].cards.findIndex(
-				c => c.id === item.card.id
-			);
-			if (rowIndex !== -1) {
-				gameState[item.player].rows[item.row].cards.splice(rowIndex, 1);
-			} else if (item.type === 'tactic') {
-				gameState[item.player].rows[item.row].tactic = null;
-			}
-		});
+		
 		players.forEach(player => {
 			const rows = ['close', 'ranged', 'siege'];
 			rows.forEach(row => {
-				gameState[player].rows[row].cards = gameState[player].rows[row].cards.filter(card => {
-					const isReturningCard = cardsToReturn.some(item => 
-						item.player === player && item.card.id === card.id
+				const cardsToKeep = cardsToReturn.filter(item => 
+					item.player === player && item.row === row && item.type === 'unit'
+				);
+				
+				const originalCards = [...gameState[player].rows[row].cards];
+				gameState[player].rows[row].cards = [];
+				
+				originalCards.forEach(card => {
+					const isReturningCard = cardsToKeep.some(item => 
+						item.card.id === card.id && 
+						(item.uniqueId === card.uniqueId || 
+						 (!item.uniqueId && item.card._originalId === card.id))
 					);
-					return !isReturningCard;
+					
+					if (!isReturningCard) {
+						const cardToDiscard = JSON.parse(JSON.stringify(card));
+						delete cardToDiscard.summonedByFlock;
+						gameState[player].discard.push(cardToDiscard);
+					} else {
+						if (!cardsToKeep.some(k => k.card === card)) {
+							cardsToKeep.push({ card: card, row: row, player: player });
+						}
+					}
 				});
+				
+				gameState[player].rows[row].strength = 0;
+			});
+		});
+		
+		players.forEach(player => {
+			const rows = ['close', 'ranged', 'siege'];
+			rows.forEach(row => {
 				if (gameState[player].rows[row].tactic) {
 					const isReturningTactic = cardsToReturn.some(item => 
 						item.player === player && 
 						item.type === 'tactic' && 
 						item.row === row
 					);
+					
 					if (!isReturningTactic) {
 						gameState[player].discard.push(gameState[player].rows[row].tactic);
 						gameState[player].rows[row].tactic = null;
 					}
 				}
-				gameState[player].rows[row].cards.forEach(card => {
-					gameState[player].discard.push(card);
-				});
-				gameState[player].rows[row].cards = [];
-				gameState[player].rows[row].strength = 0;
 			});
-			if (window.gameModule && window.gameModule.updateDiscardDisplay) {
-				window.gameModule.updateDiscardDisplay(player);
-			}
 		});
+		
 		cardsToReturn.forEach(item => {
 			const cardToReturn = { ...item.card };
-			if (cardToReturn.originalStrength !== undefined) {
-				cardToReturn.strength = cardToReturn.originalStrength;
-				delete cardToReturn.originalStrength;
+			
+			delete cardToReturn.summonedByFlock;
+			delete cardToReturn._originalId;
+			
+			if (cardToReturn.baseStrength !== undefined) {
+				cardToReturn.strength = cardToReturn.baseStrength;
+				cardToReturn.currentStrength = cardToReturn.baseStrength;
+				cardToReturn.modifiedStrength = cardToReturn.baseStrength;
 			}
+			
+			cardToReturn.underWeather = false;
+			
+			delete cardToReturn.uniqueId;
+			
 			gameState[item.player].hand.push(cardToReturn);
+			
 			if (item.player === 'player' && window.gameModule) {
 				window.gameModule.displayPlayerHand();
 			}
 		});
+		
+		if (window.gameModule && window.gameModule.updateDiscardDisplay) {
+			window.gameModule.updateDiscardDisplay('player');
+			window.gameModule.updateDiscardDisplay('opponent');
+		}
 	},
 
     handleRound3ForSkellige: function(gameState) {
