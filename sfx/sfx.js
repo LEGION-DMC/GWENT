@@ -69,6 +69,7 @@ const audioManager = {
 			card_damage: 'sfx/card_damage.mp3',
 			card_boost: 'sfx/card_boost.mp3',
             card_destroy: 'sfx/card_destroy.mp3',
+            card_draw: 'sfx/card_draw.mp3',
             weatherFrost: 'sfx/frost.mp3',
             weatherFog: 'sfx/fog.mp3',
             weatherRain: 'sfx/rain.mp3',

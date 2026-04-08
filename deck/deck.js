@@ -437,7 +437,8 @@ function createDeckBuildingHTML() {
                     <img src="faction/${faction.id}/banner_gold.png" alt="Баннер" class="leader__banner">
                     <div class="leader__name">${faction.leaderName.split(' ')[0]}</div>
 					<div class="card__type-icon_leader"><img class="card__type-icon_leader" src="deck/type_leader.png" alt="Лидер"></div>
-					<!--<img src="deck/ability.png" alt="Лого" class="leader__logo" id="factionLogo">-->
+		<!--        <img src="deck/ability.png" alt="Лого" class="leader__logo" id="factionLogo">
+		-->
                 </div>
 		<!--
 				<div class="faction-ability">

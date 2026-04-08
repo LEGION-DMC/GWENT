@@ -82,13 +82,10 @@
 	letter-spacing: 2px;
 	margin: 0;
 	padding-top: 10px;
-	
-	/* Горизонтальный градиент для другого эффекта */
 	background: linear-gradient(90deg, #a57c2c 0%, #cfaa4a 50%, #e5c168 100%);
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
-	
 	text-shadow: 
 		1px 1px 2px rgba(0, 0, 0, 0.3),
 		0 0 5px rgba(165, 124, 44, 0.1);
@@ -342,14 +339,14 @@
 
 .leader__logo {
 	position: absolute;
-	top: 220px;
-	left: 40px;
+	top: 237px;
+	left: 58px;
 	z-index: 4;
 	transition: transform 0.3s ease;
 }
 
 .leader__logo {
-	width: 110px;
+	width: 75px;
 }
 
 .leader__logo:hover {
@@ -727,23 +724,37 @@
 	background: rgba(20, 20, 20, 0.8);
 	border: 1px solid #222;
 	border-radius: 10px;
-	margin-top: -18px;
+	margin-top: 10px;
 	padding: 5px;
 	width: 300px;
 }
 
 .faction-ability__header {
-	border-bottom: 1px solid #d4af37;
-	margin-bottom: 5px;
-	padding-bottom: 3px;
+    position: relative;
+	  margin-bottom: 5px;
+}
+
+.faction-ability__header::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+	  margin-top: 3px;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
 }
 
 .faction-ability__header h3 {
-  color: #d4af37;        
 	font-size: 16px;
 	text-transform: uppercase;
-	letter-spacing: 1px;
+	letter-spacing: 2px;
 	margin: 0;
+	background: linear-gradient(90deg, #a57c2c 0%, #cfaa4a 50%, #e5c168 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	text-shadow: 
+		1px 1px 2px rgba(0, 0, 0, 0.3),
+		0 0 5px rgba(165, 124, 44, 0.1);
 	text-align: center;
 }
 
@@ -763,9 +774,17 @@
 }
 
 .ability-name {
-	color: #d4af37;
 	font-size: 14px;
+	text-transform: uppercase;
+	letter-spacing: 2px;
 	margin-bottom: 5px;
+	background: linear-gradient(90deg, #a57c2c 0%, #cfaa4a 50%, #e5c168 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	text-shadow: 
+		1px 1px 2px rgba(0, 0, 0, 0.3),
+		0 0 5px rgba(165, 124, 44, 0.1);
 }
 
 .ability-description {
@@ -797,10 +816,9 @@
 }
 
 .abilities-modal {
-  background: url('../ui/fon_dop.jpg') no-repeat center center; 
-	background-size: cover;
-	border: 2px solid #d4af37;
-	border-radius: 10px;
+	background: url('../ui/fon_dop.jpg') no-repeat center center; 
+  background-size: 100% 100%, cover;
+	border-radius: 8px;
 	padding: 10px;
 	max-width: 700px;
 	width: 90%;
@@ -817,14 +835,18 @@
 }
 
 .abilities-modal__title {
-  color: #d4af37;        
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 	font-size: 25px;
-	text-align: center;
-	margin-top: 5px;
-	margin-bottom: 8px;
 	text-transform: uppercase;
 	letter-spacing: 2px;
+	margin-bottom: 5px;
+	background: linear-gradient(90deg, #a57c2c 0%, #cfaa4a 50%, #e5c168 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	text-shadow: 
+		1px 1px 2px rgba(0, 0, 0, 0.3),
+		0 0 5px rgba(165, 124, 44, 0.1);
+	text-align: center;
 }
 
 .abilities-list {
@@ -866,8 +888,17 @@
 }
 
 .ability-option__name {
-	color: #d4af37;
 	font-size: 15px;
+	text-transform: uppercase;
+	letter-spacing: 2px;
+	margin-bottom: 5px;
+	background: linear-gradient(90deg, #a57c2c 0%, #cfaa4a 50%, #e5c168 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	text-shadow: 
+		1px 1px 2px rgba(0, 0, 0, 0.3),
+		0 0 5px rgba(165, 124, 44, 0.1);
 	margin-bottom: 3px;
 }
 
