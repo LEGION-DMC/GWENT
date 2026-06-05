@@ -56,7 +56,9 @@ const localization = {
 		scenary: 'Сценарий',
 		treasure: 'Сокровище',
 		relict: 'Реликт',
-		blood: 'Вампир'
+		blood: 'Вампир',
+		mantikora: 'Мантикора',
+		animal: 'Животное'
     }
 };
 
@@ -65,31 +67,31 @@ const factionAbilities = {
         {
             id: 'scoiatael_ability_1',
             name: 'Махакамская кузня',
-            description: 'Добавьте всем краснолюдам в вашей стартовой колоде 1 ед. брони',
+            description: 'Усильте всех Краснолюдов на поле 3 еденицы',
             icon: 'faction/scoiatael/abilities/forge.png'
         },
         {
             id: 'scoiatael_ability_2', 
             name: 'Засада ловчих',
-            description: 'Призыв Эльфского ловчего',
+            description: 'Призывите из колоды в руку карту Эльфа',
             icon: 'faction/scoiatael/abilities/ambush.png'
         },
         {
             id: 'scoiatael_ability_3', 
             name: 'Точный удар',
-            description: 'Нанесите 1 ед. урона отряду противника',
+            description: 'Нанесите 5 едениц урона отряду противника',
             icon: 'faction/scoiatael/abilities/accuracy.png'
         },
         {
             id: 'scoiatael_ability_4', 
             name: 'Дар природы',
-            description: 'Усильте 4 отряда в вашей руке на 1 ед',
+            description: 'Усильте 3 отряда на поле на 2 еденицы',
             icon: 'faction/scoiatael/abilities/gift.png'
         },
         {
             id: 'scoiatael_ability_5', 
             name: 'Партизанская тактика',
-            description: 'Переместите отряд в другой ряд на его стороне. Если это вражеский отряд, нанесите ему 1 ед. урона; если дружественный — усильте его на 3 ед.',
+            description: 'Нанесите 3 еденицы урона всем картам в ряду противника',
             icon: 'faction/scoiatael/abilities/tactic.png'
         },
     ],
@@ -97,31 +99,31 @@ const factionAbilities = {
         {
             id: 'realms_ability_1',
             name: 'Королевское вдохновение',
-            description: 'Усильте дружественный отряд на 5 ед.',
+            description: 'Усильте дружественный отряд на 5 едениц',
             icon: 'faction/realms/abilities/king.png'
         },
         {
             id: 'realms_ability_2',
             name: 'Ополчение',
-            description: 'Усильте дружественный отряд на 1 ед.',
+            description: 'Нанесите 3 еденицы урона 2-м отрядам противника',
             icon: 'faction/realms/abilities/militia.png'
         },
         {
             id: 'realms_ability_3',
             name: 'Стена щитов',
-            description: 'Усильте дружественный отряд на 2 ед. и добавьте ему щит',
+            description: 'Усильте дружественный отряд на 2 еденицы и призвать в руку артефакт',
             icon: 'faction/realms/abilities/shield.png'
         },
         {
             id: 'realms_ability_4',
             name: 'Побуждение к действию',
-            description: 'Усильте дружественный отряд на 2 ед. ',
+            description: 'Усильте дружественный отряд на поле на 3 еденицы',
             icon: 'faction/realms/abilities/incitement.png'
         },
         {
             id: 'realms_ability_5',
             name: 'Мобилизация',
-            description: 'Создайте изначальную копию бронзового дружественного солдата в его ряду и усильте оба отряда на 3 ед.',
+            description: 'Призовите бронзовый отряд на поле и усильте его и смежные с ним отряды на 3 еденицы',
             icon: 'faction/realms/abilities/mobilization.png'
         }
     ],
@@ -129,31 +131,31 @@ const factionAbilities = {
         {
             id: 'nilfgaard_ability_1',
             name: 'Имперское построение',
-            description: 'Усильте 2 дружественных отряда на 1 ед. и поменяйте их местами, затем добавьте по 1 ед. брони каждому из этих отрядов',
+            description: 'Усильте 2 дружественных отряда на 1 еденицу и поменяйте их местами (только в пределах одного ряда)',
             icon: 'faction/nilfgaard/abilities/construction.png'
         },
         {
             id: 'nilfgaard_ability_2',
             name: 'Заточение',
-            description: 'Заблокируйте вражеский отряд и нанесите ему 3 ед. урона',
+            description: 'Нанесите вражескому отряду 3 еденицы урона',
             icon: 'faction/nilfgaard/abilities/block.png'
         },
         {
             id: 'nilfgaard_ability_3',
             name: 'Порабощение',
-            description: 'Захватите вражеский отряд с силой 3 ед. или меньше. Увеличьте это значение на 1 ед. за каждую карту тактики в вашей колоде',
+            description: 'Уничтожте вражеский отряд с силой 5 или меньше',
             icon: 'faction/nilfgaard/abilities/capture.png'
         },
         {
             id: 'nilfgaard_ability_4',
             name: 'Туссентское гостеприимство',
-            description: 'Усиливайте случайный дружественный отряд на 1 ед. каждый раз, когда усиливаете хотя бы один вражеский отряд во время вашего хода',
+            description: 'Усильте случайный дружественный отряд на 5 едениц',
             icon: 'faction/nilfgaard/abilities/tusent.png'
         },
         {
             id: 'nilfgaard_ability_5',
             name: 'Двойная игра',
-            description: 'Сыграйте карту из руки противника',
+            description: 'Вслепую сыграйте карту из руки противника',
             icon: 'faction/nilfgaard/abilities/twoface.png'
         }
     ],
@@ -161,31 +163,31 @@ const factionAbilities = {
         {
             id: 'monsters_ability_1',
             name: 'Белый Хлад',
-            description: 'Переместите вражеский отряд в другой ряд на его стороне и создайте эффект мороза в его ряду на 2 хода',
+            description: 'Создайте эффект мороза только в ряду противника',
             icon: 'faction/monsters/abilities/cold.png'
         },
         {
             id: 'monsters_ability_2',
             name: 'Неутолимый голод',
-            description: 'Уничтожьте дружественный отряд, затем создайте в этом ряду Экимму и усильте ее на значение силы уничтоженного отряда',
+            description: 'Уничтожьте дружественный отряд, затем создайте в этом ряду Волколака и усильте ее на значение силы уничтоженного отряда',
             icon: 'faction/monsters/abilities/hangry.png'
         },
         {
             id: 'monsters_ability_3',
             name: 'Запах крови',
-            description: 'Добавьте кровотечение вражескому отряду на 3 хода',
+            description: 'Нанесите 2 ед. урона по вражескому ряду с наибольшим количеством карт',
             icon: 'faction/monsters/abilities/blood.png'
         },
         {
             id: 'monsters_ability_4',
             name: 'Сила природы',
-            description: 'Призыв Духа Леса',
+            description: 'Призовите Духа Леса',
             icon: 'faction/monsters/abilities/forest.png'
         },
         {
             id: 'monsters_ability_5',
             name: 'Панцирь',
-            description: 'Усильте дружественный отряд на 3 ед. Если это не нейтральный отряд, также добавьте ему покров',
+            description: 'Усильте дружественный отряд на 3 ед. Если это не нейтральный отряд',
             icon: 'faction/monsters/abilities/sheild.png'
         }
     ],
@@ -193,13 +195,13 @@ const factionAbilities = {
         {
             id: 'skellige_ability_1',
             name: 'Безрассудная ярость',
-            description: 'Случайным образом распределите 4 ед. урона между всеми вражескими отрядами, игнорируя их броню',
+            description: 'Случайным образом распределите 4 ед. урона между всеми вражескими отрядами',
             icon: 'faction/skellige/abilities/rage.png'
         },
         {
             id: 'skellige_ability_2',
             name: 'Гнев моря',
-            description: 'Создайте эффект дождя в ряду противника на 2 хода',
+            description: 'Создайте эффект дождя только в ряду противника',
             icon: 'faction/skellige/abilities/more.png'
         },
         {
@@ -211,7 +213,7 @@ const factionAbilities = {
         {
             id: 'skellige_ability_4',
             name: 'Медвежий ритуал',
-            description: 'Нанесите 1 ед. урона дружественному отряду. И призовите Медведя Свальблода',
+            description: 'Нанесите 1 ед. урона дружественному отряду. И призовите Берсерка',
             icon: 'faction/skellige/abilities/bear.png'
         },
         {
@@ -225,7 +227,7 @@ const factionAbilities = {
         {
             id: 'syndicate_ability_1',
             name: 'Пиратская бухта',
-            description: 'Создайте Морскую гиену в дружественном ряду',
+            description: ' ',
             icon: 'faction/syndicate/abilities/pirates.png'
         },
         {
@@ -237,13 +239,13 @@ const factionAbilities = {
         {
             id: 'syndicate_ability_3',
             name: 'Священное братство',
-            description: 'Призыв карты «Дети Огня: адепт» в дружественном ряду',
+            description: 'Призыв карты  ',
             icon: 'faction/syndicate/abilities/brother.png'
         },
         {
             id: 'syndicate_ability_4',
             name: 'Кровавые деньги',
-            description: 'В начале каждого раунда восстанавливает способность Лидера',
+            description: ' ',
             icon: 'faction/syndicate/abilities/money.png'
         },
         {
@@ -437,10 +439,10 @@ function createDeckBuildingHTML() {
                     <img src="faction/${faction.id}/banner_gold.png" alt="Баннер" class="leader__banner">
                     <div class="leader__name">${faction.leaderName.split(' ')[0]}</div>
 					<div class="card__type-icon_leader"><img class="card__type-icon_leader" src="deck/type_leader.png" alt="Лидер"></div>
-		<!--        <img src="deck/ability.png" alt="Лого" class="leader__logo" id="factionLogo">
-		-->
+		        <img src="deck/ability.png" alt="Лого" class="leader__logo" id="factionLogo">
+	
                 </div>
-		<!--
+		
 				<div class="faction-ability">
                     <div class="faction-ability__header">
                         <h3>СПОСОБНОСТЬ ЛИДЕРА</h3>
@@ -455,7 +457,7 @@ function createDeckBuildingHTML() {
                         </div>
                     </div>
                 </div>
-		-->
+		
                 <div class="stats-info">
                     <div class="stat-group">
                         <span class="stat-label">Карт в колоде</span>
@@ -2360,6 +2362,10 @@ function startGame() {
     if (window.boardModule && window.boardModule.initGameBoard) {
         if (window.audioManager) {
             window.audioManager.setBattleMusic();
+        }
+        
+        if (window.deckModule && window.deckModule.currentDeck) {
+            window.deckModule.currentDeck.ability = currentDeck.ability;
         }
         
         const deckBuildingSection = document.querySelector('.deck-building');

@@ -51,7 +51,7 @@ const collectionModule = (function() {
             dragon: 'Драконид', specter: 'Дух', dwarf: 'Краснолюд', mercenary: 'Наёмник',
             elf: 'Ельф', oak: 'Древень', curse: 'Проклятие', religy: 'Религия',
             weapons: 'Оружие', ogr: 'Огройд', pirat: 'Пират', alchimy: 'Алхимия',
-            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт', blood: 'Вампир'
+            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт', blood: 'Вампир',  mantikora: 'Мантикора', animal: 'Животное'
         }
     };
     
