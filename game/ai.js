@@ -132,6 +132,9 @@ const aiModule = {
 			if (card.ability === 'flock') {
 				canPlay = this.canPlayFlockCard(card);
 			}
+			else if (card.ability === 'call') {
+				canPlay = this.canPlayCallCard(card); // НОВОЕ
+			}
 			else if (this.isWeatherCard(card)) {
 				canPlay = this.canPlayWeatherCard(card);
 			}
@@ -228,6 +231,106 @@ const aiModule = {
 																						
 																						return info;
 																					},
+
+	canPlayCallCard: function(card) {
+		// Проверяем, есть ли место для призываемой карты
+		if (!card.summon) return false;
+		
+		// Находим карту для призыва
+		let summonedCard = null;
+		let summonCopyCount = 1;
+		
+		if (window.cardsModule && window.cardsModule.cardsData) {
+			for (const factionName in window.cardsModule.cardsData) {
+				const faction = window.cardsModule.cardsData[factionName];
+				for (const cardType in faction) {
+					if (Array.isArray(faction[cardType])) {
+						const foundCard = faction[cardType].find(c => c.name === card.summon);
+						if (foundCard) {
+							summonedCard = foundCard;
+							summonCopyCount = foundCard.copy || 1;
+							break;
+						}
+					}
+				}
+				if (summonedCard) break;
+			}
+		}
+		
+		if (!summonedCard) return false;
+		
+		// Проверяем, есть ли место для всех копий
+		let availableSlots = 0;
+		const rows = ['close', 'ranged', 'siege'];
+		
+		rows.forEach(row => {
+			if (this.gameState.opponent.rows[row].cards.length < 9) {
+				availableSlots += (9 - this.gameState.opponent.rows[row].cards.length);
+			}
+		});
+		
+		return availableSlots >= summonCopyCount;
+	},
+
+	evaluateCallCard: function(card) {
+		let score = card.strength || 5;
+		
+		if (!card.summon) return score;
+		
+		// Находим призываемую карту
+		let summonedCard = null;
+		let summonCopyCount = 1;
+		let summonedStrength = 0;
+		
+		if (window.cardsModule && window.cardsModule.cardsData) {
+			for (const factionName in window.cardsModule.cardsData) {
+				const faction = window.cardsModule.cardsData[factionName];
+				for (const cardType in faction) {
+					if (Array.isArray(faction[cardType])) {
+						const foundCard = faction[cardType].find(c => c.name === card.summon);
+						if (foundCard) {
+							summonedCard = foundCard;
+							summonCopyCount = foundCard.copy || 1;
+							summonedStrength = foundCard.strength || 0;
+							break;
+						}
+					}
+				}
+				if (summonedCard) break;
+			}
+		}
+		
+		if (!summonedCard) return score;
+		
+		// Общая сила призываемых карт
+		const totalSummonedStrength = summonedStrength * summonCopyCount;
+		score += totalSummonedStrength * 0.8;
+		
+		// Бонус за количество призываемых карт
+		if (summonCopyCount > 1) {
+			score += summonCopyCount * 5;
+		}
+		
+		// Бонус, если призываются карты с полезными тегами
+		if (summonedCard.tags && summonedCard.tags.length > 0) {
+			score += summonedCard.tags.length * 3;
+		}
+		
+		// Учитываем ситуацию на поле
+		const playerTotalScore = this.calculateTotalScore('player');
+		const opponentTotalScore = this.calculateTotalScore('opponent');
+		
+		if (opponentTotalScore < playerTotalScore) {
+			score += 15; // Если проигрываем, призовые карты важнее
+		}
+		
+		// Бонус, если в конце раунда
+		if (this.gameState.player.passed) {
+			score += 20;
+		}
+		
+		return Math.max(0, score);
+	},
 
 	canPlayFlockCard: function(card) {
 		let availableRows = [];
@@ -456,6 +559,9 @@ const aiModule = {
 		if (card.ability === 'flock') {
 			baseScore = this.evaluateFlockCard(card);
 		} 
+		else if (card.ability === 'call') {
+			baseScore = this.evaluateCallCard(card); // НОВОЕ
+		}
 		else if (card.type === 'artifact') {
 			baseScore = 15;
 			if (card.ability && card.ability.startsWith('boost_')) {
@@ -2294,6 +2400,9 @@ const aiModule = {
 		if (card.ability === 'flock') {
 			this.playFlockCard(card);
 		}
+		else if (card.ability === 'call') {
+			this.playCallCard(card); // НОВОЕ
+		}
 		else if (this.isWeatherCard(card)) {
 			this.playWeatherCard(card);
 		}
@@ -2389,6 +2498,131 @@ const aiModule = {
 		setTimeout(() => {
 			this.activateFlockAbilityForAI(cardCopy);
 		}, 300);
+	},
+
+	playCallCard: function(card) {
+		// Проверяем, есть ли место для размещения основной карты
+		let mainCardRow = this.findBestRowForUnit(card);
+		if (!mainCardRow) {
+			this.usedCardIds.delete(card.id);
+			return;
+		}
+		
+		// Размещаем основную карту
+		const rowState = this.gameState.opponent.rows[mainCardRow];
+		const insertIndex = rowState.cards.length;
+		
+		const cardCopy = { 
+			...card,
+			uniqueId: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			owner: 'opponent',
+			row: mainCardRow
+		};
+		
+		rowState.cards.splice(insertIndex, 0, cardCopy);
+		
+		if (window.gameModule) {
+			window.gameModule.displayCardOnRow(mainCardRow, cardCopy, 'opponent', insertIndex);
+			window.gameModule.updateRowStrength(mainCardRow, 'opponent');
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('card_close');
+		}
+		
+		// Активируем способность призыва
+		if (card.summon) {
+			setTimeout(() => {
+				this.activateCallAbilityForAI(cardCopy, card.summon);
+			}, 300);
+		} else {
+			console.warn(`AI: Карта ${card.name} имеет способность 'call', но не указано поле 'summon'.`);
+			if (window.gameModule) {
+				window.gameModule.completeCardPlay();
+			}
+		}
+	},
+
+	activateCallAbilityForAI: function(playedCard, summonedCardName) {
+		console.log(`=== AI активирует способность "Призыв" для карты: ${summonedCardName} ===`);
+		
+		// 1. Найти карту для призыва
+		let cardToSummon = null;
+		let summonCopyCount = 1;
+		
+		if (window.cardsModule && window.cardsModule.cardsData) {
+			for (const factionName in window.cardsModule.cardsData) {
+				const faction = window.cardsModule.cardsData[factionName];
+				for (const cardType in faction) {
+					if (Array.isArray(faction[cardType])) {
+						const foundCard = faction[cardType].find(c => c.name === summonedCardName);
+						if (foundCard) {
+							cardToSummon = foundCard;
+							summonCopyCount = foundCard.copy || 1;
+							break;
+						}
+					}
+				}
+				if (cardToSummon) break;
+			}
+		}
+
+		if (!cardToSummon) {
+			console.error(`AI: Не удалось найти карту для призыва: ${summonedCardName}`);
+			if (window.gameModule) window.gameModule.completeCardPlay();
+			return;
+		}
+
+		console.log(`AI: Нужно призвать ${summonCopyCount} копий карты ${summonedCardName}`);
+		
+		let summonedCount = 0;
+		
+		for (let i = 0; i < summonCopyCount; i++) {
+			// Находим лучший ряд для призыва
+			let targetRow = this.getBestRowForFlockSummon(cardToSummon);
+			
+			if (!targetRow) {
+				console.warn(`AI: Нет места для ${i+1}-й копии карты "${summonedCardName}"!`);
+				break;
+			}
+
+			// Создаем и размещаем копию
+			const summonCopy = window.gameModule.createCardCopy(cardToSummon);
+			summonCopy.summonedByCall = true;
+			
+			const rowState = this.gameState.opponent.rows[targetRow];
+			if (rowState.cards.length >= 9) {
+				break;
+			}
+
+			const insertPosition = rowState.cards.length;
+			rowState.cards.push(summonCopy);
+			
+			if (window.gameModule) {
+				window.gameModule.displayCardOnRow(targetRow, summonCopy, 'opponent', insertPosition);
+				window.gameModule.updateRowStrength(targetRow, 'opponent');
+			}
+			
+			summonedCount++;
+		}
+
+		const message = summonedCount === summonCopyCount 
+			? `Противник призывает ${summonedCount} ${summonedCount === 1 ? summonedCardName : (summonedCardName === 'Крыса' ? 'Крысы' : summonedCardName + 'ов')}!`
+			: `Противник призывает только ${summonedCount} из ${summonCopyCount} карт!`;
+		
+		if (window.gameModule) {
+			window.gameModule.showGameMessage(message, 'warning');
+			
+			setTimeout(() => {
+				if (window.gameModule && window.gameModule.completeCardPlay) {
+					window.gameModule.completeCardPlay();
+				}
+			}, 800);
+		}
+		
+		if (window.audioManager && window.audioManager.playSound) {
+			audioManager.playSound('summon');
+		}
 	},
 
 	activateFlockAbilityForAI: function(playedCard) {

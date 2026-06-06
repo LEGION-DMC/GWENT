@@ -255,6 +255,12 @@
     margin-bottom: 8px;
 }
 
+.toggles-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
 .copy-toggle {
     display: flex;
     align-items: center;
@@ -468,4 +474,31 @@
     height: 1px;
     background: linear-gradient(90deg, transparent, #d4af37, transparent);
     margin: 10px 0;
+}
+
+.card.hidden-card {
+    position: relative;
+}
+
+.card.hidden-card .card__container {
+    filter: brightness(0.6) sepia(1);
+    transition: filter 0.3s ease;
+}
+
+.card.hidden-card .card__container:hover {
+    filter: brightness(1) sepia(0);
+}
+
+.card.hidden-card:hover::after {
+    content: "Используется только для Призыва";
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #d4af37;
+    font-size: 10px;
+    white-space: nowrap;
+    z-index: 20;
+    pointer-events: none;
+    font-family:'Gwent', sans-serif;
 }

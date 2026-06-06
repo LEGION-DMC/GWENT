@@ -272,6 +272,126 @@ const playerModule = {
 		}
 	},
 
+activateCallAbility: function(playedCard, summonedCardName) {
+    console.log(`=== Активация способности "Призыв" для карты: ${summonedCardName} ===`);
+    
+    // 1. Найти карту для призыва в глобальной коллекции cardsData (включая скрытые)
+    let cardToSummon = null;
+    let summonCopyCount = 1; // По умолчанию 1 копия
+    
+    if (window.cardsModule && window.cardsModule.cardsData) {
+        // Проходим по всем фракциям в поисках карты с нужным именем
+        for (const factionName in window.cardsModule.cardsData) {
+            const faction = window.cardsModule.cardsData[factionName];
+            // Ищем во всех типах карт фракции
+            for (const cardType in faction) {
+                if (Array.isArray(faction[cardType])) {
+                    const foundCard = faction[cardType].find(c => c.name === summonedCardName);
+                    if (foundCard) {
+                        cardToSummon = foundCard;
+                        // Получаем количество копий из поля copy (если есть)
+                        summonCopyCount = foundCard.copy || 1;
+                        break;
+                    }
+                }
+            }
+            if (cardToSummon) break;
+        }
+    }
+
+    if (!cardToSummon) {
+        console.error(`Не удалось найти карту для призыва: ${summonedCardName}`);
+        window.gameModule.showGameMessage(`Ошибка: карта "${summonedCardName}" не найдена!`, 'error');
+        if (window.gameModule) window.gameModule.completeCardPlay();
+        return;
+    }
+
+    console.log(`Найдена карта для призыва: ${cardToSummon.name}, нужно призвать ${summonCopyCount} копий`);
+
+    let summonedCount = 0;
+    const rows = ['close', 'ranged', 'siege'];
+    
+    // Пытаемся призвать указанное количество копий
+    for (let i = 0; i < summonCopyCount; i++) {
+        // 2. Определить подходящий ряд для призыва
+        let targetRow = this.getBestRowForSummon(cardToSummon);
+        
+        if (!targetRow) {
+            console.warn(`Нет места для ${i+1}-й копии карты "${summonedCardName}"!`);
+            break;
+        }
+
+        // 3. Создать копию карты и разместить её на поле
+        const summonCopy = window.gameModule.createCardCopy(cardToSummon);
+        summonCopy.summonedByCall = true;
+        summonCopy.originalCallerId = playedCard.id;
+        summonCopy.copyNumber = i + 1; // Для отслеживания
+
+        // Добавляем карту в ряд
+        const rowState = this.gameState.player.rows[targetRow];
+        if (rowState.cards.length >= 9) {
+            console.warn(`В ряду ${targetRow} нет места для ${i+1}-й копии!`);
+            break;
+        }
+
+        // Размещаем в конец ряда
+        const insertIndex = rowState.cards.length;
+        rowState.cards.push(summonCopy);
+        
+        if (window.gameModule) {
+            window.gameModule.displayCardOnRow(targetRow, summonCopy, 'player', insertIndex);
+            window.gameModule.updateRowStrength(targetRow, 'player');
+        }
+        
+        summonedCount++;
+        
+        // Небольшая задержка между призывами для визуального эффекта
+        if (i < summonCopyCount - 1) {
+            // Создаем визуальный эффект для каждой карты
+            setTimeout(() => {
+                this.createFlockVisualEffect(targetRow);
+            }, i * 200);
+        }
+    }
+
+    // Визуальный эффект для последней призванной карты
+    if (summonedCount > 0) {
+        this.createFlockVisualEffect('close'); // Эффект для последнего ряда
+        
+        const message = summonedCount === summonCopyCount 
+            ? `Призыв активирован! Призвано ${summonedCount} ${this.getCardDeclension(summonedCount, cardToSummon.name)}.`
+            : `Призыв активирован! Призвано только ${summonedCount} из ${summonCopyCount} ${this.getCardDeclension(summonCopyCount, cardToSummon.name)} (недостаточно места).`;
+        
+        window.gameModule.showGameMessage(message, 'info');
+        
+        if (window.audioManager && window.audioManager.playSound) {
+            audioManager.playSound('summon');
+        }
+    } else {
+        window.gameModule.showGameMessage(`Нет места для призыва карт "${summonedCardName}"!`, 'warning');
+    }
+
+    // Завершаем ход после небольшой задержки
+    setTimeout(() => {
+        if (window.gameModule && !playedCard.completeCalled) {
+            playedCard.completeCalled = true;
+            window.gameModule.completeCardPlay();
+        }
+    }, 800);
+},
+
+// Вспомогательный метод для склонения слова "крыса"
+getCardDeclension: function(count, cardName) {
+    if (count === 1) return cardName;
+    
+    // Специальная обработка для "Крыса"
+    if (cardName === 'Крыса') {
+        return 'Крысы';
+    }
+    
+    return cardName + 'ов';
+},
+
 	getBestRowForSummon: function(card) {
 		let availableRows = [];
 		
@@ -3214,11 +3334,15 @@ const playerModule = {
 						break;
 					case 'siege':
 						audioManager.playSound('card_siege');
+						break;
+					default:
+						audioManager.playSound('card_close');
 				}
 			}
 		}
 		
 		if (window.gameModule) {
+			// ИСПРАВЛЕНО: используем row вместо bestRow
 			window.gameModule.displayCardOnRow(row, cardCopy, 'player', insertIndex);
 			window.gameModule.updateRowStrength(row, 'player');
 			
@@ -3235,7 +3359,18 @@ const playerModule = {
 				} else {
 					window.gameModule.completeCardPlay();
 				}
-			} else {
+			} 
+			else if (card.ability === 'call') {
+				if (card.summon) {
+					setTimeout(() => {
+						this.activateCallAbility(cardCopy, card.summon);
+					}, 300);
+				} else {
+					console.warn(`Карта ${card.name} имеет способность 'call', но не указано поле 'summon'.`);
+					window.gameModule.completeCardPlay();
+				}
+			}
+			else {
 				window.gameModule.completeCardPlay();
 			}
 		}

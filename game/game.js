@@ -1586,6 +1586,8 @@ const gameModule = {
 		this.gameState.selectedCard = null;
 		this.gameState.selectingRow = false;
 		this.gameState.placementType = null;
+		this.gameState.player.abilityUsedThisRound = false;
+        this.gameState.opponent.abilityUsedThisRound = false;
 		
 		if (window.playerModule && window.playerModule.cancelRowSelection) {
 			window.playerModule.cancelRowSelection();
@@ -3611,7 +3613,63 @@ const gameModule = {
         }
 
         this.setupDeckViewEventListeners();
-    },
+
+		const playerLeader = document.getElementById('playerLeader');
+		if (playerLeader) {
+			playerLeader.addEventListener('click', () => {
+				this.handleLeaderClick();
+			});
+			playerLeader.addEventListener('mouseenter', () => audioManager.playSound('touch'));
+		}
+		
+		const opponentLeader = document.getElementById('opponentLeader');
+		if (opponentLeader) {
+			opponentLeader.addEventListener('click', () => {
+				this.showGameMessage('Способность лидера противника недоступна', 'warning');
+				audioManager.playSound('lock');
+			});
+		}
+	},
+
+	handleLeaderClick: function() {
+		if (!this.canUseLeaderAbility()) {
+			return;
+		}
+		
+		const faction = this.gameState.player.faction;
+		const abilityId = this.gameState.player.ability;
+		
+		if (!abilityId) {
+			this.showGameMessage('Не выбрана способность лидера', 'warning');
+			return;
+		}
+		
+		if (window.leaderAbilities && window.leaderAbilities[abilityId]) {
+			window.leaderAbilities[abilityId].execute(this.gameState, this);
+		} else {
+			this.showGameMessage('Способность лидера не реализована', 'warning');
+		}
+	},
+
+	canUseLeaderAbility: function() {
+		if (this.gameState.gamePhase !== 'playerTurn') {
+			this.showGameMessage('Способность Лидера можно использовать только в свой ход', 'warning');
+			return false;
+		}
+		
+		if (this.gameState.player.passed) {
+			this.showGameMessage('Нельзя использовать способность Лидера после паса', 'warning');
+			return false;
+		}
+		
+		// Проверяем, что способность ещё не использована в этом раунде
+		if (this.gameState.player.abilityUsedThisRound) {
+			this.showGameMessage('Способность Лидера уже использована в этом раунде', 'warning');
+			return false;
+		}
+		
+		return true;
+	},
 
     setupDeckViewEventListeners: function() {
         const playerDeck = document.getElementById('playerDeck');

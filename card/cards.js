@@ -551,10 +551,25 @@ const minimalCardsData = {
                 image: 'mor.mp4',
                 description: 'Дух болезней и разложения',
                 descriptionfull: 'Чума во плоти и глашатай поветрия, тощий труп девы в лохмотьях, покрытый язвами и демонстрирующий симптомы всевозможных болезней. <br><br>Как и у других духов и призраков, существование этой прорвавшейся из-за завесы смерти злой концентрированной воли обусловлено страшными страданиями человека при жизни.',
-                ability: ' ',
+                ability: 'call',
                 position: 'ranged-row',
                 rarity: 'bronze',
                 tags: ['specter'],
+				summon: 'Крыса'
+            },
+			{
+                name: 'Крыса',
+                namefull: 'Крыса',
+                strength: 1,
+                image: 'rat.mp4',
+                description: ' ',
+                descriptionfull: 'Грызун, распространённый по всей территории Северных Королевств, с которым ведьмакам редко приходится иметь дело в своей профессии. <br><br>Крысы — вестники людских бед. Они портят имущество, уничтожают съестные припасы и разносят болезни. Их крохотные коготки и зубки порой оказываются смертоноснее самых больших орудий войны. Сровнять город с землей им, может, и не под силу, зато погубить всех его жителей — запросто.',
+                ability: ' ',
+                copy: 3,
+                position: 'close-row',
+                rarity: 'bronze',
+                tags: ['animal'],
+				hidden: true,
             },
 			{
                 name: 'Туманник',
@@ -563,7 +578,7 @@ const minimalCardsData = {
                 image: 'mglak.mp4',
                 description: ' ',
                 descriptionfull: 'Туманники — трупоеды, которые любят обитать везде, где возникает густой туман: на болотах, горных перевалах или на берегах рек и озёр. <br><br>Если тумана не ожидается, эти существа могут создать или вызвать его сами, в том числе и благодаря магическим способностям. Управляя туманом и обманывая чувства людей, эти чудовища могут дезориентировать своих жертв, заставить путников потерять друг друга из виду, скрыть тропы и заглушить звуки и крики.',
-                ability: ' ',
+                ability: 'flock',
                 copy: 3,
                 position: 'close-row',
                 rarity: 'bronze',
@@ -617,6 +632,20 @@ const minimalCardsData = {
                 position: 'any-row',
                 rarity: 'gold',
                 tags: ['mantikora'],
+            },
+			{
+                name: 'Дух Леса',
+                namefull: 'Древний леший',
+                strength: 9,
+                image: 'forest_spirit.mp4',
+                description: 'Дух Леса',
+                descriptionfull: 'Некоторые чудовища столь сильны, что люди почитают их как богов. <br><br>Опаснейший и могущественный подвид лешего. Является более сильной разновидностью обычных леших, покровителей леса, и может отличаться более серым оттенком туловища, иной формой рогов, а также в целом более обветшалой формой и внешним видом, дающим представление о колоссальном возрасте подобного существа.',
+                ability: ' ',
+                position: 'any-row',
+                rarity: 'gold',
+                tags: ['relict'],
+				hidden: true,
+				summonBy: 'monsters_ability_4'
             },
         ],
         specials: [
@@ -1326,10 +1355,25 @@ const minimalCardsData = {
                 image: 'eitne.mp4',
                 description: 'Лесная Госпожа',
                 descriptionfull: 'Повелительница дриад и могущественная владычица Брокилона, древняя, как сам Брокилон, известная своей мудростью и непримиримым отношением к людям.<br><br>Она не признаёт всё, что относится к людям, и пренебрежительно относится к королевствам, находящимся близ границ её леса. Их попытки завладеть древним лесом из-за его ценной древесины и легендарных сокровищ привели к многовековому конфликту.',
-                ability: ' ',
+                ability: 'call',
                 position: 'ranged-row',
                 rarity: 'silver',
                 tags: ['king', 'mage', 'elf'],
+				summon: 'Дриада'
+            },
+			{
+                name: 'Дриада',
+                namefull: 'Дриада',
+                strength: 2,
+                image: 'driada.mp4',
+                description: 'Дриада-охотница',
+                descriptionfull: 'Дриады, также известные как духобабы — представители одной из разновидностей нимф, обитающие в лесах. Это прекрасные и гордые воительницы, в основном живущие в лесу Брокилон, где находятся священные пещеры Крааг Ан и Дуэн Канэлл — обиталище верховной жрицы дриад, охраняющей древние традиции. <br><br>Рождённые в результате контактов с другими расами или преобразованные Водой Брокилона, дриады являются исключительно женщинами, а их потомки остаются такими же на протяжении многих поколений даже без питья Воды.',
+                ability: ' ',
+                copy: 2,
+                position: 'close-row',
+                rarity: 'bronze',
+                tags: ['driada'],
+				hidden: true,
             },
             {
                 name: 'Разведчицы',
@@ -2183,11 +2227,66 @@ const cardsCache = {
     allCardsByTag: null
 };
 
-function getFactionCards(factionId) {
+function getVisibleCardsForDeckBuilding(factionId) {
+    const factionCards = getFactionCardsOnly(factionId);
+    
+    return {
+        units: factionCards.units.filter(card => !card.hidden),
+        specials: factionCards.specials.filter(card => !card.hidden),
+        artifacts: factionCards.artifacts.filter(card => !card.hidden),
+        tactics: factionCards.tactics.filter(card => !card.hidden)
+    };
+}
+
+function getHiddenCardsByFaction(factionId) {
+    const result = {
+        units: [],
+        specials: [],
+        artifacts: [],
+        tactics: []
+    };
+    
+    const factionCards = cardsData[factionId];
+    if (factionCards) {
+        result.units = factionCards.units?.filter(card => card.hidden) || [];
+        result.specials = factionCards.specials?.filter(card => card.hidden) || [];
+        result.artifacts = factionCards.artifacts?.filter(card => card.hidden) || [];
+        result.tactics = factionCards.tactics?.filter(card => card.hidden) || [];
+    }
+    
+    return result;
+}
+
+function getAllCardsIncludingHidden() {
+    if (cardsCache.allCardsFlatIncludingHidden) {
+        return cardsCache.allCardsFlatIncludingHidden;
+    }
+    
+    const allCards = [];
+    
+    for (const faction in cardsData) {
+        for (const type in cardsData[faction]) {
+            if (Array.isArray(cardsData[faction][type])) {
+                allCards.push(...cardsData[faction][type]);
+            }
+        }
+    }
+    
+    cardsCache.allCardsFlatIncludingHidden = allCards;
+    return allCards;
+}
+
+function getFactionCards(factionId, includeHidden = false) {
     if (!cardsData[factionId]) {
         return { units: [], specials: [], artifacts: [], tactics: [] };
     }
 
+    // Если нужно получить ВСЕ карты (включая скрытые) - возвращаем напрямую из cardsData
+    if (includeHidden) {
+        return cardsData[factionId];
+    }
+
+    // Иначе используем кэш для видимых карт
     if (cardsCache.allCardsByFaction?.[factionId]) {
         return cardsCache.allCardsByFaction[factionId];
     }
@@ -2411,6 +2510,107 @@ function invalidateCardsCache() {
     cardsCache.allCardsByTag = null;
 }
 
+function getAllCardsForCollection() {
+    if (cardsCache.allCardsForCollection) {
+        return cardsCache.allCardsForCollection;
+    }
+    
+    const allCards = [];
+    
+    for (const faction in cardsData) {
+        for (const type in cardsData[faction]) {
+            if (Array.isArray(cardsData[faction][type])) {
+                allCards.push(...cardsData[faction][type]);
+            }
+        }
+    }
+    
+    cardsCache.allCardsForCollection = allCards;
+    return allCards;
+}
+
+function getCardsForDeckBuilding(factionId) {
+    const factionCards = cardsData[factionId];
+    if (!factionCards) {
+        return { units: [], specials: [], artifacts: [], tactics: [] };
+    }
+    
+    // Добавляем нейтральные карты (тоже исключая скрытые)
+    const neutralCards = cardsData.neutral || { units: [], specials: [], artifacts: [], tactics: [] };
+    
+    // Фильтруем скрытые карты - НЕ включает карты с hidden: true
+    const filterHidden = (cards) => (cards || []).filter(card => !card.hidden);
+    
+    return {
+        units: [
+            ...filterHidden(factionCards.units),
+            ...filterHidden(neutralCards.units)
+        ],
+        specials: [
+            ...filterHidden(factionCards.specials),
+            ...filterHidden(neutralCards.specials)
+        ],
+        artifacts: [
+            ...filterHidden(factionCards.artifacts),
+            ...filterHidden(neutralCards.artifacts)
+        ],
+        tactics: [
+            ...filterHidden(factionCards.tactics),
+            ...filterHidden(neutralCards.tactics)
+        ]
+    };
+}
+
+function getCardByIdIncludingHidden(cardId) {
+    if (!cardId) return null;
+    
+    for (const faction in cardsData) {
+        for (const type in cardsData[faction]) {
+            if (Array.isArray(cardsData[faction][type])) {
+                const card = cardsData[faction][type].find(c => c.id === cardId);
+                if (card) return card;
+            }
+        }
+    }
+    return null;
+}
+
+function getHiddenCardByAbility(abilityId, factionId = null) {
+    for (const faction in cardsData) {
+        // Если указана фракция, ищем только в ней
+        if (factionId && faction !== factionId && faction !== 'neutral') continue;
+        
+        for (const type in cardsData[faction]) {
+            if (Array.isArray(cardsData[faction][type])) {
+                const card = cardsData[faction][type].find(c => 
+                    c.hidden === true && c.summonBy === abilityId
+                );
+                if (card) return { ...card, cardId: card.id };
+            }
+        }
+    }
+    return null;
+}
+
+function getHiddenCardsByFaction(factionId) {
+    const result = {
+        units: [],
+        specials: [],
+        artifacts: [],
+        tactics: []
+    };
+    
+    const factionCards = cardsData[factionId];
+    if (factionCards) {
+        result.units = factionCards.units?.filter(card => card.hidden === true) || [];
+        result.specials = factionCards.specials?.filter(card => card.hidden === true) || [];
+        result.artifacts = factionCards.artifacts?.filter(card => card.hidden === true) || [];
+        result.tactics = factionCards.tactics?.filter(card => card.hidden === true) || [];
+    }
+    
+    return result;
+}
+	
 window.cardsModule = {
     getFactionCards,
     getCardById,
@@ -2427,5 +2627,12 @@ window.cardsModule = {
     getCardsByRarity,
     getCardsByPosition,
     getFactionStats,
-    invalidateCardsCache
+    invalidateCardsCache,
+    // Новые функции:
+    getAllCardsForCollection,
+    getCardsForDeckBuilding,
+    getCardByIdIncludingHidden,
+    getHiddenCardByAbility,
+    getHiddenCardsByFaction,
+    getVisibleCardsForDeckBuilding
 };

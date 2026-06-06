@@ -142,6 +142,15 @@ const skillSystem = {
 				target: 'self'
 			}
 		},
+		'call': {
+			name: 'Призыв',
+			type: 'special',
+			description: 'Призывает на поле указанную карту.',
+			effect: {
+				type: 'summon_named_card', 
+				target: 'self'
+			}
+		},
 
 		'damage_1': {
 			name: 'Атака I',
@@ -1848,6 +1857,94 @@ const skillSystem = {
         });
     }
 };
+
+skillSystem.updateCallAbilityDescription = function(card) {
+    if (card.ability === 'call' && card.summon) {
+        // Получаем информацию о призываемой карте
+        let summonedCard = null;
+        let copyCount = 1;
+        
+        // Ищем карту в глобальной коллекции
+        if (window.cardsModule && window.cardsModule.cardsData) {
+            for (const factionName in window.cardsModule.cardsData) {
+                const faction = window.cardsModule.cardsData[factionName];
+                for (const cardType in faction) {
+                    if (Array.isArray(faction[cardType])) {
+                        const foundCard = faction[cardType].find(c => c.name === card.summon);
+                        if (foundCard) {
+                            summonedCard = foundCard;
+                            copyCount = foundCard.copy || 1;
+                            break;
+                        }
+                    }
+                }
+                if (summonedCard) break;
+            }
+        }
+        
+        // Формируем описание в зависимости от количества копий
+        let description = '';
+        if (copyCount === 1) {
+            description = `Призывает на поле карту "${card.summon}".`;
+        } else if (copyCount > 1) {
+            description = `Призывает на поле ${copyCount} копии карты "${card.summon}".`;
+        }
+        
+        // Обновляем описание способности для этой карты
+        if (skillSystem.abilities['call']) {
+            // Создаем уникальное описание для конкретной карты
+            // Сохраняем оригинальное описание в отдельном поле, если нужно
+            if (!skillSystem.abilities['call']._originalDescription) {
+                skillSystem.abilities['call']._originalDescription = skillSystem.abilities['call'].description;
+            }
+            skillSystem.abilities['call'].description = description;
+        }
+    }
+};
+
+// Переопределяем функцию enhanceCardsWithAbilities, чтобы обновлять описания
+const originalEnhanceCardsWithAbilities = skillSystem.enhanceCardsWithAbilities;
+skillSystem.enhanceCardsWithAbilities = function() {
+    originalEnhanceCardsWithAbilities.call(this);
+    
+    // Проходим по всем картам и обновляем описания способностей call
+    if (window.cardsModule && window.cardsModule.cardsData) {
+        for (const factionName in window.cardsModule.cardsData) {
+            const faction = window.cardsModule.cardsData[factionName];
+            for (const cardType in faction) {
+                if (Array.isArray(faction[cardType])) {
+                    faction[cardType].forEach(card => {
+                        if (card.ability === 'call') {
+                            this.updateCallAbilityDescription(card);
+                        }
+                    });
+                }
+            }
+        }
+    }
+};
+
+// Также обновляем описания при загрузке модуля
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            if (window.cardsModule && window.cardsModule.cardsData) {
+                for (const factionName in window.cardsModule.cardsData) {
+                    const faction = window.cardsModule.cardsData[factionName];
+                    for (const cardType in faction) {
+                        if (Array.isArray(faction[cardType])) {
+                            faction[cardType].forEach(card => {
+                                if (card.ability === 'call' && skillSystem.updateCallAbilityDescription) {
+                                    skillSystem.updateCallAbilityDescription(card);
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }, 100);
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     skillSystem.initialize();

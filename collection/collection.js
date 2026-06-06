@@ -8,7 +8,7 @@ const collectionModule = (function() {
     };
     let escapeHandler = null;
     let showCopies = false;
-    
+    let showHidden = false;
     let cachedElements = {};
     
     function getElement(id) {
@@ -51,7 +51,7 @@ const collectionModule = (function() {
             dragon: 'Драконид', specter: 'Дух', dwarf: 'Краснолюд', mercenary: 'Наёмник',
             elf: 'Ельф', oak: 'Древень', curse: 'Проклятие', religy: 'Религия',
             weapons: 'Оружие', ogr: 'Огройд', pirat: 'Пират', alchimy: 'Алхимия',
-            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт', blood: 'Вампир',  mantikora: 'Мантикора', animal: 'Животное'
+            scenary: 'Сценарий', treasure: 'Сокровище', relict: 'Реликт', blood: 'Вампир',  mantikora: 'Мантикора', animal: 'Животное', driada: 'Дриада'
         }
     };
     
@@ -65,30 +65,36 @@ const collectionModule = (function() {
         return tags?.map(tag => localizations.tags[tag] || tag) ?? [];
     }
     
-    function getAllCards() {
-        if (allCards.length > 0) return allCards;
-        
-        const allFactions = ['monsters', 'nilfgaard', 'realms', 'scoiatael', 'skellige', 'syndicate', 'neutral'];
-        
-        allFactions.forEach(factionId => {
-            const factionCards = window.cardsModule?.getFactionCards?.(factionId);
-            if (factionCards) {
-                const cards = [
-                    ...(factionCards.units || []),
-                    ...(factionCards.specials || []),
-                    ...(factionCards.artifacts || []),
-                    ...(factionCards.tactics || [])
-                ];
-                allCards.push(...cards);
-            }
-        });
-        
-        allCards = allCards.filter((card, index, self) => 
-            index === self.findIndex(c => c.id === card.id)
-        );
-        
-        return allCards;
-    }
+	function getAllCards() {
+		if (allCards.length > 0) return allCards;
+		
+		// Используем новую функцию, которая возвращает ВСЕ карты (включая скрытые)
+		if (window.cardsModule?.getAllCardsForCollection) {
+			allCards = window.cardsModule.getAllCardsForCollection();
+		} else {
+			// Fallback
+			const allFactions = ['monsters', 'nilfgaard', 'realms', 'scoiatael', 'skellige', 'syndicate', 'neutral'];
+			
+			allFactions.forEach(factionId => {
+				const factionCards = window.cardsModule?.getFactionCards?.(factionId, true);
+				if (factionCards) {
+					const cards = [
+						...(factionCards.units || []),
+						...(factionCards.specials || []),
+						...(factionCards.artifacts || []),
+						...(factionCards.tactics || [])
+					];
+					allCards.push(...cards);
+				}
+			});
+		}
+		
+		allCards = allCards.filter((card, index, self) => 
+			index === self.findIndex(c => c.id === card.id)
+		);
+		
+		return allCards;
+	}
     
     function filterCards() {
         let filtered = [...allCards];
@@ -111,15 +117,19 @@ const collectionModule = (function() {
                 return card.position === currentFilters.position;
             });
         }
-        
-        if (!showCopies) {
-            const uniqueCards = new Map();
-            filtered.forEach(card => {
-                if (!uniqueCards.has(card.id)) uniqueCards.set(card.id, card);
-            });
-            filtered = Array.from(uniqueCards.values());
-        }
-        
+
+		if (!showHidden) {
+			filtered = filtered.filter(card => !card.hidden);
+		}
+		
+		if (!showCopies) {
+			const uniqueCards = new Map();
+			filtered.forEach(card => {
+				if (!uniqueCards.has(card.id)) uniqueCards.set(card.id, card);
+			});
+			filtered = Array.from(uniqueCards.values());
+		}
+	        
         filtered.sort((a, b) => {
             const typeOrder = { unit: 1, special: 2, artifact: 3, tactic: 4 };
             const typeDiff = (typeOrder[a.type] || 5) - (typeOrder[b.type] || 5);
@@ -224,10 +234,13 @@ const collectionModule = (function() {
         });
     }
     
-    function createCollectionCardElement(card) {
-        const cardElement = document.createElement('div');
-        cardElement.className = `card ${card.type} ${card.rarity} collection-card`;
-        cardElement.dataset.cardId = card.id;
+	function createCollectionCardElement(card) {
+		const cardElement = document.createElement('div');
+		cardElement.className = `card ${card.type} ${card.rarity} collection-card`;
+		if (card.hidden) {
+			cardElement.classList.add('hidden-card');
+		}
+		cardElement.dataset.cardId = card.id;
         
         const cardDisplayMode = getCardDisplayMode();
         let mediaPath = `card/${card.faction}/${card.image}`;
@@ -452,6 +465,7 @@ const collectionModule = (function() {
 		}
 		
 		updateCopyToggleState();
+		updateHiddenToggleState();
 		
 		document.querySelectorAll('.filter-faction-btn, .filter-type-btn, .filter-rarity-btn, .filter-position-btn').forEach(btn => {
 			btn.classList.remove('active');
@@ -464,7 +478,18 @@ const collectionModule = (function() {
 		displayCards();
 		audioManager?.playSound('button');
 	}
-		
+
+	function updateHiddenToggleState() {
+		const hiddenToggle = document.querySelector('.hidden-toggle');
+		if (hiddenToggle) {
+			if (showHidden) {
+				hiddenToggle.classList.add('active');
+			} else {
+				hiddenToggle.classList.remove('active');
+			}
+		}
+	}
+
 	function setupFilterListeners() {
 		const filters = {
 			faction: '.filter-faction-btn',
@@ -517,7 +542,21 @@ const collectionModule = (function() {
 			});
 			showCopiesCheckbox.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
 		}
-		
+
+		const showHiddenCheckbox = document.getElementById('showHiddenCheckbox');
+		if (showHiddenCheckbox) {
+			showHiddenCheckbox.checked = showHidden;
+			updateHiddenToggleState();
+			
+			showHiddenCheckbox.addEventListener('change', (e) => {
+				showHidden = e.target.checked;
+				updateHiddenToggleState();
+				displayCards();
+				audioManager?.playSound('button');
+			});
+			showHiddenCheckbox.addEventListener('mouseenter', () => audioManager?.playSound('touch'));
+		}
+	
 		const resetBtn = document.getElementById('resetFiltersBtn');
 		if (resetBtn) {
 			resetBtn.addEventListener('click', resetFilters);
@@ -597,6 +636,7 @@ const collectionModule = (function() {
 		currentFilters = { faction: 'all', type: 'all', rarity: 'all', position: 'all' };
 		allCards = [];
 		showCopies = false;
+		showHidden = false;
 		clearCache();
 		
 		const startPage = document.querySelector('.start-page');
@@ -732,11 +772,17 @@ const collectionModule = (function() {
                     </div>
                 </div>
             </div>
-            <div class="section-divider"></div>
-            <label class="copy-toggle">
-                <input type="checkbox" id="showCopiesCheckbox">
-                <span class="copy-toggle-label">Учитывать силу и кол-во копий карт</span>
-            </label>
+			<div class="section-divider"></div>
+			<div class="toggles-group">
+				<label class="copy-toggle">
+					<input type="checkbox" id="showCopiesCheckbox">
+					<span class="copy-toggle-label">Учитывать силу и кол-во копий</span>
+				</label>
+				<label class="copy-toggle hidden-toggle">
+					<input type="checkbox" id="showHiddenCheckbox">
+					<span class="copy-toggle-label">Отображать скрытые карты</span>
+				</label>
+			</div>
             <div class="section-divider"></div>
             <div class="filter-section reset-section">
                 <button class="reset-filters-btn" id="resetFiltersBtn">

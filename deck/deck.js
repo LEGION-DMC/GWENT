@@ -58,7 +58,8 @@ const localization = {
 		relict: 'Реликт',
 		blood: 'Вампир',
 		mantikora: 'Мантикора',
-		animal: 'Животное'
+		animal: 'Животное', 
+		driada: 'Дриада'
     }
 };
 
@@ -181,7 +182,7 @@ const factionAbilities = {
         {
             id: 'monsters_ability_4',
             name: 'Сила природы',
-            description: 'Призовите Духа Леса',
+            description: 'Призовите мугущественого "Духа Леса"',
             icon: 'faction/monsters/abilities/forest.png'
         },
         {
@@ -224,37 +225,37 @@ const factionAbilities = {
         }
     ],
 	syndicate: [
-        {
-            id: 'syndicate_ability_1',
-            name: 'Пиратская бухта',
-            description: ' ',
-            icon: 'faction/syndicate/abilities/pirates.png'
-        },
-        {
-            id: 'syndicate_ability_2',
-            name: 'Заказ на убийство',
-            description: 'Нанесите 6 ед. урона вражескому отряду',
-            icon: 'faction/syndicate/abilities/order.png'
-        },
-        {
-            id: 'syndicate_ability_3',
-            name: 'Священное братство',
-            description: 'Призыв карты  ',
-            icon: 'faction/syndicate/abilities/brother.png'
-        },
-        {
-            id: 'syndicate_ability_4',
-            name: 'Кровавые деньги',
-            description: ' ',
-            icon: 'faction/syndicate/abilities/money.png'
-        },
-        {
-            id: 'syndicate_ability_5',
-            name: 'Резьня',
-            description: 'Нанесите 3 ед. урона вражескому отряду',
-            icon: 'faction/syndicate/abilities/carnage.png'
-        }
-    ]
+		{
+			id: 'syndicate_ability_1',
+			name: 'Заказ на убийство',
+			description: 'Нанесите 6 ед. урона вражескому отряду',
+			icon: 'faction/syndicate/abilities/order.png'
+		},
+		{
+			id: 'syndicate_ability_2',
+			name: 'Резня',
+			description: 'Нанесите от 1 до 3 ед. урона всем картам в ряду противника',
+			icon: 'faction/syndicate/abilities/carnage.png'
+		},
+		{
+			id: 'syndicate_ability_3',
+			name: 'Пиратская бухта',
+			description: 'Призовите из колоды в руку 2 карты с тегом "Пират"',
+			icon: 'faction/syndicate/abilities/pirates.png'
+		},
+		{
+			id: 'syndicate_ability_4',
+			name: 'Священное братство',
+			description: 'Усильте 2 случайных дружественных отряда на 2 ед.',
+			icon: 'faction/syndicate/abilities/brother.png'
+		},
+		{
+			id: 'syndicate_ability_5',
+			name: 'Кровавые деньги',
+			description: 'Уничтожьте вражеский отряд с силой 4 или меньше',
+			icon: 'faction/syndicate/abilities/money.png'
+		}
+	]
 };
 
 const defaultAbilities = {
@@ -312,7 +313,7 @@ function localizeTags(tags) {
 function initDeckBuilding(faction) {
     window.selectedFaction = faction;
     currentDeck.faction = faction.id;
-	
+    
     const savedDeck = localStorage.getItem(`gwent_deck_${faction.id}`);
     
     if (savedDeck) {
@@ -323,17 +324,20 @@ function initDeckBuilding(faction) {
                 currentDeck.ability = deckData.ability || defaultAbilities[faction.id];
                 currentDeck.cards = [];
                 
-                const factionCards = window.cardsModule.getFactionCards(faction.id);
+                const availableCardsForFaction = window.cardsModule.getCardsForDeckBuilding 
+                    ? window.cardsModule.getCardsForDeckBuilding(faction.id)
+                    : { units: [], specials: [], artifacts: [], tactics: [] };
+                
                 const allCards = [
-                    ...factionCards.units,
-                    ...factionCards.specials,
-                    ...factionCards.artifacts,
-                    ...factionCards.tactics
+                    ...availableCardsForFaction.units,
+                    ...availableCardsForFaction.specials,
+                    ...availableCardsForFaction.artifacts,
+                    ...availableCardsForFaction.tactics
                 ];
                 
                 deckData.cards.forEach(cardId => {
                     const card = allCards.find(c => c.id === cardId);
-                    if (card) {
+                    if (card && !card.hidden) {
                         currentDeck.cards.push(card);
                     }
                 });
@@ -826,7 +830,18 @@ function backToFactionSelection() {
 
 function loadFactionCards(faction) {
     displayedCollectionCards = [];
-    if (window.cardsModule && window.cardsModule.getFactionCards) {
+    if (window.cardsModule && window.cardsModule.getCardsForDeckBuilding) {
+        // Используем функцию, которая исключает скрытые карты
+        availableCards = window.cardsModule.getCardsForDeckBuilding(faction.id);
+        displayedCollectionCards = [
+            ...availableCards.units,
+            ...availableCards.specials,
+            ...availableCards.artifacts,
+            ...availableCards.tactics 
+        ];
+        sortCollectionCards();
+    } else if (window.cardsModule && window.cardsModule.getFactionCards) {
+        // Fallback
         availableCards = window.cardsModule.getFactionCards(faction.id);
         displayedCollectionCards = [
             ...availableCards.units,
@@ -834,6 +849,7 @@ function loadFactionCards(faction) {
             ...availableCards.artifacts,
             ...availableCards.tactics 
         ];
+        displayedCollectionCards = displayedCollectionCards.filter(card => !card.hidden);
         sortCollectionCards();
     }
     setTimeout(() => {
@@ -1329,6 +1345,11 @@ function setupModalVideoControls(modalOverlay) {
 }
 
 function addCardToDeck(card) {
+    if (card.hidden) {
+        showMessage('Эту карту нельзя добавить в колоду');
+        return;
+    }
+    
     if (currentDeck.cards.length >= 40) {
         showMessage('Максимальный размер колоды - 40 карт');
         return;
@@ -1445,13 +1466,25 @@ function autoBuildDeck() {
     
     clearDeckSilent();
     
-    const factionCards = window.cardsModule.getFactionCards(faction.id);
-    const allCards = [
-        ...factionCards.units,
-        ...factionCards.specials,
-        ...factionCards.artifacts,
-        ...factionCards.tactics
-    ];
+    // Используем функцию для сборки колоды (исключает скрытые карты)
+    let allCards = [];
+    if (window.cardsModule?.getCardsForDeckBuilding) {
+        const deckCards = window.cardsModule.getCardsForDeckBuilding(faction.id);
+        allCards = [
+            ...deckCards.units,
+            ...deckCards.specials,
+            ...deckCards.artifacts,
+            ...deckCards.tactics
+        ];
+    } else {
+        const factionCards = window.cardsModule.getFactionCards(faction.id);
+        allCards = [
+            ...factionCards.units,
+            ...factionCards.specials,
+            ...factionCards.artifacts,
+            ...factionCards.tactics
+        ].filter(card => !card.hidden);
+    }
     
     if (allCards.length === 0) {
         showMessage('Нет доступных карт для этой фракции');
@@ -1869,10 +1902,11 @@ function sortCollectionWithFactionFilter(type) {
             break;
     }
     
-    // Применяем фильтр по фракции, если он активен
     if (factionSortEnabled && window.selectedFaction) {
         sortedCards = sortedCards.filter(card => card.faction === window.selectedFaction.id);
     }
+    
+    sortedCards = sortedCards.filter(card => !card.hidden);
     
     const filteredCards = sortedCards.filter(card => {
         if (card.copy && card.copy > 1) {
@@ -2062,19 +2096,22 @@ function loadDeckFromFile() {
                 
                 currentDeck.ability = deckData.ability || defaultAbilities[currentDeck.faction];
                 
-                const factionCards = window.cardsModule.getFactionCards(currentDeck.faction);
+                const availableCardsForFaction = window.cardsModule.getCardsForDeckBuilding 
+                    ? window.cardsModule.getCardsForDeckBuilding(currentDeck.faction)
+                    : window.cardsModule.getFactionCards(currentDeck.faction);
+                
                 const allCards = [
-                    ...factionCards.units,
-                    ...factionCards.specials,
-                    ...factionCards.artifacts,
-                    ...factionCards.tactics
+                    ...availableCardsForFaction.units,
+                    ...availableCardsForFaction.specials,
+                    ...availableCardsForFaction.artifacts,
+                    ...availableCardsForFaction.tactics
                 ];
                 
                 const cardsToAdd = [];
                 
                 for (const cardId of deckData.cards) {
                     const card = allCards.find(c => c.id === cardId);
-                    if (card && cardsToAdd.length < 40) {
+                    if (card && !card.hidden && cardsToAdd.length < 40) {
                         cardsToAdd.push(card);
                     }
                 }
@@ -2094,7 +2131,7 @@ function loadDeckFromFile() {
             }
         };
         reader.readAsText(file);
-		setFactionHeadersBackground(currentDeck.faction);
+        setFactionHeadersBackground(currentDeck.faction);
     };
     
     input.click();
