@@ -45,7 +45,6 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    position: relative;
     z-index: 10;
     animation: fadeInUp 0.8s ease;
 }
@@ -67,7 +66,11 @@ body {
 }
 
 .menu-btn {
-    background: none;
+    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4), 0 0 5px rgba(165, 124, 44, 0.3);
     border: none;
     padding: 8px;
     font-size: 25px;
@@ -75,18 +78,10 @@ body {
     text-transform: uppercase;
     letter-spacing: 3px;
     cursor: url('../ui/cursor_hover.png'), pointer;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease;
     border-radius: 5px;
     position: relative;
     width: 160px;
-}
-
-.menu-btn {
-    background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4), 0 0 5px rgba(165, 124, 44, 0.3);
 }
 
 .menu-btn::before,
@@ -97,18 +92,16 @@ body {
     height: 1px;
     background: linear-gradient(90deg, transparent, #cfaa4a, #e5c168, #cfaa4a, transparent);
     transition: width 0.4s ease;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .menu-btn::before {
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
 }
 
 .menu-btn::after {
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
 }
 
 .menu-btn:hover::before,
@@ -117,7 +110,7 @@ body {
 }
 
 .menu-btn:hover {
-    scale: 1.03;
+    transform: scale(1.03);
 }
 
 .menu-btn:active {

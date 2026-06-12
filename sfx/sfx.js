@@ -4,7 +4,6 @@ const audioManager = {
     backgroundMusic: null,
     currentMusicTrack: 'seadogs',
     sounds: {},
-    isFirstInteractionHandled: false,
     soundCooldowns: {},
     cooldownTime: 150,
     _musicPlaying: false,
@@ -21,42 +20,33 @@ const audioManager = {
         this.loadSettings();
         this.createAudioElements();
         this.setupEventListeners();
-        if (this.musicEnabled) {
-            this.playBackgroundMusic();
-        }
+        if (this.musicEnabled) this.playBackgroundMusic();
     },
 
     loadSettings() {
         try {
-            const savedSettings = localStorage.getItem('gwentSettings');
-            if (savedSettings) {
-                const settings = JSON.parse(savedSettings);
-                this.soundEnabled = settings.soundEnabled ?? true;
-                this.musicEnabled = settings.musicEnabled ?? true;
-                this.currentMusicTrack = settings.musicTrack ?? 'seadogs';
-                this._savedMusicTrack = this.currentMusicTrack;
-            } else {
-                this.currentMusicTrack = 'seadogs';
-                this._savedMusicTrack = 'seadogs';
-            }
-        } catch (e) {}
+            const saved = JSON.parse(localStorage.getItem('gwentSettings') || '{}');
+            this.soundEnabled = saved.soundEnabled ?? true;
+            this.musicEnabled = saved.musicEnabled ?? true;
+            this.currentMusicTrack = saved.musicTrack ?? 'seadogs';
+            this._savedMusicTrack = this.currentMusicTrack;
+        } catch {}
     },
 
     saveAudioSettings() {
         try {
-            const currentSettings = JSON.parse(localStorage.getItem('gwentSettings') || '{}');
-            currentSettings.soundEnabled = this.soundEnabled;
-            currentSettings.musicEnabled = this.musicEnabled;
-            currentSettings.musicTrack = this.currentMusicTrack;
-            localStorage.setItem('gwentSettings', JSON.stringify(currentSettings));
-        } catch (e) {}
+            const current = JSON.parse(localStorage.getItem('gwentSettings') || '{}');
+            Object.assign(current, {
+                soundEnabled: this.soundEnabled,
+                musicEnabled: this.musicEnabled,
+                musicTrack: this._savedMusicTrack
+            });
+            localStorage.setItem('gwentSettings', JSON.stringify(current));
+        } catch {}
     },
 
     createAudioElements() {
-        const trackPath = this.musicTracks[this.currentMusicTrack] || this.musicTracks.seadogs;
-        this.backgroundMusic = new Audio(trackPath);
-        this.backgroundMusic.loop = true;
-        this.backgroundMusic.volume = 0.3;
+        this.backgroundMusic = this._createMusicTrack(this.currentMusicTrack);
 
         const soundFiles = {
             button: 'sfx/button.mp3',
@@ -66,8 +56,8 @@ const audioManager = {
             cardAdd: 'sfx/card_add.mp3',
             cardRemove: 'sfx/card_remove.mp3',
             card_selected: 'sfx/card-selected.mp3',
-			card_damage: 'sfx/card_damage.mp3',
-			card_boost: 'sfx/card_boost.mp3',
+            card_damage: 'sfx/card_damage.mp3',
+            card_boost: 'sfx/card_boost.mp3',
             card_destroy: 'sfx/card_destroy.mp3',
             card_draw: 'sfx/card_draw.mp3',
             weatherFrost: 'sfx/frost.mp3',
@@ -83,41 +73,36 @@ const audioManager = {
             card_close: 'sfx/card_close.wav',
             card_range: 'sfx/card_range.wav',
             card_siege: 'sfx/card_siege.wav',
-            artefact: 'sfx/artefact.wav',
+            artefact: 'sfx/artefact.wav'
         };
 
         for (const [key, src] of Object.entries(soundFiles)) {
             this.sounds[key] = new Audio(src);
-            this.sounds[key].volume = 0.5;
+            this.sounds[key].volume = ['weatherFrost', 'weatherFog', 'weatherRain'].includes(key) ? 0.4 :
+                                      key === 'weatherClear' ? 0.6 : 0.5;
         }
-
-        ['weatherFrost', 'weatherFog', 'weatherRain'].forEach(key => {
-            if (this.sounds[key]) this.sounds[key].volume = 0.4;
-        });
-        if (this.sounds.weatherClear) this.sounds.weatherClear.volume = 0.6;
     },
 
-    changeMusicTrack(trackId) {
+    _createMusicTrack(trackId) {
+        const track = new Audio(this.musicTracks[trackId] || this.musicTracks.seadogs);
+        track.loop = true;
+        track.volume = 0.3;
+        return track;
+    },
+
+    _switchTrack(trackId, saveToSettings = false) {
         if (trackId === this.currentMusicTrack) return;
 
         const wasPlaying = this._musicPlaying;
 
+        this.backgroundMusic?.pause();
+        this.backgroundMusic = this._createMusicTrack(trackId);
         this.currentMusicTrack = trackId;
-        this._savedMusicTrack = trackId;
-        this.saveAudioSettings();
-
-        const newTrackPath = this.musicTracks[trackId];
-        const newTrack = new Audio(newTrackPath);
-        newTrack.loop = true;
-        newTrack.volume = this.backgroundMusic ? this.backgroundMusic.volume : 0.3;
-
-        if (this.backgroundMusic) {
-            this.backgroundMusic.pause();
-            this.backgroundMusic.currentTime = 0;
-            this.backgroundMusic = null;
+        
+        if (saveToSettings) {
+            this._savedMusicTrack = trackId;
+            this.saveAudioSettings();
         }
-
-        this.backgroundMusic = newTrack;
 
         if (this.musicEnabled && wasPlaying) {
             this._musicPlaying = true;
@@ -125,71 +110,28 @@ const audioManager = {
         }
     },
 
+    changeMusicTrack(trackId) { this._switchTrack(trackId, true); },
+    
     setBattleMusic() {
-        if (!this.musicEnabled) return;
-
-        const wasPlaying = this._musicPlaying;
-
-        this._savedMusicTrack = this.currentMusicTrack;
-
-        const battleTrack = new Audio(this.musicTracks.glory);
-        battleTrack.loop = true;
-        battleTrack.volume = this.backgroundMusic ? this.backgroundMusic.volume : 0.3;
-
-        if (this.backgroundMusic) {
-            this.backgroundMusic.pause();
-            this.backgroundMusic.currentTime = 0;
-            this.backgroundMusic = null;
-        }
-
-        this.backgroundMusic = battleTrack;
-        this.currentMusicTrack = 'glory';
-
-        if (wasPlaying) {
-            this._musicPlaying = true;
-            this.backgroundMusic.play().catch(() => {});
+        if (this.musicEnabled && this.currentMusicTrack !== 'glory') {
+            this._switchTrack('glory', false);
         }
     },
-
+    
     restoreSavedMusic() {
-        if (!this.musicEnabled) return;
-
-        const wasPlaying = this._musicPlaying;
-        const savedTrack = this._savedMusicTrack || 'seadogs';
-
-        const savedTrackPath = this.musicTracks[savedTrack] || this.musicTracks.seadogs;
-        const newTrack = new Audio(savedTrackPath);
-        newTrack.loop = true;
-        newTrack.volume = this.backgroundMusic ? this.backgroundMusic.volume : 0.3;
-
-        if (this.backgroundMusic) {
-            this.backgroundMusic.pause();
-            this.backgroundMusic.currentTime = 0;
-            this.backgroundMusic = null;
-        }
-
-        this.backgroundMusic = newTrack;
-        this.currentMusicTrack = savedTrack;
-
-        if (wasPlaying) {
-            this._musicPlaying = true;
-            this.backgroundMusic.play().catch(() => {});
+        if (this.musicEnabled && this.currentMusicTrack === 'glory') {
+            this._switchTrack(this._savedMusicTrack, false);
         }
     },
 
     setupEventListeners() {
-        const handler = () => this.handleFirstInteraction();
         ['click', 'touchstart', 'keydown'].forEach(event => {
-            document.addEventListener(event, handler, { once: true });
+            document.addEventListener(event, () => {
+                if (this.musicEnabled && this.backgroundMusic?.paused) {
+                    this.playBackgroundMusic();
+                }
+            }, { once: true });
         });
-    },
-
-    handleFirstInteraction() {
-        if (this.isFirstInteractionHandled) return;
-        this.isFirstInteractionHandled = true;
-        if (this.musicEnabled && this.backgroundMusic && this.backgroundMusic.paused) {
-            this.playBackgroundMusic();
-        }
     },
 
     playBackgroundMusic() {
@@ -215,17 +157,13 @@ const audioManager = {
         }
     },
 
-    isMusicPlaying() {
-        return this._musicPlaying;
-    },
+    isMusicPlaying() { return this._musicPlaying; },
 
     playSound(soundName) {
         if (!this.soundEnabled || !this.sounds[soundName]) return;
 
         const now = Date.now();
-        if (this.soundCooldowns[soundName] && now - this.soundCooldowns[soundName] < this.cooldownTime) {
-            return;
-        }
+        if (this.soundCooldowns[soundName] && now - this.soundCooldowns[soundName] < this.cooldownTime) return;
         this.soundCooldowns[soundName] = now;
 
         const sound = this.sounds[soundName].cloneNode();
@@ -242,11 +180,7 @@ const audioManager = {
     toggleMusic() {
         this.musicEnabled = !this.musicEnabled;
         this.saveAudioSettings();
-        if (this.musicEnabled) {
-            this.playBackgroundMusic();
-        } else {
-            this.stopBackgroundMusic();
-        }
+        this.musicEnabled ? this.playBackgroundMusic() : this.stopBackgroundMusic();
         return this.musicEnabled;
     },
 
@@ -258,32 +192,22 @@ const audioManager = {
 
     setSoundVolume(volume) {
         const newVolume = Math.max(0, Math.min(1, volume));
-        Object.values(this.sounds).forEach(sound => {
-            sound.volume = newVolume;
-        });
+        Object.values(this.sounds).forEach(sound => sound.volume = newVolume);
     },
 
     playWeatherSound(weatherType) {
         if (!this.soundEnabled) return;
 
-        const weatherSounds = {
-            frost: 'weatherFrost',
-            fog: 'weatherFog',
-            rain: 'weatherRain',
-            clear: 'weatherClear'
-        };
-
-        const soundKey = weatherSounds[weatherType];
-        if (soundKey && this.sounds[soundKey]) {
-            const sound = this.sounds[soundKey].cloneNode();
-            sound.volume = this.sounds[soundKey].volume;
-            sound.play().catch(() => {});
+        const weatherSounds = { frost: 'weatherFrost', fog: 'weatherFog', rain: 'weatherRain', clear: 'weatherClear' };
+        const sound = this.sounds[weatherSounds[weatherType]];
+        if (sound) {
+            const clone = sound.cloneNode();
+            clone.volume = sound.volume;
+            clone.play().catch(() => {});
         }
     },
 
-    getCurrentMusicTrack() {
-        return this.currentMusicTrack;
-    },
+    getCurrentMusicTrack() { return this.currentMusicTrack; },
 
     getMusicTrackDisplayName() {
         return this.currentMusicTrack === 'northern' ? 'Northern Realms' :
@@ -291,8 +215,5 @@ const audioManager = {
     }
 };
 
-window.addEventListener('load', () => {
-    audioManager.init();
-});
-
+window.addEventListener('load', () => audioManager.init());
 window.audioManager = audioManager;

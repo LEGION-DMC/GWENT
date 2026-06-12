@@ -1,46 +1,37 @@
 .rules-page {
-    position: fixed;              
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    position: fixed;
+    inset: 0;
     background: url('../ui/fon.jpg') no-repeat center center fixed;
     background-size: cover;
-    display: none;               
+    display: none;
     flex-direction: column;
     align-items: center;
-    z-index: 2000;                  
+    z-index: 2000;
+    opacity: 0;
 }
 
 .rules-page.active {
-    display: flex;               
+    display: flex;
+    opacity: 1;
 }
 
 .rules-title {
     font-size: 35px;
-    margin-bottom: 30px;
-    margin-top: 45px;
+    margin: 45px 0 30px;
     width: 80%;
     text-transform: uppercase;
     text-align: center;
     letter-spacing: 3px;
-    
-    /* Текст с градиентом для богатства оттенков */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    /* Тени только для текста, не влияют на border-image */
-    text-shadow: 
-        2px 2px 4px rgba(0, 0, 0, 0.5),
-        0 0 8px rgba(165, 124, 44, 0.4),
-        0 0 20px rgba(207, 170, 74, 0.2);
-    
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(165, 124, 44, 0.4), 0 0 20px rgba(207, 170, 74, 0.2);
     padding-bottom: 5px;
     border-bottom: 60px solid transparent;
     border-image: url('../ui/long.png') 80 0;
     box-sizing: border-box;
+    animation: fadeInDown 0.5s ease forwards;
 }
 
 .rules-container {
@@ -49,6 +40,7 @@
     max-width: 1700px;
     height: calc(90vh - 120px);
     gap: 25px;
+    animation: fadeInUp 0.5s ease forwards;
 }
 
 .rules-sidebar {
@@ -58,6 +50,11 @@
     overflow-y: auto;
     padding: 5px;
     margin-top: -21px;
+    scrollbar-width: none;
+}
+
+.rules-sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .rules-sections h3,
@@ -66,17 +63,11 @@
     margin-bottom: 10px;
     text-transform: uppercase;
     text-align: center;
-    
-    /* Благородное золото с градиентом */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    /* Мягкая тень для объема */
-    text-shadow: 
-        1px 1px 2px rgba(0, 0, 0, 0.4),
-        0 0 5px rgba(165, 124, 44, 0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4), 0 0 5px rgba(165, 124, 44, 0.3);
 }
 
 .section-divider {
@@ -92,11 +83,11 @@
 }
 
 .rule-item {
-    padding: 10px 10px;
+    padding: 10px;
     border: 1px solid #222;
     border-radius: 4px;
     cursor: url('../ui/cursor_hover.png'), pointer;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     background: rgba(30, 30, 40, 0.2);
 }
 
@@ -114,16 +105,11 @@
 .rule-item__title {
     font-size: 16px;
     margin-bottom: 5px;
-    
-    /* Приглушенное золото для подзаголовков внутри правил */
     background: linear-gradient(135deg, #b8923c 0%, #cfaa5a 45%, #c49a3a 80%, #e0bc68 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    text-shadow: 
-        0.5px 0.5px 1px rgba(0, 0, 0, 0.3),
-        0 0 3px rgba(165, 124, 44, 0.2);
+    text-shadow: 0.5px 0.5px 1px rgba(0, 0, 0, 0.3), 0 0 3px rgba(165, 124, 44, 0.2);
 }
 
 .rule-item__description {
@@ -152,12 +138,6 @@
     text-align: center;
 }
 
-.no-content-selected .icon {
-    font-size: 60px;
-    margin-bottom: 20px;
-    color: #d4af37;
-}
-
 .content-section {
     display: none;
 }
@@ -167,64 +147,51 @@
     animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.rule-modal-overlay.active .rule-modal {
-    transform: scale(1);            
-    opacity: 1;                     
-}
-
 .rule-modal__title {
     font-size: 30px;
     text-transform: uppercase;
     text-align: center;
-    
-    /* Благородное золото с градиентом */
     background: linear-gradient(135deg, #a57c2c 0%, #cfaa4a 45%, #b58a2a 80%, #e5c168 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    /* Мягкая тень для объема */
-    text-shadow: 
-        1px 1px 2px rgba(0, 0, 0, 0.4),
-        0 0 5px rgba(165, 124, 44, 0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4), 0 0 5px rgba(165, 124, 44, 0.3);
 }
 
 .rule-modal__content {
     color: #d9d9d9;
     font-size: 13px;
-    line-height: 0.9;
+    line-height: 1;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .rule-modal__content h3 {
     font-size: 18px;
-    font-style: normal;
-    
-    /* Золото для подзаголовков внутри контента */
     background: linear-gradient(135deg, #b8923c 0%, #cfaa5a 45%, #c49a3a 80%, #e0bc68 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    
-    text-shadow: 
-        0.5px 0.5px 1px rgba(0, 0, 0, 0.3),
-        0 0 4px rgba(165, 124, 44, 0.25);
-    
+    text-shadow: 0.5px 0.5px 1px rgba(0, 0, 0, 0.3), 0 0 4px rgba(165, 124, 44, 0.25);
     margin-top: 10px;
     margin-bottom: 8px;
+}
+
+.rule-modal__content h4 {
+    font-size: 15px;
+    margin: 8px 0 5px;
+}
+
+.rule-modal__content h5 {
+    font-size: 14px;
+    margin: 5px 0 3px;
 }
 
 .bloc-rule {
     display: flex;
     align-items: center;
     justify-content: left;
-    gap: 15px;                      
-    padding-bottom: 5px;  
+    gap: 15px;
+    padding-bottom: 5px;
     letter-spacing: 1.5px;
 }
 
@@ -232,8 +199,12 @@
     line-height: 18px;
 }
 
+.bloc-rule li {
+    line-height: 1.2;
+}
+
 .rule-modal__image {
-    height: 70px;                   
+    height: 70px;
 }
 
 .back-to-menu-btn {
@@ -246,14 +217,11 @@
     text-transform: uppercase;
     letter-spacing: 2px;
     cursor: url('../ui/cursor_hover.png'), pointer;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease, text-shadow 0.3s ease;
     border-radius: 3px;
     position: absolute;
     left: 10px;
     top: 10px;
-    overflow: hidden;
-    
-    /* Приглушенное старинное золото */
     color: #be9a48;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
@@ -266,12 +234,12 @@
     width: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent, #be9a48, #e5c168, #be9a48, transparent);
-    transition: all 0.4s ease;
+    transition: width 0.4s ease;
     transform: translateX(-50%);
 }
 
 .back-to-menu-btn:hover {
-    scale: 1.03;
+    transform: scale(1.03);
     background: rgba(0, 0, 0, 0.6);
     color: #cfaf58;
     text-shadow: 0 0 8px rgba(207, 175, 88, 0.5);
@@ -285,18 +253,7 @@
     transform: scale(1.05);
 }
 
-.bloc-rule li {
-    line-height: 1.2;
-}
-
-.rules-title {
-    opacity: 0;
-    transform: translateY(-50px);
-    animation: fadeInDown 0.5s ease forwards;
-}
-
-.rules-container {
-    opacity: 0;
-    transform: translateY(50px);
-    animation: fadeInUp 0.5s ease forwards;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

@@ -711,6 +711,7 @@
 	color: #2196F3;
 	font-size: 14px;
 	margin-bottom: 5px;
+  letter-spacing: 1px;
 }
 
 .card-modal__ability-description {
@@ -718,6 +719,29 @@
 	font-size: 12px;
 	line-height: 1.3;
   letter-spacing: 1.3px;
+}
+
+.hint-trigger {
+  color: #0cbe38;
+	position: relative;
+}
+
+.hint-tooltip {
+    visibility: hidden;
+    position: absolute;
+    transform: translateY(-107%);
+	  left: 95%;
+    font-size: 12px;
+    width: 250px;
+	  background: rgba(30, 30, 30, 0.5);
+  	padding: 10px;
+  	border-radius: 5px;
+  	border: 1px solid #222;
+	  color: #ccc;
+}
+
+.ability-hint:hover .hint-tooltip {
+    visibility: visible;
 }
 
 .faction-ability {

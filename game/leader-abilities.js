@@ -1383,7 +1383,20 @@ const leaderAbilities = {
 	'realms_ability_5': {
 		name: 'Мобилизация',
 		description: 'Призовите бронзовый отряд на поле и усильте его и смежные с ним отряды на 3 еденицы',
+		isExecuting: false,  
+		pendingCard: null,   
+		pendingCardIndex: null, 
+		
 		execute: async function(gameState, gameModule) {
+			// Запрещаем повторную активацию, если уже выполняется
+			if (this.isExecuting) {
+				gameModule.showGameMessage('Способность уже активирована! Разместите выбранную карту.', 'warning');
+				return false;
+			}
+			
+			// Очищаем предыдущие выделения
+			this.cleanupPreviousSelection();
+			
 			// 1. Показываем модальное окно с картами из колоды
 			const bronzeUnits = [];
 			gameState.player.deck.forEach((card, index) => {
@@ -1397,30 +1410,99 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			this.isExecuting = true;
+			
 			const selectedCard = await this.showDeckSelectionModal(bronzeUnits, gameModule);
-			if (!selectedCard) return false;
 			
-			// 2. Удаляем карту из колоды
-			gameState.player.deck.splice(selectedCard.index, 1);
-			
-			// 3. Показываем выбор ряда
-			const availableRows = this.getAvailableRowsForCard(selectedCard.card, gameState);
-			if (availableRows.length === 0) {
-				gameModule.showGameMessage('Нет свободных рядов для размещения', 'warning');
-				gameState.player.deck.push(selectedCard.card);
+			if (!selectedCard) {
+				// Отмена выбора
+				this.isExecuting = false;
 				return false;
 			}
 			
-			// Сохраняем выбранную карту для размещения
-			this.selectedSummonCard = selectedCard.card;
+			// 2. Проверяем, что карта всё ещё в колоде
+			const stillInDeck = gameState.player.deck.some((card, idx) => 
+				idx === selectedCard.index && card.id === selectedCard.card.id
+			);
 			
-			// Показываем выбор ряда с подсветкой (как при обычном размещении)
-			this.showRowSelectionForSummon(availableRows, gameState, gameModule);
+			if (!stillInDeck) {
+				gameModule.showGameMessage('Эта карта больше не доступна', 'warning');
+				this.isExecuting = false;
+				return false;
+			}
+			
+			// 3. Сохраняем выбранную карту и удаляем из колоды
+			this.pendingCard = selectedCard.card;
+			this.pendingCardIndex = selectedCard.index;
+			gameState.player.deck.splice(selectedCard.index, 1);
+			
+			// 4. Показываем выбор ряда
+			const availableRows = this.getAvailableRowsForCard(this.pendingCard, gameState);
+			if (availableRows.length === 0) {
+				gameModule.showGameMessage('Нет свободных рядов для размещения', 'warning');
+				// Возвращаем карту в колоду
+				gameState.player.deck.splice(this.pendingCardIndex, 0, this.pendingCard);
+				this.pendingCard = null;
+				this.pendingCardIndex = null;
+				this.isExecuting = false;
+				return false;
+			}
+			
+			const selectedRow = await this.showRowSelectionForSummon(availableRows, gameState, gameModule);
+			
+			if (!selectedRow) {
+				// Отмена размещения - возвращаем карту в колоду
+				gameState.player.deck.splice(this.pendingCardIndex, 0, this.pendingCard);
+				this.pendingCard = null;
+				this.pendingCardIndex = null;
+				this.isExecuting = false;
+				return false;
+			}
+			
+			// Размещаем карту
+			await this.placeSummonedCard(this.pendingCard, selectedRow, gameState, gameModule);
+			
+			// Сбрасываем состояние
+			this.pendingCard = null;
+			this.pendingCardIndex = null;
+			this.isExecuting = false;
+			
 			return true;
+		},
+		
+		cleanupPreviousSelection: function() {
+			// Удаляем все подсветки рядов
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+				if (rowElement) {
+					rowElement.classList.remove('row-available');
+					rowElement.style.cursor = '';
+					rowElement.style.transform = '';
+					const newRow = rowElement.cloneNode(true);
+					rowElement.parentNode?.replaceChild(newRow, rowElement);
+				}
+			}
+			
+			// Удаляем кнопку отмены
+			const cancelBtn = document.querySelector('.ability-cancel-btn');
+			if (cancelBtn) cancelBtn.remove();
+			
+			// Закрываем все модальные окна
+			const modals = document.querySelectorAll('.deck-modal-overlay');
+			modals.forEach(modal => modal.remove());
+		},
+		
+		capitalizeFirst: function(string) {
+			return string.charAt(0).toUpperCase() + string.slice(1);
 		},
 		
 		showDeckSelectionModal: function(cards, gameModule) {
 			return new Promise((resolve) => {
+				// Закрываем предыдущие модальные окна
+				const existingModals = document.querySelectorAll('.deck-modal-overlay');
+				existingModals.forEach(modal => modal.remove());
+				
 				const modalOverlay = document.createElement('div');
 				modalOverlay.className = 'deck-modal-overlay';
 				modalOverlay.innerHTML = `
@@ -1431,14 +1513,20 @@ const leaderAbilities = {
 						</div>
 						<div class="deck-modal__content">
 							${cards.map((item, idx) => `
-								<div class="deck-card" data-card-index="${idx}">
+								<div class="deck-card" data-card-index="${idx}" data-card-id="${item.card.id}">
 									<div class="deck-card__container">
-										<img src="card/${item.card.faction}/${item.card.imageStatic || item.card.image.replace('.mp4', '.jpg')}" 
+										<img src="card/${item.card.faction}/${item.card.imageStatic || (item.card.image ? item.card.image.replace('.mp4', '.jpg') : 'placeholder.jpg')}" 
 											 class="deck-card__media" onerror="this.src='card/placeholder.jpg'">
-										<img src="${item.card.border}" class="deck-card__border">
-										<img src="${item.card.banner}" class="deck-card__banner">
+										<img src="${item.card.border || 'deck/bord_silver.png'}" class="deck-card__border">
+										<img src="${item.card.banner || 'faction/' + item.card.faction + '/banner_silver.png'}" class="deck-card__banner">
 										<div class="deck-card__name">${item.card.name}</div>
-										<div class="deck-card__strength">${item.card.strength}</div>
+										<div class="deck-card__strength">${item.card.strength || ''}</div>
+										${item.card.position ? `
+										<div class="deck-card__position">
+											<img src="${item.card.positionBanner || 'faction/' + item.card.faction + '/banner_position.png'}" class="deck-card__position-banner">
+											<img src="${this.getPositionIconPath(item.card.position)}" class="deck-card__position-icon">
+										</div>
+										` : ''}
 									</div>
 								</div>
 							`).join('')}
@@ -1449,14 +1537,38 @@ const leaderAbilities = {
 				document.body.appendChild(modalOverlay);
 				setTimeout(() => modalOverlay.classList.add('active'), 10);
 				
+				let isResolved = false;
+				
+				const resolveOnce = (value) => {
+					if (!isResolved) {
+						isResolved = true;
+						resolve(value);
+					}
+				};
+				
+				// Добавляем обработчики для карт
 				const cardElements = modalOverlay.querySelectorAll('.deck-card');
 				cardElements.forEach(card => {
-					card.addEventListener('click', () => {
-						const index = parseInt(card.dataset.cardIndex);
-						this.closeModal(modalOverlay);
-						audioManager.playSound('button');
-						resolve(cards[index]);
+					const cardData = cards[parseInt(card.dataset.cardIndex)];
+					
+					card.addEventListener('click', (e) => {
+						if (e.button === 0 && !isResolved) {
+							const index = parseInt(card.dataset.cardIndex);
+							this.closeModal(modalOverlay);
+							audioManager.playSound('button');
+							resolveOnce(cards[index]);
+						}
 					});
+					
+					card.addEventListener('contextmenu', (e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						if (cardData && window.showCardModal) {
+							window.showCardModal(cardData.card);
+						}
+						audioManager.playSound('button');
+					});
+					
 					card.addEventListener('mouseenter', () => {
 						card.style.transform = 'scale(1.05)';
 						audioManager.playSound('touch');
@@ -1466,13 +1578,39 @@ const leaderAbilities = {
 					});
 				});
 				
-				modalOverlay.addEventListener('click', (e) => {
-					if (e.target === modalOverlay) {
+				// Закрытие по клику вне окна или Escape
+				const closeHandler = (e) => {
+					if (e.type === 'keydown') {
+						if (e.key === 'Escape') {
+							this.closeModal(modalOverlay);
+							document.removeEventListener('keydown', closeHandler);
+							resolveOnce(null);
+						}
+					} else if (e.target === modalOverlay) {
 						this.closeModal(modalOverlay);
-						resolve(null);
+						document.removeEventListener('keydown', closeHandler);
+						resolveOnce(null);
 					}
-				});
+				};
+				
+				modalOverlay.addEventListener('click', closeHandler);
+				document.addEventListener('keydown', closeHandler);
+				modalOverlay._closeHandler = closeHandler;
 			});
+		},
+		
+		getPositionIconPath: function(position) {
+			const positionIcons = {
+				'close-row': 'deck/close-row.png',
+				'ranged-row': 'deck/ranged-row.png',  
+				'siege-row': 'deck/siege-row.png',
+				'any-row': 'deck/any-row.png',
+				'hidden-close-row': 'deck/hidden-close-row.png',
+				'hidden-ranged-row': 'deck/hidden-ranged-row.png',
+				'hidden-siege-row': 'deck/hidden-siege-row.png',
+				'hidden-any-row': 'deck/hidden-any-row.png'
+			};
+			return positionIcons[position] || 'deck/any-row.png';
 		},
 		
 		getAvailableRowsForCard: function(card, gameState) {
@@ -1493,121 +1631,143 @@ const leaderAbilities = {
 		},
 		
 		showRowSelectionForSummon: function(availableRows, gameState, gameModule) {
-			// Подсвечиваем доступные ряды
-			const rowsMap = {
-				'close': 'playerCloseRow',
-				'ranged': 'playerRangedRow',
-				'siege': 'playerSiegeRow'
-			};
-			
-			const rowClickHandler = (row) => {
-				return (event) => {
-					// Убираем подсветку рядов
-					this.removeRowHighlightsForSummon();
-					
-					// Размещаем карту в выбранном ряду с учётом позиции клика
-					this.placeSummonedCard(this.selectedSummonCard, row, event.clientX, gameState, gameModule);
-				};
-			};
-			
-			for (const row of availableRows) {
-				const rowElement = document.getElementById(rowsMap[row]);
-				if (rowElement) {
-					rowElement.classList.add('row-available');
-					rowElement.style.cursor = 'pointer';
-					rowElement.addEventListener('click', rowClickHandler(row));
-					
-					rowElement.addEventListener('mouseenter', () => {
-						rowElement.style.transform = 'scale(1.02)';
-					});
-					rowElement.addEventListener('mouseleave', () => {
-						rowElement.style.transform = 'scale(1)';
-					});
-				}
-			}
-			
-			// Кнопка отмены
-			const cancelBtn = document.createElement('button');
-			cancelBtn.textContent = 'ОТМЕНА';
-			cancelBtn.className = 'ability-cancel-btn';
-			cancelBtn.addEventListener('click', () => {
+			return new Promise((resolve) => {
+				// Удаляем предыдущие подсветки
 				this.removeRowHighlightsForSummon();
-				cancelBtn.remove();
-				this.selectedSummonCard = null;
-				audioManager.playSound('button');
+				
+				const rowsMap = {
+					'close': `player${this.capitalizeFirst('close')}Row`,
+					'ranged': `player${this.capitalizeFirst('ranged')}Row`,
+					'siege': `player${this.capitalizeFirst('siege')}Row`
+				};
+				
+				let isResolved = false;
+				
+				const resolveOnce = (value) => {
+					if (!isResolved) {
+						isResolved = true;
+						this.removeRowHighlightsForSummon();
+						resolve(value);
+					}
+				};
+				
+				const rowClickHandler = (row) => {
+					return () => {
+						resolveOnce(row);
+					};
+				};
+				
+				for (const row of availableRows) {
+					const rowElement = document.getElementById(rowsMap[row]);
+					if (rowElement) {
+						rowElement.classList.add('row-available');
+						rowElement.style.cursor = 'pointer';
+						rowElement.addEventListener('click', rowClickHandler(row));
+						
+						rowElement.addEventListener('mouseenter', () => {
+							rowElement.style.transform = 'scale(1.02)';
+						});
+						rowElement.addEventListener('mouseleave', () => {
+							rowElement.style.transform = 'scale(1)';
+						});
+					}
+				}
+				
+				// Кнопка отмены
+				const cancelBtn = document.createElement('button');
+				cancelBtn.textContent = 'ОТМЕНА';
+				cancelBtn.className = 'ability-cancel-btn';
+				cancelBtn.style.cssText = `
+					position: fixed;
+					bottom: 30px;
+					left: 50%;
+					transform: translateX(-50%);
+					background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+					color: #d4af37;
+					border: 2px solid #d4af37;
+					padding: 12px 35px;
+					border-radius: 8px;
+					cursor: pointer;
+					font-weight: bold;
+					font-family: 'Gwent', sans-serif;
+					font-size: 16px;
+					text-transform: uppercase;
+					letter-spacing: 2px;
+					z-index: 10050;
+					transition: all 0.3s ease;
+					box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+				`;
+				
+				cancelBtn.addEventListener('click', () => {
+					resolveOnce(null);
+					audioManager.playSound('button');
+				});
+				
+				cancelBtn.addEventListener('mouseenter', () => {
+					cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+					cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+					audioManager.playSound('touch');
+				});
+				
+				cancelBtn.addEventListener('mouseleave', () => {
+					cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+					cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+				});
+				
+				document.body.appendChild(cancelBtn);
+				this._currentCancelBtn = cancelBtn;
 			});
-			document.body.appendChild(cancelBtn);
 		},
 		
-		placeSummonedCard: function(card, row, clickX, gameState, gameModule) {
+		removeRowHighlightsForSummon: function() {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${this.capitalizeFirst(row)}Row`);
+				if (rowElement) {
+					rowElement.classList.remove('row-available');
+					rowElement.style.cursor = '';
+					rowElement.style.transform = '';
+					const newRow = rowElement.cloneNode(true);
+					rowElement.parentNode?.replaceChild(newRow, rowElement);
+				}
+			}
+			if (this._currentCancelBtn && this._currentCancelBtn.parentNode) {
+				this._currentCancelBtn.remove();
+				this._currentCancelBtn = null;
+			}
+		},
+		
+		placeSummonedCard: function(card, row, gameState, gameModule) {
 			const rowState = gameState.player.rows[row];
 			
 			if (rowState.cards.length >= 9) {
 				gameModule.showGameMessage('В этом ряду максимальное количество карт!', 'warning');
-				this.removeRowHighlightsForSummon();
-				return;
-			}
-			
-			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-			if (!rowElement) return;
-			
-			// Определяем позицию для вставки на основе координаты клика
-			let insertIndex = rowState.cards.length;
-			
-			if (clickX !== undefined && rowState.cards.length > 0) {
-				const cardsInRow = Array.from(rowElement.querySelectorAll('.board-card'));
-				if (cardsInRow.length > 0) {
-					let closestCard = null;
-					let minDistance = Infinity;
-					const clickRect = rowElement.getBoundingClientRect();
-					const relativeX = clickX - clickRect.left;
-					
-					cardsInRow.forEach((cardElement, index) => {
-						const cardRect = cardElement.getBoundingClientRect();
-						const cardCenterX = (cardRect.left + cardRect.right) / 2 - clickRect.left;
-						const distance = Math.abs(relativeX - cardCenterX);
-						
-						if (distance < minDistance) {
-							minDistance = distance;
-							closestCard = { element: cardElement, index: index };
-						}
-					});
-					
-					if (closestCard) {
-						const cardRect = closestCard.element.getBoundingClientRect();
-						const cardCenterX = (cardRect.left + cardRect.right) / 2;
-						
-						if (clickX < cardCenterX) {
-							insertIndex = closestCard.index;
-						} else {
-							insertIndex = closestCard.index + 1;
-						}
-					}
-				}
+				return false;
 			}
 			
 			// Создаём копию карты для размещения
 			const newCard = gameModule.createCardCopy(card);
 			newCard.summonedByAbility = true;
 			
-			// Вставляем карту в выбранную позицию
-			rowState.cards.splice(insertIndex, 0, newCard);
+			// Добавляем карту в ряд
+			rowState.cards.push(newCard);
 			
 			// Отображаем карту на поле
-			gameModule.displayCardOnRow(row, newCard, 'player', insertIndex);
+			gameModule.displayCardOnRow(row, newCard, 'player');
 			
 			// Применяем эффекты
 			this.boostCard(newCard, 3);
 			
 			// Усиливаем соседей
-			if (insertIndex > 0) {
-				this.boostCard(rowState.cards[insertIndex - 1], 3);
+			const cardIndex = rowState.cards.length - 1;
+			if (cardIndex > 0) {
+				this.boostCard(rowState.cards[cardIndex - 1], 3);
 			}
-			if (insertIndex < rowState.cards.length - 1) {
-				this.boostCard(rowState.cards[insertIndex + 1], 3);
+			if (cardIndex < rowState.cards.length - 1) {
+				this.boostCard(rowState.cards[cardIndex + 1], 3);
 			}
 			
-			// Обновляем отображение силы в ряду
+			// Обновляем отображение
 			gameModule.updateRowStrength(row, 'player');
 			gameModule.updateTotalScoreDisplays();
 			gameModule.displayPlayerDeck();
@@ -1617,28 +1777,7 @@ const leaderAbilities = {
 			gameModule.showGameMessage(`Способность "${this.name}" активирована! Призван ${newCard.name}.`, 'info');
 			audioManager.playSound('card_boost');
 			
-			// Убираем подсветку
-			this.removeRowHighlightsForSummon();
-			this.selectedSummonCard = null;
-		},
-		
-		removeRowHighlightsForSummon: function() {
-			const rows = ['close', 'ranged', 'siege'];
-			for (const row of rows) {
-				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-				if (rowElement) {
-					rowElement.classList.remove('row-available');
-					rowElement.style.cursor = '';
-					rowElement.style.transform = '';
-				}
-			}
-			const btn = document.querySelector('.ability-cancel-btn');
-			if (btn) btn.remove();
-		},
-		
-		closeModal: function(modal) {
-			modal.classList.remove('active');
-			setTimeout(() => modal.remove(), 300);
+			return true;
 		},
 		
 		boostCard: function(card, amount) {
@@ -1646,6 +1785,18 @@ const leaderAbilities = {
 			card.strength = (card.strength || 0) + amount;
 			card.currentStrength = card.strength;
 			card.modifiedStrength = card.strength;
+		},
+		
+		closeModal: function(modal) {
+			if (modal._closeHandler) {
+				document.removeEventListener('keydown', modal._closeHandler);
+			}
+			modal.classList.remove('active');
+			setTimeout(() => {
+				if (modal.parentNode) {
+					modal.parentNode.removeChild(modal);
+				}
+			}, 300);
 		}
 	},
 

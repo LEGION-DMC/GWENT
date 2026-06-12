@@ -36,7 +36,7 @@ const skillSystem = {
         'biting_frost': {
             name: 'Белый хлад',
             type: 'weather',
-            description: 'Снижает силу всех карт в дальнем и блежнем рядах до 1',
+            description: 'Накладывает эффект мороза и тумана, снижая силу всех отрядов в дальнем и блежнем рядах до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'frost',
@@ -48,7 +48,7 @@ const skillSystem = {
 		'frost': {
             name: 'Трескучий мороз',
             type: 'weather',
-            description: 'Снижает силу всех карт в блежнем ряду до 1',
+            description: 'Накладывает эффект мороза, снижая силу всех отрядов в блежнем ряду до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'frost',
@@ -60,7 +60,7 @@ const skillSystem = {
         'impenetrable_fog': {
             name: 'Густой туман',
             type: 'weather',
-            description: 'Снижает силу всех карт в дальнем ряду до 1',
+            description: 'Накладывает эффект тумана, снижая силу всех отрядов в дальнем ряду до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'fog',
@@ -72,7 +72,7 @@ const skillSystem = {
         'torrential_rain': {
             name: 'Проливной дождь',
             type: 'weather',
-            description: 'Снижает силу всех карт в осадном ряду до 1',
+            description: 'Накладывает эффект дождя, снижая силу всех отрядов в осадном ряду до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'rain',
@@ -84,7 +84,7 @@ const skillSystem = {
         'storm': {
             name: 'Гнев богов',
             type: 'weather',
-            description: 'Снижает силу всех карт в дальнем и осадном рядах до 1',
+            description: 'Накладывает эффект дождя и тумана, снижая силу всех отрядов в дальнем и осадном рядах до 1',
             effect: {
                 type: 'weather',
                 weatherType: 'storm',
@@ -105,7 +105,7 @@ const skillSystem = {
 		'destroy': {
 			name: 'Пламя и пепел',
 			type: 'special',
-			description: 'Уничтожает самую сильную карту отряда противника',
+			description: '<span class="ability-hint"><span class="hint-trigger">Уничтожает</span><span class="hint-tooltip"><strong style="color:#0cbe38">Уничтожение:</strong> Перемещает карту в Сброс.</span></span><span class="description-normal"> самый сильный отряд противника',
 			effect: {
 				type: 'destroy_strongest_enemy',
 				target: 'unit',
@@ -115,7 +115,7 @@ const skillSystem = {
 		'destroy_artf': {
 			name: 'Мираж',
 			type: 'special',
-			description: 'Уничтожает карту артефакта противника',
+			description: '<span class="ability-hint"><span class="hint-trigger">Уничтожает</span><span class="hint-tooltip"><strong style="color:#0cbe38">Уничтожение:</strong> Перемещает карту в Сброс.</span></span><span class="description-normal"> карту артефакта противника',
 			effect: {
 				type: 'destroy_artifact',
 				target: 'artifact',
@@ -126,7 +126,7 @@ const skillSystem = {
 		'decoy': {
 			name: 'Чучело',
 			type: 'special',
-			description: 'Замещает карту на поле Чучелом, возвращая исходную карту в руку',
+			description: 'Замещает собой дружественный отряд на поле, возвращая его в руку',
 			effect: {
 				type: 'swap_with_hand',
 				target: 'unit',
@@ -136,26 +136,36 @@ const skillSystem = {
 		'flock': {
 			name: 'Стая',
 			type: 'special',
-			description: 'Призывает из руки и колоды все копии данного отряда',
+			description: '<span class="ability-hint"><span class="hint-trigger">Призывает</span><span class="hint-tooltip"><strong style="color:#0cbe38">Призыв:</strong> Автоматически размещает на поле указанную карту.</span></span><span class="description-normal"> из руки и колоды все копии данного отряда',
 			effect: {
 				type: 'flock',
 				target: 'self'
 			}
 		},
-		'call': {
-			name: 'Призыв',
+
+		'call_rat': {
+			name: 'Чумной мор',
 			type: 'special',
-			description: 'Призывает на поле указанную карту.',
+			description: '<span class="ability-hint"><span class="hint-trigger">Призывает</span><span class="hint-tooltip"><strong style="color:#0cbe38">Призыв:</strong> Автоматически размещает на поле указанные карты.</span></span><span class="description-normal"> на поле стаю из 3 крыс.</span>',
 			effect: {
 				type: 'summon_named_card', 
 				target: 'self'
 			}
 		},
-
+		'call_driad': {
+			name: 'Зов Брокилона',
+			type: 'special',
+			description: '<span class="ability-hint"><span class="hint-trigger">Призывает</span><span class="hint-tooltip"><strong style="color:#0cbe38">Призыв:</strong> Автоматически размещает на поле указанные карты..</span></span><span class="description-normal"> на поле 2 дриад-охотниц.',
+			effect: {
+				type: 'summon_named_card', 
+				target: 'self'
+			}
+		},
+		
 		'damage_1': {
 			name: 'Атака I',
 			type: 'special',
-			description: 'Наносит 1 ед. урона выбранной карте противника',
+			description: 'Наносит 1 ед. урона выбранному отряду противника',
 			effect: {
 				type: 'damage',
 				target: 'unit',
@@ -167,7 +177,7 @@ const skillSystem = {
 		'damage_2': {
 			name: 'Атака II',
 			type: 'special',
-			description: 'Наносит 2 ед. урона выбранной карте противника',
+			description: 'Наносит 2 ед. урона выбранному отряду противника',
 			effect: {
 				type: 'damage',
 				target: 'unit',
@@ -179,7 +189,7 @@ const skillSystem = {
 		'damage_3': {
 			name: 'Атака III',
 			type: 'special',
-			description: 'Наносит 3 ед. урона выбранной карте противника',
+			description: 'Наносит 3 ед. урона выбранному отряду противника',
 			effect: {
 				type: 'damage',
 				target: 'unit',
@@ -191,7 +201,7 @@ const skillSystem = {
 		'damage_4': {
 			name: 'Атака IV',
 			type: 'special',
-			description: 'Наносит 4 ед. урона выбранной карте противника',
+			description: 'Наносит 4 ед. урона выбранному отряду противника',
 			effect: {
 				type: 'damage',
 				target: 'unit',
@@ -203,7 +213,7 @@ const skillSystem = {
 		'damage_5': {
 			name: 'Атака V',
 			type: 'special',
-			description: 'Наносит 5 ед. урона выбранной карте противника',
+			description: 'Наносит 5 ед. урона выбранному отряду противника',
 			effect: {
 				type: 'damage',
 				target: 'unit',
@@ -216,7 +226,7 @@ const skillSystem = {
 		'damage_row_1': {
 			name: 'Атака по ряду I',
 			type: 'special',
-			description: 'Наносит 1 ед. урона всем картам в выбранном ряду противника',
+			description: 'Наносит 1 ед. урона всем отрядам в выбранном ряду противника',
 			effect: {
 				type: 'damage_row',
 				target: 'row',
@@ -228,7 +238,7 @@ const skillSystem = {
 		'damage_row_2': {
 			name: 'Атака по ряду II',
 			type: 'special',
-			description: 'Наносит 2 ед. урона всем картам в выбранном ряду противника',
+			description: 'Наносит 2 ед. урона всем отрядам в выбранном ряду противника',
 			effect: {
 				type: 'damage_row',
 				target: 'row',
@@ -240,7 +250,7 @@ const skillSystem = {
 		'damage_row_3': {
 			name: 'Атака по ряду III',
 			type: 'special',
-			description: 'Наносит 3 ед. урона всем картам в выбранном ряду противника',
+			description: 'Наносит 3 ед. урона всем отрядам в выбранном ряду противника',
 			effect: {
 				type: 'damage_row',
 				target: 'row',
@@ -252,7 +262,7 @@ const skillSystem = {
 		'damage_row_4': {
 			name: 'Атака по ряду IV',
 			type: 'special',
-			description: 'Наносит 4 ед. урона всем картам в выбранном ряду противника',
+			description: 'Наносит 4 ед. урона всем отрядам в выбранном ряду противника',
 			effect: {
 				type: 'damage_row',
 				target: 'row',
@@ -264,7 +274,7 @@ const skillSystem = {
 		'damage_row_5': {
 			name: 'Атака по ряду V',
 			type: 'special',
-			description: 'Наносит 5 ед. урона всем картам в выбранном ряду противника',
+			description: 'Наносит 5 ед. урона всем отрядам в выбранном ряду противника',
 			effect: {
 				type: 'damage_row',
 				target: 'row',
@@ -277,7 +287,7 @@ const skillSystem = {
 		'boost_1': {
 			name: 'Усиление I',
 			type: 'artifact',
-			description: 'Усиливает выбранную карту на 1 ед. силы',
+			description: 'Усиливает выбранный отряд на 1 ед. силы',
 			effect: {
 				type: 'boost_card',
 				target: 'unit',
@@ -289,7 +299,7 @@ const skillSystem = {
 		'boost_2': {
 			name: 'Усиление II',
 			type: 'artifact',
-			description: 'Усиливает выбранную карту на 2 ед. силы',
+			description: 'Усиливает выбранный отряд на 2 ед. силы',
 			effect: {
 				type: 'boost_card',
 				target: 'unit',
@@ -301,7 +311,7 @@ const skillSystem = {
 		'boost_3': {
 			name: 'Усиление III',
 			type: 'artifact',
-			description: 'Усиливает выбранную карту на 3 ед. силы',
+			description: 'Усиливает выбранный отряд на 3 ед. силы',
 			effect: {
 				type: 'boost_card',
 				target: 'unit',
@@ -313,7 +323,7 @@ const skillSystem = {
 		'boost_4': {
 			name: 'Усиление IV',
 			type: 'artifact',
-			description: 'Усиливает выбранную карту на 4 ед. силы',
+			description: 'Усиливает выбранный отряд на 4 ед. силы',
 			effect: {
 				type: 'boost_card',
 				target: 'unit',
@@ -325,7 +335,7 @@ const skillSystem = {
 		'boost_5': {
 			name: 'Усиление V',
 			type: 'artifact',
-			description: 'Усиливает выбранную карту на 5 ед. силы',
+			description: 'Усиливает выбранный отряд на 5 ед. силы',
 			effect: {
 				type: 'boost_card',
 				target: 'unit',
@@ -338,7 +348,7 @@ const skillSystem = {
 		'boost_near_1': {
 			name: 'Усиление союза I',
 			type: 'artifact',
-			description: 'Усиливает соседние карты на 1 ед. силы',
+			description: 'Усиливает смежные отряды на 1 ед. силы',
 			effect: {
 				type: 'boost_near',
 				target: 'unit',
@@ -350,7 +360,7 @@ const skillSystem = {
 		'boost_near_2': {
 			name: 'Усиление союза II',
 			type: 'artifact',
-			description: 'Усиливает соседние карты на 2 ед. силы',
+			description: 'Усиливает смежные отряды на 2 ед. силы',
 			effect: {
 				type: 'boost_near',
 				target: 'unit',
@@ -362,7 +372,7 @@ const skillSystem = {
 		'boost_near_3': {
 			name: 'Усиление союза III',
 			type: 'artifact',
-			description: 'Усиливает соседние карты на 3 ед. силы',
+			description: 'Усиливает смежные отряды на 3 ед. силы',
 			effect: {
 				type: 'boost_near',
 				target: 'unit',
@@ -374,7 +384,7 @@ const skillSystem = {
 		'boost_near_4': {
 			name: 'Усиление союза IV',
 			type: 'artifact',
-			description: 'Усиливает соседние карты на 4 ед. силы',
+			description: 'Усиливает смежные отряды на 4 ед. силы',
 			effect: {
 				type: 'boost_near',
 				target: 'unit',
@@ -386,7 +396,7 @@ const skillSystem = {
 		'boost_near_5': {
 			name: 'Усиление союза V',
 			type: 'artifact',
-			description: 'Усиливает соседние карты на 5 ед. силы',
+			description: 'Усиливает смежные отряды на 5 ед. силы',
 			effect: {
 				type: 'boost_near',
 				target: 'unit',
@@ -399,7 +409,7 @@ const skillSystem = {
 		'boost_row_1': {
 			name: 'Усиление ряда I',
 			type: 'tactic',
-			description: 'Усиливает все карты в выбранном ряду на 1 ед. силы',
+			description: 'Усиливает все отряды в выбранном ряду на 1 ед. силы',
 			effect: {
 				type: 'boost_row',
 				target: 'row',
@@ -411,7 +421,7 @@ const skillSystem = {
 		'boost_row_2': {
 			name: 'Усиление ряда II',
 			type: 'tactic',
-			description: 'Усиливает все карты в выбранном ряду на 2 ед. силы',
+			description: 'Усиливает все отряды в выбранном ряду на 2 ед. силы',
 			effect: {
 				type: 'boost_row',
 				target: 'row',
@@ -423,7 +433,7 @@ const skillSystem = {
 		'boost_row_3': {
 			name: 'Усиление ряда III',
 			type: 'tactic',
-			description: 'Усиливает все карты в выбранном ряду на 3 ед. силы',
+			description: 'Усиливает все отряды в выбранном ряду на 3 ед. силы',
 			effect: {
 				type: 'boost_row',
 				target: 'row',
@@ -435,7 +445,7 @@ const skillSystem = {
 		'boost_row_4': {
 			name: 'Усиление ряда IV',
 			type: 'tactic',
-			description: 'Усиливает все карты в выбранном ряду на 4 ед. силы',
+			description: 'Усиливает все отряды в выбранном ряду на 4 ед. силы',
 			effect: {
 				type: 'boost_row',
 				target: 'row',
@@ -447,7 +457,7 @@ const skillSystem = {
 		'boost_row_5': {
 			name: 'Усиление ряда V',
 			type: 'tactic',
-			description: 'Усиливает все карты в выбранном ряду на 5 ед. силы',
+			description: 'Усиливает все отряды в выбранном ряду на 5 ед. силы',
 			effect: {
 				type: 'boost_row',
 				target: 'row',
@@ -460,7 +470,7 @@ const skillSystem = {
 		'boost_tag_witcher_2': {
 			name: 'Подготовка ведьмаков',
 			type: 'special',
-			description: 'Усиливает все карты с тегом "Ведьмак" в одном ряду на 2 ед. силы',
+			description: 'Усиливает все отряды с тегом "Ведьмак" в одном ряду на 2 ед. силы',
 			effect: {
 				type: 'special_tag_boost',
 				target: 'unit',
@@ -473,7 +483,7 @@ const skillSystem = {
 		'boost_tag_witcher_3': {
 			name: 'Охотник на чудовищь',
 			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Ведьмак", в выбранном ряду, на 3 ед. силы',
+			description: 'Усиливает все отряды с тегом "Ведьмак", в выбранном ряду, на 3 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
@@ -486,7 +496,7 @@ const skillSystem = {
 		'boost_tag_criminal': {
 			name: 'Рэкет и Разбой',
 			type: 'tactic',
-			description: 'Усиливает все карты с тегом "Преступник" в выбранном ряду на 2 ед. силы',
+			description: 'Усиливает все отряды с тегом "Преступник" в выбранном ряду на 2 ед. силы',
 			effect: {
 				type: 'boost_tag',
 				target: 'unit',
@@ -499,7 +509,7 @@ const skillSystem = {
 		'boost_tag_thirst': {
 			name: 'Жажда крови',
 			type: 'special',
-			description: 'Усиливает все карты с тегом "Вампир" в одном ряду на 2 ед. силы',
+			description: 'Усиливает все отряды с тегом "Вампир" в одном ряду на 2 ед. силы',
 			effect: {
 				type: 'special_tag_boost',
 				target: 'unit',
@@ -512,7 +522,7 @@ const skillSystem = {
 		'boost_tag_dwarf': {
 			name: 'Жар кузни',
 			type: 'special',
-			description: 'Усиливает все карты с тегом "Краснолюд" в одном ряду на 1 ед. силы',
+			description: 'Усиливает все отряды с тегом "Краснолюд" в одном ряду на 1 ед. силы',
 			effect: {
 				type: 'special_tag_boost',
 				target: 'unit',
@@ -1902,8 +1912,8 @@ skillSystem.updateCallAbilityDescription = function(card) {
     }
 };
 
-// Переопределяем функцию enhanceCardsWithAbilities, чтобы обновлять описания
 const originalEnhanceCardsWithAbilities = skillSystem.enhanceCardsWithAbilities;
+
 skillSystem.enhanceCardsWithAbilities = function() {
     originalEnhanceCardsWithAbilities.call(this);
     
@@ -1924,7 +1934,6 @@ skillSystem.enhanceCardsWithAbilities = function() {
     }
 };
 
-// Также обновляем описания при загрузке модуля
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
