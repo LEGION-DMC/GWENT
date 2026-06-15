@@ -1,18 +1,15 @@
 /* МЕНЮ */
-@media (max-height: 600px) and (orientation: landscape) {
-    
-    .logo {
-        width: min(500px, 60vh);
-        margin-bottom: 30px;
+@media screen and (width: 720px) and (height: 1295px),
+       screen and (max-width: 750px) and (min-height: 1200px) {
+    .start-page {
+        padding-top: 15vh;
     }
-
+    
     .menu-btn {
-        font-size: 15px;
-        padding: 2px 2px 2px 0px;
+        font-size: 23px;
+        padding: 2px 6px;
     }
 }
-
-
 
 
 
