@@ -1,3 +1,29 @@
+/* МЕНЮ */
+@media (max-height: 600px) and (orientation: landscape) {
+    
+    .logo {
+        width: min(500px, 60vh);
+        margin-bottom: 30px;
+    }
+
+    .menu-btn {
+        font-size: 15px;
+        padding: 2px 2px 2px 0px;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 @media (max-width: 1920px) {
     .board-background { width: 1920px; height: 1053px; }
   
