@@ -134,7 +134,7 @@ const skillSystem = {
 			}
 		},
 		'flock': {
-			name: 'Стая',
+			name: 'Двойник',
 			type: 'special',
 			description: '<span class="ability-hint"><span class="hint-trigger">Призывает</span><span class="hint-tooltip"><strong style="color:#0cbe38">Призыв:</strong> Автоматически размещает на поле указанную карту.</span></span><span class="description-normal"> из руки и колоды все копии данного отряда',
 			effect: {

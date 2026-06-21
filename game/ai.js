@@ -2398,10 +2398,10 @@ const aiModule = {
 		this.removeCardFromHand(card);
 		
 		if (card.ability === 'flock') {
-			this.playFlockCard(card);
+        this.playFlockCard(card);
 		}
-		else if (card.ability === 'call') {
-			this.playCallCard(card); // НОВОЕ
+		else if (card.ability === 'call_rat' || card.ability === 'call_driad') {
+			this.playCallCard(card);
 		}
 		else if (this.isWeatherCard(card)) {
 			this.playWeatherCard(card);
@@ -2621,7 +2621,7 @@ const aiModule = {
 		}
 		
 		if (window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('summon');
+			audioManager.playSound('card_close');
 		}
 	},
 
@@ -2704,7 +2704,7 @@ const aiModule = {
 		}
 		
 		if (cardsToSummon.length > 0 && window.audioManager && window.audioManager.playSound) {
-			audioManager.playSound('card_draw');
+			audioManager.playSound('card_close');
 		}
 	},
 
