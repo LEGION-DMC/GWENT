@@ -466,7 +466,20 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		},
-		
+
+		'double_row_strength': {
+			name: 'Командирский рог',
+			type: 'tactic',
+			description: 'Удваивает силу всех отрядов в выбранном ряду',
+			effect: {
+				type: 'double_row_strength',
+				target: 'row',
+				condition: 'ally',
+				multiplier: 2,
+				requiresRowSelection: true
+			}
+		},
+
 		'boost_tag_witcher_2': {
 			name: 'Подготовка ведьмаков',
 			type: 'special',
@@ -897,47 +910,6 @@ const skillSystem = {
 		};
 	},
 
-	applyEffect: function(effect, context) {
-		try {
-			switch (effect.type) {
-				case 'boost':
-					return this.applyBoostEffect(effect, context);
-				case 'damage':
-					return this.applyDamageEffect(effect, context);
-				case 'conditional_damage':
-					return this.applyConditionalDamageEffect(effect, context);
-				case 'summon':
-					return this.applySummonEffect(effect, context);
-				case 'weather':
-					return this.applyWeatherEffect(effect, context);
-				case 'clear_weather':
-					return this.applyClearWeatherEffect(context);
-				case 'destroy_strongest_enemy':
-					return this.applyDestroyStrongestEnemyEffect(effect, context);
-				case 'destroy_artifact':
-					return this.applyDestroyArtifactEffect(effect, context);
-				case 'reveal':
-					return this.applyRevealEffect(effect, context);
-				case 'swap_with_hand':
-					return this.applySwapEffect(effect, context);
-				case 'damage_row': 
-					return this.applyDamageRowEffect(effect, context);
-				case 'boost_row':
-					return this.applyBoostRowEffect(effect, context);
-				case 'boost_tag':
-					return this.applyBoostTagEffect(effect, context);
-				case 'boost_card':
-					return this.applyBoostCardEffect(effect, context);
-				case 'boost_near':
-					return this.applyBoostNearEffect(effect, context);
-				default:
-					return { success: false, message: 'Неизвестный тип эффекта' };
-			}
-		} catch (error) {
-			return { success: false, message: 'Ошибка применения способности' };
-		}
-	},
-
 	applyBoostRowEffect: function(effect, context) {
 		if (!context.gameState || !context.boostRowState) {
 			return { 
@@ -1141,47 +1113,50 @@ const skillSystem = {
 		return targets.length > 0 || ability.effect.type === 'clear_weather';
 	},
 
-    canActivateAbility: function(ability, context) {
-        if (ability.type === 'leader' && context.leaderUsed) {
-            return false;
-        }
-
-        const targets = this.findTargets(ability.effect, context);
-        return targets.length > 0 || ability.effect.type === 'clear_weather';
-    },
-
-    applyEffect: function(effect, context) {
-        try {
-            switch (effect.type) {
-                case 'boost':
-                    return this.applyBoostEffect(effect, context);
-                case 'damage':
-                    return this.applyDamageEffect(effect, context);
-                case 'conditional_damage':
-                    return this.applyConditionalDamageEffect(effect, context);
-                case 'summon':
-                    return this.applySummonEffect(effect, context);
-                case 'weather':
-                    return this.applyWeatherEffect(effect, context);
-                case 'clear_weather':
-                    return this.applyClearWeatherEffect(context);
-                case 'destroy_strongest_enemy':
+	applyEffect: function(effect, context) {
+		try {
+			switch (effect.type) {
+				case 'boost':
+					return this.applyBoostEffect(effect, context);
+				case 'damage':
+					return this.applyDamageEffect(effect, context);
+				case 'conditional_damage':
+					return this.applyConditionalDamageEffect(effect, context);
+				case 'summon':
+					return this.applySummonEffect(effect, context);
+				case 'weather':
+					return this.applyWeatherEffect(effect, context);
+				case 'clear_weather':
+					return this.applyClearWeatherEffect(context);
+				case 'destroy_strongest_enemy':
 					return this.applyDestroyStrongestEnemyEffect(effect, context);
 				case 'destroy_artifact':
 					return this.applyDestroyArtifactEffect(effect, context);
-                case 'reveal':
-                    return this.applyRevealEffect(effect, context);
-                case 'swap_with_hand':
+				case 'reveal':
+					return this.applyRevealEffect(effect, context);
+				case 'swap_with_hand':
 					return this.applySwapEffect(effect, context);
 				case 'flock':
 					return this.applyFlockEffect(effect, context);
+				case 'damage_row': 
+					return this.applyDamageRowEffect(effect, context);
+				case 'boost_row':
+					return this.applyBoostRowEffect(effect, context);
+				case 'boost_tag':
+					return this.applyBoostTagEffect(effect, context);
+				case 'boost_card':
+					return this.applyBoostCardEffect(effect, context);
+				case 'boost_near':
+					return this.applyBoostNearEffect(effect, context);
+				case 'double_row_strength':
+					return this.applyDoubleRowStrengthEffect(effect, context);
 				default:
-                    return { success: false, message: 'Неизвестный тип эффекта' };
-            }
-        } catch (error) {
-            return { success: false, message: 'Ошибка применения способности' };
-        }
-    },
+					return { success: false, message: 'Неизвестный тип эффекта' };
+			}
+		} catch (error) {
+			return { success: false, message: 'Ошибка применения способности' };
+		}
+	},
 
 	applyDestroyArtifactEffect: function(effect, context) {
 		const enemyArtifacts = this.findEnemyArtifacts(context);

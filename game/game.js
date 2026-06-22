@@ -2979,25 +2979,27 @@ const gameModule = {
 		this.displayPlayerDeck();
 	},
 
-    loadOpponentDeck: function() {
-        const availableFactions = this.getAvailableFactions();
-        if (availableFactions.length === 0) {
-            availableFactions.push(...Object.values(window.factionModule?.factionsData || {}));
-        }
-        
-        const randomFaction = availableFactions[Math.floor(Math.random() * availableFactions.length)];
-        const factionCards = window.cardsModule?.getFactionCards(randomFaction.id);
-        
-        if (factionCards) {
-            this.gameState.opponent.deck = this.createBalancedDeck(factionCards, randomFaction.id);
-            this.gameState.opponent.faction = randomFaction.id;
-            this.gameState.opponent.ability = this.getRandomFactionAbility(randomFaction.id);
-        } else {
-            this.loadDemoDeck('opponent');
-        }
-        
-        this.displayOpponentDeck();
-    },
+	loadOpponentDeck: function() {
+		const availableFactions = this.getAvailableFactions();
+		if (availableFactions.length === 0) {
+			console.error('Нет доступных фракций для противника');
+			return;
+		}
+		
+		const randomFaction = availableFactions[Math.floor(Math.random() * availableFactions.length)];
+		const factionCards = window.cardsModule?.getFactionCards(randomFaction.id);
+		
+		if (!factionCards) {
+			console.error(`Не удалось загрузить карты для фракции ${randomFaction.id}`);
+			return;
+		}
+		
+		this.gameState.opponent.deck = this.createBalancedDeck(factionCards, randomFaction.id);
+		this.gameState.opponent.faction = randomFaction.id;
+		this.gameState.opponent.ability = this.getRandomFactionAbility(randomFaction.id);
+		
+		this.displayOpponentDeck();
+	},
 
     setupPlayerLeader: function() {
         const leaderSlot = document.getElementById('playerLeader');
@@ -3090,26 +3092,54 @@ const gameModule = {
         return playerFaction ? allFactions.filter(faction => faction.id !== playerFaction) : allFactions;
     },
 
-    createBalancedDeck: function(factionCards, factionId) {
+	createBalancedDeck: function(factionCards, factionId) {
 		const deck = [];
 		
-		const unitCards = [...(factionCards.units || [])];
-		const specialCards = [...(factionCards.specials || [])];
-		const artifactCards = [...(factionCards.artifacts || [])];
-		const tacticCards = [...(factionCards.tactics || [])];
+		// Функция фильтрации скрытых карт
+		const filterHidden = (cards) => (cards || []).filter(card => !card.hidden);
+		
+		// Функция для добавления карт с учётом лимита копий
+		const addCardsWithLimit = (cards, targetArray, usedCounts, maxTotal) => {
+			// Перемешиваем карты для случайного порядка
+			const shuffled = this.shuffleArray([...cards]);
+			
+			for (const card of shuffled) {
+				// Если достигнут лимит общего количества - выходим
+				if (maxTotal !== undefined && targetArray.length >= maxTotal) break;
+				
+				// Определяем максимальное количество копий для этой карты
+				const maxCopies = card.copy || 1; // По умолчанию 1 копия
+				
+				// Сколько уже добавлено этой карты
+				const currentCount = usedCounts[card.id] || 0;
+				
+				// Если ещё можно добавить
+				if (currentCount < maxCopies) {
+					targetArray.push(card);
+					usedCounts[card.id] = currentCount + 1;
+				}
+			}
+		};
+		
+		const unitCards = filterHidden(factionCards.units || []);
+		const specialCards = filterHidden(factionCards.specials || []);
+		const artifactCards = filterHidden(factionCards.artifacts || []);
+		const tacticCards = filterHidden(factionCards.tactics || []);
 		
 		const neutralCards = window.cardsModule?.getFactionCards('neutral') || {};
-		const neutralUnits = [...(neutralCards.units || [])];
-		const neutralSpecials = [...(neutralCards.specials || [])];
-		const neutralArtifacts = [...(neutralCards.artifacts || [])];
-		const neutralTactics = [...(neutralCards.tactics || [])];
+		const neutralUnits = filterHidden(neutralCards.units || []);
+		const neutralSpecials = filterHidden(neutralCards.specials || []);
+		const neutralArtifacts = filterHidden(neutralCards.artifacts || []);
+		const neutralTactics = filterHidden(neutralCards.tactics || []);
 		
 		const allUnits = [...unitCards, ...neutralUnits];
 		const allSpecials = [...specialCards, ...neutralSpecials];
 		const allArtifacts = [...artifactCards, ...neutralArtifacts];
 		const allTactics = [...tacticCards, ...neutralTactics];
-		
 		const allSpecialCards = [...allSpecials, ...allArtifacts, ...allTactics];
+		
+		// Счётчики использованных карт
+		const usedCounts = {};
 		
 		const minDeckSize = 25;    
 		const maxDeckSize = 40;    
@@ -3118,202 +3148,55 @@ const gameModule = {
 		const maxSpecials = 10;     
 		
 		const specialCount = minSpecials + Math.floor(Math.random() * (maxSpecials - minSpecials + 1));
-		const selectedSpecials = [];
 		
-		const factionSpecials = [...specialCards, ...artifactCards, ...tacticCards];
-		const availableSpecials = [...factionSpecials, ...allSpecialCards];
+		// Добавляем специальные карты с учётом лимита
+		addCardsWithLimit(allSpecialCards, deck, usedCounts, specialCount);
 		
-		const uniqueSpecials = [];
-		const seenIds = new Set();
-		
-		availableSpecials.forEach(card => {
-			if (!seenIds.has(card.id)) {
-				seenIds.add(card.id);
-				uniqueSpecials.push(card);
-			}
-		});
-		
-		this.shuffleArray(uniqueSpecials);
-		for (let i = 0; i < Math.min(specialCount, uniqueSpecials.length); i++) {
-			selectedSpecials.push(uniqueSpecials[i]);
-			deck.push(uniqueSpecials[i]);
-		}
-		
-		const selectedUnits = [];
-		const availableUnits = [...allUnits];
-		
-		const uniqueUnits = [];
-		seenIds.clear();
-		
-		availableUnits.forEach(card => {
-			if (!seenIds.has(card.id)) {
-				seenIds.add(card.id);
-				uniqueUnits.push(card);
-			}
-		});
-		
-		this.shuffleArray(uniqueUnits);
-		
-		const maxUnits = maxDeckSize - selectedSpecials.length;
-		const unitsNeeded = Math.max(minUnits, Math.min(uniqueUnits.length, maxUnits));
-		
-		if (uniqueUnits.length < unitsNeeded) {
-			const allAvailableUnits = [...allUnits];
-			this.shuffleArray(allAvailableUnits);
-			
-			for (let i = 0; i < unitsNeeded; i++) {
-				const card = allAvailableUnits[i % allAvailableUnits.length];
-				selectedUnits.push(card);
-				deck.push(card);
-			}
-		} else {
-			for (let i = 0; i < unitsNeeded; i++) {
-				selectedUnits.push(uniqueUnits[i]);
-				deck.push(uniqueUnits[i]);
-			}
-		}
+		// Добавляем отряды с учётом лимита
+		const maxUnits = maxDeckSize - deck.length;
+		const unitsNeeded = Math.max(minUnits, Math.min(allUnits.length, maxUnits));
+		addCardsWithLimit(allUnits, deck, usedCounts, deck.length + unitsNeeded);
 		
 		const currentDeckSize = deck.length;
 		
+		// Если колода меньше минимального размера, добираем карты
 		if (currentDeckSize < minDeckSize) {
 			const cardsNeeded = minDeckSize - currentDeckSize;
 			const allCards = [...allUnits, ...allSpecialCards];
-			this.shuffleArray(allCards);
+			const shuffledAll = this.shuffleArray([...allCards]);
 			
-			const addedCardIds = new Set(deck.map(card => card.id));
 			let added = 0;
-			
-			for (const card of allCards) {
+			for (const card of shuffledAll) {
 				if (added >= cardsNeeded) break;
-				if (!addedCardIds.has(card.id)) {
+				
+				const maxCopies = card.copy || 1;
+				const currentCount = usedCounts[card.id] || 0;
+				
+				if (currentCount < maxCopies) {
 					deck.push(card);
-					addedCardIds.add(card.id);
+					usedCounts[card.id] = currentCount + 1;
 					added++;
 				}
 			}
 			
+			// Если всё ещё не хватает - используем карты с увеличенным лимитом
 			if (added < cardsNeeded) {
 				for (let i = 0; i < cardsNeeded - added; i++) {
-					const randomCard = allCards[i % allCards.length];
-					deck.push({...randomCard, id: `${randomCard.id}_copy_${i}`});
+					const randomCard = shuffledAll[i % shuffledAll.length];
+					deck.push({...randomCard, id: `${randomCard.id}_extra_${i}`});
 				}
 			}
 		}
 		
+		// Если колода больше максимального размера, обрезаем
 		if (deck.length > maxDeckSize) {
-			const specialsInDeck = deck.filter(card => 
-				card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-			);
-			const unitsInDeck = deck.filter(card => card.type === 'unit');
-			
-			deck.length = 0;
-			
-			specialsInDeck.forEach(card => deck.push(card));
-			
-			const remainingSlots = maxDeckSize - deck.length;
-			for (let i = 0; i < Math.min(remainingSlots, unitsInDeck.length); i++) {
-				deck.push(unitsInDeck[i]);
-			}
-		}
-		
-		const finalUnitCount = deck.filter(card => card.type === 'unit').length;
-		const finalSpecialCount = deck.filter(card => 
-			card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-		).length;
-		
-		if (finalUnitCount < minUnits) {
-			const neededUnits = minUnits - finalUnitCount;
-			const allAvailableUnits = [...allUnits];
-			this.shuffleArray(allAvailableUnits);
-			
-			const deckCardIds = new Set(deck.map(card => card.id));
-			let added = 0;
-			
-			const excessSpecials = finalSpecialCount - minSpecials;
-			if (excessSpecials > 0) {
-				for (let i = 0; i < excessSpecials; i++) {
-					const specialIndex = deck.findIndex(card => 
-						card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-					);
-					if (specialIndex !== -1) {
-						deck.splice(specialIndex, 1);
-					}
-				}
-			}
-			
-			for (const unit of allAvailableUnits) {
-				if (added >= neededUnits) break;
-				if (!deckCardIds.has(unit.id)) {
-					deck.push(unit);
-					added++;
-				}
-			}
-		}
-		
-		const finalCheck = () => {
-			const total = deck.length;
-			const units = deck.filter(card => card.type === 'unit').length;
-			const specials = deck.filter(card => 
-				card.type === 'special' || card.type === 'artifact' || card.type === 'tactic'
-			).length;
-			
-			return {
-				valid: total >= minDeckSize && total <= maxDeckSize && 
-					   units >= minUnits && 
-					   specials >= minSpecials && specials <= maxSpecials,
-				total,
-				units,
-				specials
-			};
-		};
-		
-		let check = finalCheck();
-		let attempts = 0;
-		const maxAttempts = 10;
-		
-		while (!check.valid && attempts < maxAttempts) {
-			attempts++;
-			
-			if (check.total < minDeckSize) {
-				const allCards = [...allUnits, ...allSpecialCards];
-				this.shuffleArray(allCards);
-				
-				const deckCardIds = new Set(deck.map(card => card.id));
-				const needed = minDeckSize - check.total;
-				let added = 0;
-				
-				for (const card of allCards) {
-					if (added >= needed) break;
-					if (!deckCardIds.has(card.id)) {
-						deck.push(card);
-						added++;
-					}
-				}
-			} else if (check.total > maxDeckSize) {
-				const cardCounts = {};
-				deck.forEach(card => {
-					cardCounts[card.id] = (cardCounts[card.id] || 0) + 1;
-				});
-				
-				deck.sort((a, b) => {
-					const countA = cardCounts[a.id];
-					const countB = cardCounts[b.id];
-					if (countA > countB) return -1;
-					if (countA < countB) return 1;
-					return 0;
-				});
-				
-				while (deck.length > maxDeckSize) {
-					deck.pop();
-				}
-			}
-			check = finalCheck();
+			deck.length = maxDeckSize;
 		}
 		
 		this.shuffleArray(deck);
 		
 		return deck;
-	},	
+	},
 
     getRandomFactionAbility: function(factionId) {
         const abilities = window.deckModule?.factionAbilities?.[factionId];

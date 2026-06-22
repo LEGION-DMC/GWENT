@@ -796,6 +796,9 @@ function setupDeckBuildingEventListeners() {
 }
 
 function backToFactionSelection() {
+    factionSortEnabled = false;
+    deckFactionSortEnabled = false;
+    
     const deckBuildingSection = document.querySelector('.deck-building');
     if (deckBuildingSection) {
         deckBuildingSection.style.opacity = '0';
