@@ -2279,6 +2279,7 @@ function setupLeaderVideoControls() {
         
         video.parentNode.replaceChild(imgElement, video);
     }
+    
     if (factionLogo) {
         factionLogo.style.cursor = 'pointer';
         factionLogo.addEventListener('click', (e) => {
@@ -2294,18 +2295,22 @@ function setupLeaderVideoControls() {
             audioManager.playSound('touch');
         });
     }
-    leaderCard.addEventListener('click', () => {
+    
+    // Обработчик для открытия модального окна с картой лидера
+    const showLeaderModal = (e) => {
+        e.stopPropagation();
         const faction = window.selectedFaction;
         if (faction) {
             const leaderCardData = {
                 id: `${faction.id}_leader`,
                 name: faction.leaderName.split(' ')[0],
-                namefull: faction.leaderName, 
+                namefull: faction.leaderName,
                 type: 'leader',
                 faction: faction.id,
                 image: `leader.mp4`,
-                description: `${faction.description}`,
-                descriptionfull: `${faction.descriptionfull}`,
+                imageStatic: `leader.jpg`,
+                description: faction.description || '',
+                descriptionfull: faction.descriptionfull || '',
                 ability: `${faction.id}_ability`,
                 rarity: 'gold',
                 tags: ['leader'],
@@ -2314,12 +2319,34 @@ function setupLeaderVideoControls() {
             };
             showCardModal(leaderCardData);
         }
+    };
+    
+    // ЛКМ - открываем модальное окно с картой лидера
+    leaderCard.addEventListener('click', showLeaderModal);
+    
+    // ПКМ - тоже открываем модальное окно с картой лидера
+    leaderCard.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); // Отключаем стандартное контекстное меню браузера
+        showLeaderModal(e);
+        audioManager.playSound('button');
     });
+    
+    // Видео эффекты при наведении
     if (video) {
         leaderCard.addEventListener('mouseenter', () => {
             video.play().catch(e => {});
         });
+        
+        leaderCard.addEventListener('mouseleave', () => {
+            video.pause();
+            video.currentTime = 0;
+        });
     }
+    
+    // Звук при наведении
+    leaderCard.addEventListener('mouseenter', () => {
+        audioManager.playSound('touch');
+    });
 }
 
 function validateDeckAndStartGame() {

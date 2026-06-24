@@ -2445,40 +2445,56 @@ const leaderAbilities = {
 	},
 	'nilfgaard_ability_5': {
 		name: 'Двойная игра',
-		description: 'Вслепую сыграйте карту из руки противника',
+		description: 'Вслепую сыграйте карту отряда из руки противника', // Изменено описание
 		execute: async function(gameState, gameModule) {
-			if (gameState.opponent.hand.length === 0) {
-				gameModule.showGameMessage('У противника нет карт в руке', 'warning');
+			// 1. Проверяем, есть ли у противника карты отрядов в руке
+			const unitCardsInHand = gameState.opponent.hand.filter(card => card.type === 'unit');
+			
+			if (unitCardsInHand.length === 0) {
+				gameModule.showGameMessage('У противника нет карт отрядов в руке', 'warning');
 				return false;
 			}
 			
-			// Получаем фракцию противника для фона модального окна
+			// 2. Получаем фракцию противника для фона модального окна
 			const opponentFaction = gameState.opponent.faction;
 			const factionBackground = `faction/${opponentFaction}/border_faction.png`;
 			
-			// 1. Показываем модальное окно с рубашками карт противника
-			const selectedIndex = await this.showBlindSelectionModal(gameState.opponent.hand.length, factionBackground, gameModule);
+			// 3. Показываем модальное окно с рубашками карт (только отряды)
+			//    Передаем количество отрядов, а не всех карт
+			const selectedIndex = await this.showBlindSelectionModal(unitCardsInHand.length, factionBackground, gameModule);
 			if (selectedIndex === null) return false;
 			
-			const selectedCard = gameState.opponent.hand[selectedIndex];
-			
-			// 2. Удаляем карту из руки противника
-			gameState.opponent.hand.splice(selectedIndex, 1);
-			
-			// 3. Разыгрываем карту в зависимости от типа
-			if (selectedCard.type === 'unit') {
-				const success = await this.playUnitOnOpponentBoard(selectedCard, gameState, gameModule);
-				if (!success) {
-					// Если не удалось разместить, возвращаем карту в руку противника
-					gameState.opponent.hand.push(selectedCard);
-					return false;
+			// 4. Получаем выбранную карту отряда из оригинальной руки
+			//    Нужно найти соответствующий индекс в оригинальной руке
+			let originalHandIndex = -1;
+			let unitCount = 0;
+			for (let i = 0; i < gameState.opponent.hand.length; i++) {
+				if (gameState.opponent.hand[i].type === 'unit') {
+					if (unitCount === selectedIndex) {
+						originalHandIndex = i;
+						break;
+					}
+					unitCount++;
 				}
-			} else if (selectedCard.type === 'special') {
-				this.applySpecialCard(selectedCard, gameState, gameModule);
-			} else if (selectedCard.type === 'artifact') {
-				this.applyArtifactCard(selectedCard, gameState, gameModule);
-			} else if (selectedCard.type === 'tactic') {
-				this.applyTacticCard(selectedCard, gameState, gameModule);
+			}
+			
+			if (originalHandIndex === -1) {
+				gameModule.showGameMessage('Ошибка при выборе карты', 'error');
+				return false;
+			}
+			
+			const selectedCard = gameState.opponent.hand[originalHandIndex];
+			
+			// 5. Удаляем карту из руки противника
+			gameState.opponent.hand.splice(originalHandIndex, 1);
+			
+			// 6. Разыгрываем карту отряда на поле противника
+			//    Так как мы знаем, что это unit, вызываем playUnitOnOpponentBoard напрямую
+			const success = await this.playUnitOnOpponentBoard(selectedCard, gameState, gameModule);
+			if (!success) {
+				// Если не удалось разместить, возвращаем карту в руку противника
+				gameState.opponent.hand.push(selectedCard);
+				return false;
 			}
 			
 			gameState.player.abilityUsedThisRound = true;
@@ -2489,13 +2505,13 @@ const leaderAbilities = {
 				window.aiModule.updateOpponentHandDisplay();
 			}
 			
-			gameModule.showGameMessage(`Способность "${this.name}" активирована! Сыграна карта из руки противника.`, 'info');
+			gameModule.showGameMessage(`Способность "${this.name}" активирована! Сыгран отряд "${selectedCard.name}" из руки противника.`, 'info');
 			audioManager.playSound('cardPlay');
 			
 			return true;
 		},
 		
-		// Модальное окно с рубашками карт (фон соответствует фракции противника)
+		// Модальное окно с рубашками карт (количество = количество отрядов)
 		showBlindSelectionModal: function(cardCount, factionBackground, gameModule) {
 			return new Promise((resolve) => {
 				const modalOverlay = document.createElement('div');
@@ -2504,8 +2520,8 @@ const leaderAbilities = {
 				modalOverlay.innerHTML = `
 					<div class="deck-modal blind-selection-modal">
 						<div class="deck-modal__header" style="background: url('${factionBackground}') center/cover;">
-							<div class="deck-modal__title">ВЫБЕРИТЕ КАРТУ ИЗ РУКИ ПРОТИВНИКА</div>
-							<div class="deck-modal__count">Карт: ${cardCount}</div>
+							<div class="deck-modal__title">ВЫБЕРИТЕ ОТРЯД ИЗ РУКИ ПРОТИВНИКА</div>
+							<div class="deck-modal__count">Отрядов: ${cardCount}</div>
 						</div>
 						<div class="deck-modal__content blind-cards-container">
 							${Array(cardCount).fill().map((_, i) => `
@@ -2529,12 +2545,10 @@ const leaderAbilities = {
 				
 				document.body.appendChild(modalOverlay);
 				
-				// Анимация появления
 				setTimeout(() => {
 					modalOverlay.classList.add('active');
 				}, 10);
 				
-				// Обработчики для карт
 				const cardElements = modalOverlay.querySelectorAll('.blind-card');
 				cardElements.forEach(card => {
 					card.addEventListener('click', (e) => {
@@ -2556,7 +2570,6 @@ const leaderAbilities = {
 					});
 				});
 				
-				// Закрытие по клику вне модального окна
 				modalOverlay.addEventListener('click', (e) => {
 					if (e.target === modalOverlay) {
 						this.closeModal(modalOverlay);
@@ -2565,7 +2578,6 @@ const leaderAbilities = {
 					}
 				});
 				
-				// Закрытие по Escape
 				const escapeHandler = (e) => {
 					if (e.key === 'Escape') {
 						this.closeModal(modalOverlay);

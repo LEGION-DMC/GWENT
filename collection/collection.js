@@ -241,68 +241,75 @@ const collectionModule = (function() {
 			cardElement.classList.add('hidden-card');
 		}
 		cardElement.dataset.cardId = card.id;
-        
-        const cardDisplayMode = getCardDisplayMode();
-        let mediaPath = `card/${card.faction}/${card.image}`;
-        let isVideo = card.image?.endsWith('.mp4') ?? false;
-        
-        if (cardDisplayMode === 'static' && isVideo) {
-            mediaPath = mediaPath.replace('.mp4', '.jpg');
-            isVideo = false;
-        }
-        
-        let mediaElement = isVideo 
-            ? `<video class="card__media" muted playsinline preload="metadata"><source src="${mediaPath}" type="video/mp4"></video>`
-            : `<img src="${mediaPath}" alt="${card.name}" class="card__media" onerror="this.src='card/placeholder.jpg'">`;
-        
-        let topRightElement = card.type === 'unit'
-            ? `<div class="card__strength">${card.strength}</div>`
-            : `<div class="card__type-icon"><img src="${getTypeIconPath(card.type)}" alt="${card.type}"></div>`;
-        
-        let positionElement = '';
-        if (card.type === 'unit' && card.position) {
-            positionElement = `
-                <div class="card__position">
-                    <img src="${card.positionBanner || 'deck/position_banner.png'}" alt="Позиция" class="card__position-banner">
-                    <img src="${getPositionIconPath(card.position)}" alt="${card.position}" class="card__position-icon">
-                </div>
-            `;
-        }
-        
-        cardElement.innerHTML = `
-            <div class="card__container">
-                ${mediaElement}
-                <img src="${card.border}" alt="Рамка" class="card__border">
-                <img src="${card.banner}" alt="Баннер" class="card__banner">
-                <div class="card__name">${card.name}</div>
-                ${topRightElement}
-                ${positionElement}
-            </div>
-        `;
-        
-        if (card.copy && card.copy > 1) {
-            const cardContainer = cardElement.querySelector('.card__container');
-            const copyBanner = document.createElement('img');
-            copyBanner.className = 'card__copy-banner';
-            copyBanner.src = `faction/${card.faction}/banner_position.png`;
-            
-            const copyIndicator = document.createElement('div');
-            copyIndicator.className = 'card__copy-indicator';
-            copyIndicator.textContent = `×${card.copy}`;
-            
-            cardContainer?.appendChild(copyBanner);
-            cardContainer?.appendChild(copyIndicator);
-        }
-        
-        cardElement.addEventListener('click', () => showCardDetailsModal(card));
-        
-        if (isVideo && cardDisplayMode === 'animated') {
-            setupVideoControls(cardElement);
-        }
-        
-        return cardElement;
-    }
-    
+		
+		const cardDisplayMode = getCardDisplayMode();
+		let mediaPath = `card/${card.faction}/${card.image}`;
+		let isVideo = card.image?.endsWith('.mp4') ?? false;
+		
+		if (cardDisplayMode === 'static' && isVideo) {
+			mediaPath = mediaPath.replace('.mp4', '.jpg');
+			isVideo = false;
+		}
+		
+		let mediaElement = isVideo 
+			? `<video class="card__media" muted playsinline preload="metadata"><source src="${mediaPath}" type="video/mp4"></video>`
+			: `<img src="${mediaPath}" alt="${card.name}" class="card__media" onerror="this.src='card/placeholder.jpg'">`;
+		
+		let topRightElement = card.type === 'unit'
+			? `<div class="card__strength">${card.strength}</div>`
+			: `<div class="card__type-icon"><img src="${getTypeIconPath(card.type)}" alt="${card.type}"></div>`;
+		
+		let positionElement = '';
+		if (card.type === 'unit' && card.position) {
+			positionElement = `
+				<div class="card__position">
+					<img src="${card.positionBanner || 'deck/position_banner.png'}" alt="Позиция" class="card__position-banner">
+					<img src="${getPositionIconPath(card.position)}" alt="${card.position}" class="card__position-icon">
+				</div>
+			`;
+		}
+		
+		cardElement.innerHTML = `
+			<div class="card__container">
+				${mediaElement}
+				<img src="${card.border}" alt="Рамка" class="card__border">
+				<img src="${card.banner}" alt="Баннер" class="card__banner">
+				<div class="card__name">${card.name}</div>
+				${topRightElement}
+				${positionElement}
+			</div>
+		`;
+		
+		if (card.copy && card.copy > 1) {
+			const cardContainer = cardElement.querySelector('.card__container');
+			const copyBanner = document.createElement('img');
+			copyBanner.className = 'card__copy-banner';
+			copyBanner.src = `faction/${card.faction}/banner_position.png`;
+			
+			const copyIndicator = document.createElement('div');
+			copyIndicator.className = 'card__copy-indicator';
+			copyIndicator.textContent = `×${card.copy}`;
+			
+			cardContainer?.appendChild(copyBanner);
+			cardContainer?.appendChild(copyIndicator);
+		}
+		
+		// ЛКМ - открыть модальное окно
+		cardElement.addEventListener('click', () => showCardDetailsModal(card));
+		
+		// ПКМ - тоже открыть модальное окно
+		cardElement.addEventListener('contextmenu', (e) => {
+			e.preventDefault();
+			showCardDetailsModal(card);
+		});
+		
+		if (isVideo && cardDisplayMode === 'animated') {
+			setupVideoControls(cardElement);
+		}
+		
+		return cardElement;
+	}
+
     function displayCards() {
         const filteredCards = filterCards();
         const collectionGrid = document.getElementById('collectionGrid');

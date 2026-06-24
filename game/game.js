@@ -1209,32 +1209,37 @@ const gameModule = {
         return { mediaPath, isVideo };
     },
 
-    startPlayerTurn: function() {
+	startPlayerTurn: function() {
 		if (this.gameState.mulligan.phase !== 'completed') {
-            return;
-        }
-        this.gameState.gamePhase = 'playerTurn';
-        this.gameState.currentPlayer = 'player';
-        this.gameState.cardsPlayedThisTurn = 0;
-        this.gameState.selectingRow = false;
-        this.gameState.selectedCard = null;
-        
-		if (window.boardModule && window.boardModule.updateControlsVisibility) {
+			return;
+		}
+		this.gameState.gamePhase = 'playerTurn';
+		this.gameState.currentPlayer = 'player';
+		this.gameState.cardsPlayedThisTurn = 0;
+		this.gameState.selectingRow = false;
+		this.gameState.selectedCard = null;
+		
+		if (window.boardModule?.updateControlsVisibility) {
 			window.boardModule.updateControlsVisibility(true);
 		}
-	
-        if (!this.gameState.player.passed) {
-            this.startTurnTimer();
-        } else {
-            this.hideTimerDisplay();
-        }
-        
-        this.updateGameModeIndicator();
-        this.updateTurnIndicator();
-        this.updateControlButtons();
-        this.showGameMessage('Ваш ход', 'info');
+		
+		// Обновляем иконку способности
+		if (window.boardModule?.updateAbilityAvailability) {
+			window.boardModule.updateAbilityAvailability(this.gameState);
+		}
+		
+		if (!this.gameState.player.passed) {
+			this.startTurnTimer();
+		} else {
+			this.hideTimerDisplay();
+		}
+		
+		this.updateGameModeIndicator();
+		this.updateTurnIndicator();
+		this.updateControlButtons();
+		this.showGameMessage('Ваш ход', 'info');
 		audioManager.playSound('warning');
-    },
+	},
 
     startOpponentTurn: function() {
         this.gameState.gamePhase = 'opponentTurn'; 
@@ -1588,7 +1593,16 @@ const gameModule = {
 		this.gameState.placementType = null;
 		this.gameState.player.abilityUsedThisRound = false;
         this.gameState.opponent.abilityUsedThisRound = false;
-		
+		this.gameState.player.abilityUsedThisRound = false;
+		this.gameState.opponent.abilityUsedThisRound = false;
+    
+		// Сбрасываем иконку способности
+		if (window.boardModule?.updateAbilityAvailability) {
+			setTimeout(() => {
+				window.boardModule.updateAbilityAvailability(this.gameState);
+			}, 100);
+		}
+	
 		if (window.playerModule && window.playerModule.cancelRowSelection) {
 			window.playerModule.cancelRowSelection();
 		}
@@ -3001,35 +3015,45 @@ const gameModule = {
 		this.displayOpponentDeck();
 	},
 
-    setupPlayerLeader: function() {
-        const leaderSlot = document.getElementById('playerLeader');
-        if (!leaderSlot) return;
+	setupPlayerLeader: function() {
+		const leaderSlot = document.getElementById('playerLeader');
+		if (!leaderSlot) return;
 
-        const faction = this.gameState.player.faction;
-        const factionData = window.factionModule?.factionsData[faction];
-        if (!factionData) return;
+		const faction = this.gameState.player.faction;
+		const factionData = window.factionModule?.factionsData[faction];
+		if (!factionData) return;
 
-        const leaderCardData = {
-            id: `${faction}_leader`,
-            name: factionData.leaderName.split(' ')[0],
-            namefull: factionData.leaderName,
-            type: 'leader',
-            faction: faction,
-            image: `leader.mp4`, 
-            imageStatic: `leader.jpg`,
-            description: factionData.description,
-            descriptionfull: factionData.descriptionfull,
-            ability: `${faction}_ability`,
-            rarity: 'gold',
-            tags: ['leader'],
-            border: 'deck/bord_gold.png',
-            banner: `faction/${faction}/banner_gold.png`
-        };
+		const abilityId = this.gameState.player.ability;
+		
+		const leaderCardData = {
+			id: `${faction}_leader`,
+			name: factionData.leaderName.split(' ')[0],
+			namefull: factionData.leaderName,
+			type: 'leader',
+			faction: faction,
+			image: `leader.mp4`, 
+			imageStatic: `leader.jpg`,
+			description: factionData.description,
+			descriptionfull: factionData.descriptionfull,
+			ability: abilityId,
+			rarity: 'gold',
+			tags: ['leader'],
+			border: 'deck/bord_gold.png',
+			banner: `faction/${faction}/banner_gold.png`
+		};
 
-        this.gameState.player.leader = leaderCardData;
-        leaderSlot.appendChild(this.createLeaderCardElement(leaderCardData, 'player'));
-    },
-    
+		this.gameState.player.leader = leaderCardData;
+		this.gameState.player.ability = abilityId;
+		leaderSlot.appendChild(this.createLeaderCardElement(leaderCardData, 'player'));
+		
+		// Инициализируем иконку способности после создания лидера
+		setTimeout(() => {
+			if (window.boardModule && window.boardModule.initAbilityIcon) {
+				window.boardModule.initAbilityIcon();
+			}
+		}, 100);
+	},
+
     setupOpponentLeader: function() {
         const leaderSlot = document.getElementById('opponentLeader');
         if (!leaderSlot) return;
@@ -3473,44 +3497,87 @@ const gameModule = {
         }
     },
 
-    setupEventListeners: function() {
-        const passBtn = document.getElementById('passBtn');
-        const endTurnBtn = document.getElementById('endTurnBtn');
+	setupEventListeners: function() {
+		const passBtn = document.getElementById('passBtn');
+		const endTurnBtn = document.getElementById('endTurnBtn');
 
-        if (passBtn) {
-            passBtn.addEventListener('click', () => {
-                if (window.playerModule && window.playerModule.handlePass) {
-                    window.playerModule.handlePass();
-                }
-            });
-            passBtn.addEventListener('mouseenter', () => audioManager.playSound('touch'));
-        }
+		if (passBtn) {
+			passBtn.addEventListener('click', () => {
+				if (window.playerModule && window.playerModule.handlePass) {
+					window.playerModule.handlePass();
+				}
+			});
+			passBtn.addEventListener('mouseenter', () => audioManager.playSound('touch'));
+		}
 
-        if (endTurnBtn) {
-            endTurnBtn.addEventListener('click', () => {
-                if (window.playerModule && window.playerModule.handleEndTurn) {
-                    window.playerModule.handleEndTurn();
-                }
-            });
-            endTurnBtn.addEventListener('mouseenter', () => audioManager.playSound('touch'));
-        }
+		if (endTurnBtn) {
+			endTurnBtn.addEventListener('click', () => {
+				if (window.playerModule && window.playerModule.handleEndTurn) {
+					window.playerModule.handleEndTurn();
+				}
+			});
+			endTurnBtn.addEventListener('mouseenter', () => audioManager.playSound('touch'));
+		}
 
-        this.setupDeckViewEventListeners();
+		this.setupDeckViewEventListeners();
 
+		// Клик по лидеру игрока - модальное окно с картой
 		const playerLeader = document.getElementById('playerLeader');
 		if (playerLeader) {
-			playerLeader.addEventListener('click', () => {
-				this.handleLeaderClick();
+			playerLeader.addEventListener('click', (event) => {
+				// Если клик по иконке способности - игнорируем
+				if (event.target.closest('.leader-ability-icon')) {
+					return;
+				}
+				// Показываем карту лидера
+				const leaderCard = this.gameState.player.leader;
+				if (leaderCard) {
+					this.showCardModal(leaderCard);
+				}
 			});
 			playerLeader.addEventListener('mouseenter', () => audioManager.playSound('touch'));
 		}
-		
+
+		// Клик по лидеру противника - модальное окно с картой
 		const opponentLeader = document.getElementById('opponentLeader');
 		if (opponentLeader) {
-			opponentLeader.addEventListener('click', () => {
-				this.showGameMessage('Способность лидера противника недоступна', 'warning');
-				audioManager.playSound('lock');
+			opponentLeader.addEventListener('click', (event) => {
+				// Если клик по иконке способности - игнорируем
+				if (event.target.closest('.leader-ability-icon')) {
+					return;
+				}
+				// Показываем карту лидера противника
+				const leaderCard = this.gameState.opponent.leader;
+				if (leaderCard) {
+					this.showCardModal(leaderCard);
+				}
 			});
+			opponentLeader.addEventListener('mouseenter', () => audioManager.playSound('touch'));
+		}
+	},
+
+	useLeaderAbility: function() {
+		const abilityId = this.gameState.player.ability;
+		
+		if (!abilityId) {
+			this.showGameMessage('Не выбрана способность лидера', 'warning');
+			return false;
+		}
+		
+		if (window.leaderAbilities && window.leaderAbilities[abilityId]) {
+			const result = window.leaderAbilities[abilityId].execute(this.gameState, this);
+			if (result !== false) {
+				this.gameState.player.abilityUsedThisRound = true;
+				// Обновляем иконку
+				if (window.boardModule?.markAbilityAsUsed) {
+					window.boardModule.markAbilityAsUsed();
+				}
+				return true;
+			}
+			return false;
+		} else {
+			this.showGameMessage('Способность лидера не реализована', 'warning');
+			return false;
 		}
 	},
 

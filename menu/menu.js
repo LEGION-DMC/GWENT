@@ -1,3 +1,12 @@
+document.addEventListener('contextmenu', function(e) {
+    let isCard = e.target.closest('.card, .collection-card, .deck-card');
+    
+    if (!isCard) {
+        e.preventDefault();
+        return false;
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     const startPage = document.querySelector('.start-page');
     

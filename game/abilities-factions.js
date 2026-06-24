@@ -170,57 +170,90 @@ const factionAbilitiesModule = {
 				button.style.animation = 'choiceSelected 0.5s ease-out';
 			}
 		},
-        'monsters': {
+		'monsters': {
             id: 'monsters',
             name: 'Чудовища',
             effect: 'keep_random_card',
-            description: 'Случайная карта остается на поле',
+            description: 'Случайная карта возвращается в руку',
             isActive: false,
             applyEffect: function(gameState) {
                 return true;
             },
-			keepRandomCard: function(gameState, player) {
+			 keepRandomCard: function(gameState, player) {
 				const rows = ['close', 'ranged', 'siege'];
 				let allCards = [];
 				
+				// Сбор всех подходящих карт с поля
 				rows.forEach(row => {
-					const rowCards = gameState[player].rows[row].cards;
-					rowCards.forEach(card => {
+					const rowData = gameState[player].rows[row];
+					
+					// Собираем карты отрядов
+					rowData.cards.forEach(card => {
+						// Исключаем скрытые карты (технические, типа призванных)
+						if (card.hidden) {
+							return;
+						}
+						// Исключаем шпионов
+						if (card.isSpy) {
+							return;
+						}
+						// Исключаем призванные карты (call)
+						if (card.call) {
+							return;
+						}
+						
+						// Если карта прошла фильтры, добавляем её
 						const cardCopy = JSON.parse(JSON.stringify(card));
 						cardCopy._originalId = card.id;
 						allCards.push({
 							card: cardCopy,
 							row: row,
 							type: 'unit',
-							originalIndex: rowCards.indexOf(card),
 							uniqueId: card.uniqueId
 						});
 					});
 					
-					if (gameState[player].rows[row].tactic) {
+					// Собираем тактики (если есть)
+					if (rowData.tactic) {
 						allCards.push({ 
-							card: JSON.parse(JSON.stringify(gameState[player].rows[row].tactic)),
+							card: JSON.parse(JSON.stringify(rowData.tactic)),
 							row: row, 
-							type: 'tactic' 
+							type: 'tactic'
 						});
 					}
 				});
 				
+				// Если после фильтрации не осталось карт, возвращаем null
 				if (allCards.length === 0) return null;
 				
+				// Сортировка по приоритету: сначала отряды, потом тактики
 				const sortedCards = [...allCards].sort((a, b) => {
-					if (a.card.summonedByFlock && !b.card.summonedByFlock) return 1;
-					if (!a.card.summonedByFlock && b.card.summonedByFlock) return -1;
-					return 0;
+					const getPriority = (type) => {
+						if (type === 'unit') return 1;
+						if (type === 'tactic') return 3;
+						return 99;
+					};
+					
+					return getPriority(a.type) - getPriority(b.type);
 				});
 				
-				const randomIndex = Math.floor(Math.random() * Math.min(3, sortedCards.length));
-				const selected = sortedCards[randomIndex];
+				// Сначала пробуем выбрать из карт с наивысшим приоритетом
+				const highestPriority = sortedCards[0].type === 'unit' ? 1 : 3;
+				const highPriorityCards = sortedCards.filter(card => {
+					const priority = card.type === 'unit' ? 1 : 3;
+					return priority === highestPriority;
+				});
+				
+				// Выбираем случайную карту из карт с наивысшим приоритетом
+				const randomIndex = Math.floor(Math.random() * highPriorityCards.length);
+				const selected = highPriorityCards[randomIndex];
+				
+				console.log(`[Monsters] Выбрана карта для сохранения:`, selected.card.name || selected.card.id, 'тип:', selected.type);
 				
 				return selected;
 			}
 		},
-        'skellige': {
+		'skellige': {
 			id: 'skellige',
 			name: 'Скеллиге',
 			effect: 'resurrect_from_graveyard',
