@@ -1223,7 +1223,7 @@ const gameModule = {
 			window.boardModule.updateControlsVisibility(true);
 		}
 		
-		// Обновляем иконку способности
+		// ===== ДОБАВЛЯЕМ ОБНОВЛЕНИЕ ИКОНКИ =====
 		if (window.boardModule?.updateAbilityAvailability) {
 			window.boardModule.updateAbilityAvailability(this.gameState);
 		}
@@ -1241,37 +1241,42 @@ const gameModule = {
 		audioManager.playSound('warning');
 	},
 
-    startOpponentTurn: function() {
-        this.gameState.gamePhase = 'opponentTurn'; 
-        this.gameState.currentPlayer = 'opponent';
-        this.gameState.cardsPlayedThisTurn = 0;
-        this.stopTurnTimer();
+	 startOpponentTurn: function() {
+		this.gameState.gamePhase = 'opponentTurn'; 
+		this.gameState.currentPlayer = 'opponent';
+		this.gameState.cardsPlayedThisTurn = 0;
+		this.stopTurnTimer();
 		
 		if (window.boardModule && window.boardModule.updateControlsVisibility) {
 			window.boardModule.updateControlsVisibility(false);
 		}
-	
-        this.updateTurnIndicator();
-        this.updateControlButtons();
-        this.showGameMessage('Ход противника', 'warning');
+		
+		// ===== ДОБАВЛЯЕМ ОБНОВЛЕНИЕ ИКОНКИ =====
+		if (window.boardModule?.updateAbilityAvailability) {
+			window.boardModule.updateAbilityAvailability(this.gameState);
+		}
+		
+		this.updateTurnIndicator();
+		this.updateControlButtons();
+		this.showGameMessage('Ход противника', 'warning');
 		audioManager.playSound('warning');
-        
-        if (this.gameState.opponent.passed) {
-            this.showGameMessage('Противник пасовал', 'info');
-            setTimeout(() => {
-                this.startPlayerTurn();
-            }, 1000);
-            return;
-        }
-        
-        setTimeout(() => {
-            if (window.aiModule) {
-                window.aiModule.makeMove();
-            } else {
-                this.startPlayerTurn();
-            }
-        }, 1000);
-    },
+		
+		if (this.gameState.opponent.passed) {
+			this.showGameMessage('Противник пасовал', 'info');
+			setTimeout(() => {
+				this.startPlayerTurn();
+			}, 1000);
+			return;
+		}
+		
+		setTimeout(() => {
+			if (window.aiModule) {
+				window.aiModule.makeMove();
+			} else {
+				this.startPlayerTurn();
+			}
+		}, 1000);
+	},
 
 	handleTurnEnd: function() {
 		this.stopTurnTimer();
@@ -1592,17 +1597,21 @@ const gameModule = {
 		this.gameState.selectingRow = false;
 		this.gameState.placementType = null;
 		this.gameState.player.abilityUsedThisRound = false;
-        this.gameState.opponent.abilityUsedThisRound = false;
-		this.gameState.player.abilityUsedThisRound = false;
 		this.gameState.opponent.abilityUsedThisRound = false;
-    
-		// Сбрасываем иконку способности
+		
+		// ===== СБРАСЫВАЕМ ИКОНКУ СПОСОБНОСТИ =====
 		if (window.boardModule?.updateAbilityAvailability) {
 			setTimeout(() => {
 				window.boardModule.updateAbilityAvailability(this.gameState);
 			}, 100);
 		}
-	
+		
+		if (window.boardModule?.updateAbilityAvailability) {
+			setTimeout(() => {
+				window.boardModule.updateAbilityAvailability(this.gameState);
+			}, 100);
+		}
+		
 		if (window.playerModule && window.playerModule.cancelRowSelection) {
 			window.playerModule.cancelRowSelection();
 		}
@@ -3568,10 +3577,19 @@ const gameModule = {
 			const result = window.leaderAbilities[abilityId].execute(this.gameState, this);
 			if (result !== false) {
 				this.gameState.player.abilityUsedThisRound = true;
-				// Обновляем иконку
+				
+				// ===== ВАЖНО: ОБНОВЛЯЕМ ИКОНКУ =====
 				if (window.boardModule?.markAbilityAsUsed) {
 					window.boardModule.markAbilityAsUsed();
 				}
+				
+				// Дополнительно обновляем доступность
+				if (window.boardModule?.updateAbilityAvailability) {
+					setTimeout(() => {
+						window.boardModule.updateAbilityAvailability(this.gameState);
+					}, 100);
+				}
+				
 				return true;
 			}
 			return false;

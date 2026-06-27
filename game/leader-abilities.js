@@ -12,6 +12,11 @@ const leaderAbilities = {
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 						this.boostCard(card, 3);
 						boostedCards.push({ card: card, player: 'player', row: row });
+						
+						// ===== ДОБАВЛЕНА АНИМАЦИЯ +3 =====
+						this.createBoostVisualEffect(card, row, gameModule);
+						// ====================================
+						
 						gameModule.updateRowStrength(row, 'player');
 					}
 				});
@@ -37,6 +42,89 @@ const leaderAbilities = {
 			card.currentStrength = card.strength;
 			card.modifiedStrength = card.strength;
 			card._displayStrength = card.strength;
+		},
+		
+		// ===== НОВЫЙ МЕТОД ДЛЯ ВИЗУАЛЬНОГО ЭФФЕКТА =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					// Если несколько карт с одинаковым id, ищем по порядку в ряду
+					const rowState = gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +3
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+3';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем дополнительный эффект свечения на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		}
 	},
     'scoiatael_ability_2': {
@@ -83,17 +171,17 @@ const leaderAbilities = {
 		name: 'Точный удар',
 		description: 'Нанесите 5 едениц урона отряду противника',
 		execute: function(gameState, gameModule) {
-			this.showTargetSelection(gameState, gameModule);
-			return true;
-		},
-		
-		showTargetSelection: function(gameState, gameModule) {
+			// Сначала убираем старые выделения, если они есть
+			this.removeHighlights(gameState);
+			
 			const enemyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
 			rows.forEach(row => {
 				gameState.opponent.rows[row].cards.forEach(card => {
-					if (card.type === 'unit') {
+					// Строгая проверка: только отряды (unit) с силой > 0
+					if (card.type === 'unit' && card.strength > 0) {
+						// Пропускаем героев
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 						enemyUnits.push({ card: card, row: row });
 					}
@@ -102,9 +190,21 @@ const leaderAbilities = {
 			
 			if (enemyUnits.length === 0) {
 				gameModule.showGameMessage('Нет вражеских отрядов для атаки', 'warning');
-				return;
+				return false;
 			}
 			
+			// Сохраняем gameState для отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._damageAmount = 5;
+			
+			this.showTargetSelection(enemyUnits, gameState, gameModule);
+			return true;
+		},
+		
+		showTargetSelection: function(enemyUnits, gameState, gameModule) {
+			this._currentTargets = enemyUnits;
+			this._clickHandlers = [];
 			this.highlightEnemyUnits(enemyUnits, gameState, gameModule);
 		},
 		
@@ -112,84 +212,282 @@ const leaderAbilities = {
 			const rows = ['close', 'ranged', 'siege'];
 			
 			const clickHandler = (target) => {
-				return () => {
-					this.dealDamage(target.card, 5);
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле и является отрядом
+					const stillExists = gameState.opponent.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Дополнительная проверка перед нанесением урона
+					if (target.card.type !== 'unit') {
+						gameModule.showGameMessage('Можно наносить урон только отрядам!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					if (target.card.strength <= 0) {
+						gameModule.showGameMessage('Эта карта уже уничтожена', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Наносим урон
+					this.dealDamage(target.card, this._damageAmount);
 					gameState.player.abilityUsedThisRound = true;
 					
+					// Обновляем отображение силы
 					gameModule.updateRowStrength(target.row, 'opponent');
 					gameModule.updateTotalScoreDisplays();
 					
+					// === АНИМАЦИЯ УРОНА -5 ===
+					this.createDamageVisualEffect(target.card, target.row, gameModule);
+					
+					// Если карта уничтожена
 					if (target.card.strength <= 0) {
 						this.destroyCard(gameState, target.card, target.row, gameModule);
 					}
 					
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён 5 урон ${target.card.name}.`, 'info');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён ${this._damageAmount} урон ${target.card.name}.`, 'info');
 					audioManager.playSound('card_damage');
 					
-					this.removeHighlights();
+					// Убираем подсветку
+					this.removeHighlights(gameState);
 				};
 			};
 			
+			// Подсвечиваем только отряды
 			for (const row of rows) {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
+				
 				const cards = rowElement.querySelectorAll('.board-card');
-				cards.forEach(card => {
-					const cardId = card.dataset.cardId;
-					const uniqueId = card.dataset.uniqueId;
+				cards.forEach(cardElement => {
+					const cardId = cardElement.dataset.cardId;
+					const uniqueId = cardElement.dataset.uniqueId;
+					
 					const target = enemyUnits.find(u => 
-						(u.card.id === cardId || u.card.uniqueId === uniqueId)
+						u.card.uniqueId === uniqueId || u.card.id === cardId
 					);
+					
 					if (target) {
-						card.style.cursor = 'pointer';
-						card.classList.add('damage-target');
-						card.addEventListener('click', clickHandler(target));
-						card.addEventListener('mouseenter', () => {
-							card.style.transform = 'scale(1.05)';
+						// Дополнительная проверка: убеждаемся, что это отряд
+						if (target.card.type !== 'unit') return;
+						
+						// Проверяем, что это не герой
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						cardElement._targetData = target;
+						
+						cardElement.style.cursor = 'pointer';
+						cardElement.classList.add('damage-target');
+						
+						const handler = clickHandler(target);
+						cardElement.addEventListener('click', handler);
+						this._clickHandlers.push({ element: cardElement, handler: handler });
+						
+						cardElement.addEventListener('mouseenter', () => {
+							cardElement.style.transform = 'scale(1.05)';
+							cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #ff4444)';
 						});
-						card.addEventListener('mouseleave', () => {
-							card.style.transform = 'scale(1)';
+						
+						cardElement.addEventListener('mouseleave', () => {
+							cardElement.style.transform = 'scale(1)';
+							cardElement.style.filter = '';
 						});
 					}
 				});
 			}
 			
-			this.showCancelButton();
+			// === КНОПКА ОТМЕНЫ (исправленная) ===
+			this.showCancelButton(gameState, gameModule);
 		},
 		
-		removeHighlights: function() {
+		// ===== АНИМАЦИЯ УРОНА -5 (как в scoiatael_ability_1, но красная) =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией -5 (красный)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-5';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
+		},
+		
+		// ===== ИСПРАВЛЕННАЯ КНОПКА ОТМЕНЫ =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				// Отменяем выделение
+				this.removeHighlights(gameState);
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// ===== ВАЖНО: Сбрасываем флаг использования способности =====
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				// ===== ВАЖНО: Обновляем иконку способности =====
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		removeHighlights: function(gameState) {
 			const rows = ['close', 'ranged', 'siege'];
+			
 			for (const row of rows) {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
+				
 				const cards = rowElement.querySelectorAll('.board-card');
 				cards.forEach(card => {
 					card.style.cursor = '';
 					card.classList.remove('damage-target');
 					card.style.transform = '';
-					const newCard = card.cloneNode(true);
-					card.parentNode.replaceChild(newCard, card);
+					card.style.filter = '';
+					card.style.boxShadow = '';
 				});
 			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			this._currentTargets = null;
 			this.removeCancelButton();
-		},
-		
-		showCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
-			const cancelBtn = document.createElement('button');
-			cancelBtn.id = 'abilityCancelBtn';
-			cancelBtn.textContent = 'ОТМЕНА';
-			cancelBtn.className = 'ability-cancel-btn';
-			cancelBtn.addEventListener('click', () => {
-				this.removeHighlights();
-				audioManager.playSound('button');
-			});
-			document.body.appendChild(cancelBtn);
-		},
-		
-		removeCancelButton: function() {
-			const btn = document.getElementById('abilityCancelBtn');
-			if (btn) btn.remove();
 		},
 		
 		dealDamage: function(card, amount) {
@@ -228,17 +526,35 @@ const leaderAbilities = {
 			const allUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
+			// Собираем все отряды с uniqueId
 			rows.forEach(row => {
 				gameState.player.rows[row].cards.forEach(card => {
 					if (card.type === 'unit') {
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
-						allUnits.push({ card: card, row: row, player: 'player' });
+						// Убеждаемся, что у карты есть uniqueId
+						if (!card.uniqueId) {
+							card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+						}
+						allUnits.push({ 
+							card: card, 
+							row: row, 
+							player: 'player',
+							uniqueId: card.uniqueId 
+						});
 					}
 				});
 				gameState.opponent.rows[row].cards.forEach(card => {
 					if (card.type === 'unit') {
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
-						allUnits.push({ card: card, row: row, player: 'opponent' });
+						if (!card.uniqueId) {
+							card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+						}
+						allUnits.push({ 
+							card: card, 
+							row: row, 
+							player: 'opponent',
+							uniqueId: card.uniqueId 
+						});
 					}
 				});
 			});
@@ -248,23 +564,57 @@ const leaderAbilities = {
 				return;
 			}
 			
+			// Сохраняем gameState для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._maxSelections = maxSelections;
+			this._boostAmount = boostAmount;
+			
 			this.highlightUnitsForBoost(allUnits, selectedCards, maxSelections, boostAmount, gameState, gameModule);
 		},
 		
 		highlightUnitsForBoost: function(allUnits, selectedCards, maxSelections, boostAmount, gameState, gameModule) {
 			const rows = ['close', 'ranged', 'siege'];
 			
+			// Сохраняем обработчики для удаления
+			this._clickHandlers = [];
+			this._selectedCardElements = [];
+			
 			const clickHandler = (target) => {
-				return () => {
-					const alreadySelected = selectedCards.some(s => s.card.uniqueId === target.card.uniqueId);
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					let stillExists = false;
+					if (target.player === 'player') {
+						stillExists = gameState.player.rows[target.row].cards.some(
+							c => c.uniqueId === target.uniqueId && c.type === 'unit'
+						);
+					} else {
+						stillExists = gameState.opponent.rows[target.row].cards.some(
+							c => c.uniqueId === target.uniqueId && c.type === 'unit'
+						);
+					}
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
+						return;
+					}
+					
+					const alreadySelected = selectedCards.some(s => s.uniqueId === target.uniqueId);
 					if (!alreadySelected && selectedCards.length < maxSelections) {
 						selectedCards.push(target);
-						this.highlightCard(target.card, true);
+						this.highlightCard(target.uniqueId, true);
 						audioManager.playSound('cardAdd');
 					} else if (alreadySelected) {
-						const index = selectedCards.findIndex(s => s.card.uniqueId === target.card.uniqueId);
+						const index = selectedCards.findIndex(s => s.uniqueId === target.uniqueId);
 						selectedCards.splice(index, 1);
-						this.highlightCard(target.card, false);
+						this.highlightCard(target.uniqueId, false);
 						audioManager.playSound('cardRemove');
 					}
 					
@@ -272,6 +622,7 @@ const leaderAbilities = {
 				};
 			};
 			
+			// Подсвечиваем карты на доске
 			for (const row of rows) {
 				const rowElementPlayer = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
 				const rowElementOpponent = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
@@ -280,17 +631,24 @@ const leaderAbilities = {
 					if (!rowElement) return;
 					const cards = rowElement.querySelectorAll('.board-card');
 					cards.forEach(card => {
-						const cardId = card.dataset.cardId;
 						const uniqueId = card.dataset.uniqueId;
-						const target = allUnits.find(u => 
-							(u.card.id === cardId || u.card.uniqueId === uniqueId)
-						);
+						// Ищем цель по uniqueId
+						const target = allUnits.find(u => u.uniqueId === uniqueId);
 						if (target) {
 							card.style.cursor = 'pointer';
 							card.classList.add('boost-target');
-							card.addEventListener('click', clickHandler(target));
+							
+							const handler = clickHandler(target);
+							card.addEventListener('click', handler);
+							this._clickHandlers.push({ element: card, handler: handler });
+							
+							// Сохраняем связь card <-> uniqueId для highlightCard
+							card.dataset.boostUniqueId = target.uniqueId;
+							
 							card.addEventListener('mouseenter', () => {
-								card.style.transform = 'scale(1.05)';
+								if (!card.classList.contains('boost-selected')) {
+									card.style.transform = 'scale(1.05)';
+								}
 							});
 							card.addEventListener('mouseleave', () => {
 								if (!card.classList.contains('boost-selected')) {
@@ -309,8 +667,10 @@ const leaderAbilities = {
 					return;
 				}
 				
+				// Применяем усиление с анимацией
 				selectedCards.forEach(item => {
 					this.boostCard(item.card, boostAmount);
+					this.createBoostVisualEffect(item.card, item.row, gameModule);
 					gameModule.updateRowStrength(item.row, item.player);
 				});
 				
@@ -319,34 +679,106 @@ const leaderAbilities = {
 				gameModule.showGameMessage(`Способность "${this.name}" активирована! Усилено ${selectedCards.length} отрядов.`, 'info');
 				audioManager.playSound('card_boost');
 				
-				this.removeHighlights();
+				this.removeHighlights(gameState);
 				this.removeSelectionCounter();
+				this.removeCancelButton();
+			});
+			
+			// Кнопка отмены
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД highlightCard =====
+		highlightCard: function(uniqueId, isSelected) {
+			// Ищем все карты с этим uniqueId на доске
+			const allCards = document.querySelectorAll('.board-card');
+			allCards.forEach(card => {
+				if (card.dataset.uniqueId === uniqueId || card.dataset.boostUniqueId === uniqueId) {
+					if (isSelected) {
+						card.classList.add('boost-selected');
+						card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #4CAF50)';
+						card.style.transform = 'scale(1.05)';
+					} else {
+						card.classList.remove('boost-selected');
+						card.style.filter = '';
+						card.style.transform = 'scale(1)';
+					}
+				}
 			});
 		},
 		
-		highlightCard: function(card, isSelected) {
-			const rows = ['close', 'ranged', 'siege'];
-			for (const row of rows) {
-				const rowElementPlayer = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-				const rowElementOpponent = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-				[rowElementPlayer, rowElementOpponent].forEach(rowElement => {
-					if (!rowElement) return;
-					const cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
-					if (cardElement) {
-						if (isSelected) {
-							cardElement.classList.add('boost-selected');
-							cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #4CAF50)';
-						} else {
-							cardElement.classList.remove('boost-selected');
-							cardElement.style.filter = '';
-						}
-					}
-				});
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`${card.owner || 'player'}${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске по uniqueId
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
 			}
+			
+			if (!cardElement) {
+				// Пробуем найти по id, если uniqueId не найден
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					// Если несколько копий, ищем по позиции в ряду
+					const player = card.owner || 'player';
+					const rowState = this._gameState[player].rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +2
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+2';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		createSelectionCounter: function(max) {
-			// Удаляем существующий счетчик
 			const existingCounter = document.getElementById('abilityCounter');
 			if (existingCounter) existingCounter.remove();
 			
@@ -386,7 +818,6 @@ const leaderAbilities = {
 		},
 		
 		showConfirmButton: function(onConfirm) {
-			// Удаляем существующую кнопку
 			const existingBtn = document.getElementById('abilityConfirmBtn');
 			if (existingBtn) existingBtn.remove();
 			
@@ -427,10 +858,10 @@ const leaderAbilities = {
 				confirmBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
 			document.body.appendChild(confirmBtn);
+			this._confirmBtn = confirmBtn;
 		},
 		
-		showCancelButton: function() {
-			// Удаляем существующую кнопку
+		showCancelButton: function(gameState, gameModule) {
 			const existingBtn = document.getElementById('abilityCancelBtn');
 			if (existingBtn) existingBtn.remove();
 			
@@ -457,48 +888,75 @@ const leaderAbilities = {
 				transition: all 0.3s ease;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
-			cancelBtn.addEventListener('click', () => {
-				this.removeHighlights();
-				this.removeSelectionCounter();
-				audioManager.playSound('button');
-			});
+			
 			cancelBtn.addEventListener('mouseenter', () => {
 				cancelBtn.style.transform = 'scale(1.05)';
 				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
 				audioManager.playSound('touch');
 			});
+			
 			cancelBtn.addEventListener('mouseleave', () => {
 				cancelBtn.style.transform = 'scale(1)';
 				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
+			
+			cancelBtn.addEventListener('click', () => {
+				this.removeHighlights(gameState);
+				this.removeSelectionCounter();
+				this.removeCancelButton();
+				
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
-		removeHighlights: function() {
-			const rows = ['close', 'ranged', 'siege'];
-			for (const row of rows) {
-				const rowElementPlayer = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-				const rowElementOpponent = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-				[rowElementPlayer, rowElementOpponent].forEach(rowElement => {
-					if (!rowElement) return;
-					const cards = rowElement.querySelectorAll('.board-card');
-					cards.forEach(card => {
-						card.style.cursor = '';
-						card.classList.remove('boost-target', 'boost-selected');
-						card.style.filter = '';
-						card.style.transform = '';
-						// Не клонируем, чтобы не ломать события
-					});
-				});
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
 			}
-			this.removeCancelButton();
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+			
+			if (this._confirmBtn && this._confirmBtn.parentNode) {
+				this._confirmBtn.remove();
+				this._confirmBtn = null;
+			}
 			const confirmBtn = document.getElementById('abilityConfirmBtn');
 			if (confirmBtn) confirmBtn.remove();
 		},
 		
-		removeCancelButton: function() {
-			const btn = document.getElementById('abilityCancelBtn');
-			if (btn) btn.remove();
+		removeHighlights: function(gameState) {
+			// Убираем подсветку со всех карт
+			const allCards = document.querySelectorAll('.board-card');
+			allCards.forEach(card => {
+				card.style.cursor = '';
+				card.classList.remove('boost-target', 'boost-selected');
+				card.style.filter = '';
+				card.style.transform = '';
+				card.style.boxShadow = '';
+			});
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			this.removeCancelButton();
 		},
 		
 		boostCard: function(card, amount) {
@@ -514,12 +972,38 @@ const leaderAbilities = {
 		name: 'Партизанская тактика',
 		description: 'Нанесите 3 еденицы урона всем картам в ряду противника',
 		execute: function(gameState, gameModule) {
+			// Сначала проверяем, есть ли вообще карты у противника
+			let hasAnyUnits = false;
+			const rows = ['close', 'ranged', 'siege'];
+			
+			rows.forEach(row => {
+				if (gameState.opponent.rows[row].cards.length > 0) {
+					const hasNonHeroUnit = gameState.opponent.rows[row].cards.some(card => {
+						if (card.type !== 'unit') return false;
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return false;
+						return true;
+					});
+					if (hasNonHeroUnit) {
+						hasAnyUnits = true;
+					}
+				}
+			});
+			
+			if (!hasAnyUnits) {
+				gameModule.showGameMessage('Нет отрядов противника на поле для атаки', 'warning');
+				return false;
+			}
+			
 			this.showRowSelection(gameState, gameModule);
 			return true;
 		},
 		
 		showRowSelection: function(gameState, gameModule) {
-			// Сначала определяем, в каких рядах есть карты противника
+			// Сохраняем gameState для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
+			// Определяем ряды с картами противника (не героями)
 			const rowsWithCards = [];
 			const rows = [
 				{ id: 'close', name: 'Ближний бой', elementId: 'opponentCloseRow' },
@@ -528,29 +1012,42 @@ const leaderAbilities = {
 			];
 			
 			rows.forEach(row => {
-				// Проверяем, есть ли в этом ряду карты
-				const hasCards = gameState.opponent.rows[row.id].cards.length > 0;
-				if (hasCards) {
+				const hasUnits = gameState.opponent.rows[row.id].cards.some(card => {
+					if (card.type !== 'unit') return false;
+					if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return false;
+					return true;
+				});
+				if (hasUnits) {
 					rowsWithCards.push(row);
 				}
 			});
 			
 			if (rowsWithCards.length === 0) {
-				gameModule.showGameMessage('Нет отрядов противника на поле для атаки', 'warning');
+				gameModule.showGameMessage('Нет уязвимых отрядов противника для атаки', 'warning');
 				return;
 			}
 			
+			// ===== СОХРАНЯЕМ ВСЕ ОБРАБОТЧИКИ =====
+			this._rowHandlers = [];
+			this._rowMouseEnterHandlers = [];
+			this._rowMouseLeaveHandlers = [];
+			
 			const clickHandler = (rowId, rowName) => {
-				return () => {
+				return (event) => {
 					let damagedCount = 0;
 					const unitsToDestroy = [];
+					const damageAmount = 3;
+					
+					// Сохраняем карты для анимации
+					const damagedCards = [];
 					
 					gameState.opponent.rows[rowId].cards.forEach(card => {
 						if (card.type === 'unit') {
-							// Пропускаем героев
 							if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 							
-							this.dealDamage(card, 3);
+							damagedCards.push({ card: card, row: rowId });
+							
+							this.dealDamage(card, damageAmount);
 							damagedCount++;
 							
 							if (card.strength <= 0) {
@@ -559,14 +1056,17 @@ const leaderAbilities = {
 						}
 					});
 					
-					// Уничтожаем уничтоженные карты
+					damagedCards.forEach(item => {
+						this.createDamageVisualEffect(item.card, item.row, gameModule);
+					});
+					
 					unitsToDestroy.forEach(unit => {
 						this.destroyCard(gameState, unit.card, unit.row, gameModule);
 					});
 					
 					if (damagedCount === 0) {
 						gameModule.showGameMessage('В выбранном ряду нет уязвимых отрядов', 'warning');
-						this.removeHighlights();
+						this.removeHighlights(gameState);
 						return;
 					}
 					
@@ -576,50 +1076,117 @@ const leaderAbilities = {
 					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён урон ${damagedCount} отрядам.`, 'info');
 					audioManager.playSound('card_damage');
 					
-					this.removeHighlights();
+					this.removeHighlights(gameState);
+					this.removeCancelButton();
+					
+					if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+						window.boardModule.updateAbilityAvailability(gameState);
+					}
 				};
 			};
 			
-			// Подсвечиваем ТОЛЬКО ряды, в которых есть карты
+			// Подсвечиваем ряды и добавляем обработчики
 			rowsWithCards.forEach(row => {
 				const rowElement = document.getElementById(row.elementId);
 				if (rowElement) {
 					rowElement.classList.add('row-damage-target');
 					rowElement.style.cursor = 'pointer';
-					rowElement.addEventListener('click', clickHandler(row.id, row.name));
 					
-					// Добавляем эффекты наведения
-					rowElement.addEventListener('mouseenter', () => {
+					// Обработчик клика
+					const handler = clickHandler(row.id, row.name);
+					rowElement.addEventListener('click', handler);
+					this._rowHandlers.push({ element: rowElement, handler: handler });
+					
+					// ===== ОБРАБОТЧИКИ НАВЕДЕНИЯ =====
+					const mouseEnterHandler = () => {
 						rowElement.style.transform = 'scale(1.02)';
 						rowElement.style.transition = 'all 0.2s ease';
-					});
-					rowElement.addEventListener('mouseleave', () => {
+						rowElement.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.3)';
+					};
+					
+					const mouseLeaveHandler = () => {
 						rowElement.style.transform = 'scale(1)';
-					});
+						rowElement.style.boxShadow = '';
+					};
+					
+					rowElement.addEventListener('mouseenter', mouseEnterHandler);
+					rowElement.addEventListener('mouseleave', mouseLeaveHandler);
+					
+					// ===== СОХРАНЯЕМ ОБРАБОТЧИКИ ДЛЯ УДАЛЕНИЯ =====
+					this._rowMouseEnterHandlers.push({ element: rowElement, handler: mouseEnterHandler });
+					this._rowMouseLeaveHandlers.push({ element: rowElement, handler: mouseLeaveHandler });
 				}
 			});
 			
-			this.showCancelButton();
+			this.showCancelButton(gameState, gameModule);
 		},
 		
-		removeHighlights: function() {
-			const rows = ['close', 'ranged', 'siege'];
-			rows.forEach(row => {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-				if (rowElement) {
-					rowElement.classList.remove('row-damage-target');
-					rowElement.style.cursor = '';
-					rowElement.style.transform = '';
-					// Клонируем для удаления обработчиков
-					const newRow = rowElement.cloneNode(true);
-					rowElement.parentNode.replaceChild(newRow, rowElement);
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
 				}
-			});
-			this.removeCancelButton();
+			}
+			
+			if (!cardElement) return;
+			
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-3';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
-		showCancelButton: function() {
-			// Удаляем существующую кнопку
+		showCancelButton: function(gameState, gameModule) {
 			const existingBtn = document.getElementById('abilityCancelBtn');
 			if (existingBtn) existingBtn.remove();
 			
@@ -630,7 +1197,8 @@ const leaderAbilities = {
 			cancelBtn.style.cssText = `
 				position: fixed;
 				bottom: 30px;
-				left: 30px;
+				left: 50%;
+				transform: translateX(-50%);
 				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 				color: #d4af37;
 				border: 2px solid #d4af37;
@@ -646,25 +1214,86 @@ const leaderAbilities = {
 				transition: all 0.3s ease;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
-			cancelBtn.addEventListener('click', () => {
-				this.removeHighlights();
-				audioManager.playSound('button');
-			});
+			
 			cancelBtn.addEventListener('mouseenter', () => {
-				cancelBtn.style.transform = 'scale(1.05)';
-				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 25px rgba(212, 175, 55, 0.4)';
 				audioManager.playSound('touch');
 			});
+			
 			cancelBtn.addEventListener('mouseleave', () => {
-				cancelBtn.style.transform = 'scale(1)';
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
 				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
+			
+			cancelBtn.addEventListener('click', () => {
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				this.removeHighlights(gameState);
+				this.removeCancelButton();
+				
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
 		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
+		},
+		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД removeHighlights =====
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			rows.forEach(row => {
+				const rowElement = document.getElementById(`opponent${this._gameModule.capitalizeFirst(row)}Row`);
+				if (rowElement) {
+					rowElement.classList.remove('row-damage-target');
+					rowElement.style.cursor = '';
+					rowElement.style.transform = '';
+					rowElement.style.boxShadow = '';
+					rowElement.style.transition = '';
+				}
+			});
+			
+			// ===== УДАЛЯЕМ ОБРАБОТЧИКИ КЛИКОВ =====
+			if (this._rowHandlers) {
+				this._rowHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._rowHandlers = [];
+			}
+			
+			// ===== УДАЛЯЕМ ОБРАБОТЧИКИ MOUSEENTER =====
+			if (this._rowMouseEnterHandlers) {
+				this._rowMouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._rowMouseEnterHandlers = [];
+			}
+			
+			// ===== УДАЛЯЕМ ОБРАБОТЧИКИ MOUSELEAVE =====
+			if (this._rowMouseLeaveHandlers) {
+				this._rowMouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._rowMouseLeaveHandlers = [];
+			}
+			
+			this.removeCancelButton();
 		},
 		
 		dealDamage: function(card, amount) {
@@ -693,18 +1322,16 @@ const leaderAbilities = {
 		name: 'Королевское вдохновение',
 		description: 'Усильте дружественный отряд на 5 едениц',
 		execute: function(gameState, gameModule) {
-			// Собираем все дружественные отряды на поле
+			// Собираем все дружественные отряды на поле (исключая героев)
 			const friendlyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
 			rows.forEach(row => {
-				gameState.player.rows[row].cards.forEach((card, index) => {
+				gameState.player.rows[row].cards.forEach(card => {
 					if (card.type === 'unit') {
-						friendlyUnits.push({
-							card: card,
-							row: row,
-							index: index
-						});
+						// Пропускаем героев
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+						friendlyUnits.push({ card: card, row: row });
 					}
 				});
 			});
@@ -714,80 +1341,278 @@ const leaderAbilities = {
 				return false;
 			}
 			
-			// Показываем выбор цели
+			// Сохраняем состояние для отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._boostAmount = 5;
+			
+			// Показываем выбор цели на поле
 			this.showTargetSelection(friendlyUnits, gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(friendlyUnits, gameState, gameModule) {
-			const modalOverlay = document.createElement('div');
-			modalOverlay.className = 'ability-target-overlay';
-			modalOverlay.style.cssText = `
-				position: fixed;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 100%;
-				background: rgba(0,0,0,0.85);
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				z-index: 10001;
-				font-family: 'Gwent', sans-serif;
-			`;
+			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
 			
-			modalOverlay.innerHTML = `
-				<div class="ability-target-modal">
-					<div class="ability-target-title">ВЫБЕРИТЕ ОТРЯД ДЛЯ УСИЛЕНИЯ НА 5 ЕД.</div>
-					<div class="ability-target-cards">
-						${friendlyUnits.map((unit, idx) => `
-							<div class="ability-target-card" data-target-index="${idx}">
-								<div class="ability-target-card-name">${unit.card.name}</div>
-								<div class="ability-target-card-strength">Сила: ${unit.card.strength} → ${unit.card.strength + 5}</div>
-								<div class="ability-target-card-row">Ряд: ${this.getRowName(unit.row)}</div>
-							</div>
-						`).join('')}
-					</div>
-					<button class="ability-cancel-btn">ОТМЕНА</button>
-				</div>
-			`;
-			
-			document.body.appendChild(modalOverlay);
-			
-			const targetCards = modalOverlay.querySelectorAll('.ability-target-card');
-			targetCards.forEach(card => {
-				card.addEventListener('click', (e) => {
-					const index = parseInt(card.dataset.targetIndex);
-					const target = friendlyUnits[index];
+			const clickHandler = (target) => {
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.player.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
 					
-					this.boostCard(target.card, 5);
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем героя (дополнительная защита)
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Применяем усиление
+					this.boostCard(target.card, this._boostAmount);
+					
+					// === АНИМАЦИЯ УСИЛЕНИЯ +5 (как в scoiatael_ability_1) ===
+					this.createBoostVisualEffect(target.card, target.row, gameModule);
+					
 					gameState.player.abilityUsedThisRound = true;
 					
 					gameModule.updateRowStrength(target.row, 'player');
 					gameModule.updateTotalScoreDisplays();
-					gameModule.updateCardStrengthDisplay(target.card, target.row, 'player');
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на 5 ед.`, 'info');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на ${this._boostAmount} ед.`, 'info');
 					audioManager.playSound('card_boost');
 					
-					document.body.removeChild(modalOverlay);
-				});
+					// Убираем подсветку
+					this.removeHighlights(gameState);
+				};
+			};
+			
+			// Подсвечиваем доступные карты (не героев)
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
 				
-				card.addEventListener('mouseenter', () => {
-					audioManager.playSound('touch');
-					card.style.transform = 'scale(1.02)';
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(cardElement => {
+					const cardId = cardElement.dataset.cardId;
+					const uniqueId = cardElement.dataset.uniqueId;
+					
+					const target = friendlyUnits.find(u => 
+						(u.card.id === cardId || u.card.uniqueId === uniqueId)
+					);
+					
+					if (target) {
+						// Дополнительная проверка: убеждаемся, что это не герой
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						cardElement.style.cursor = 'pointer';
+						cardElement.classList.add('boost-target');
+						
+						const handler = clickHandler(target);
+						cardElement.addEventListener('click', handler);
+						this._clickHandlers.push({ element: cardElement, handler: handler });
+						
+						// Эффект при наведении
+						cardElement.addEventListener('mouseenter', () => {
+							cardElement.style.transform = 'scale(1.05)';
+							cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #4CAF50)';
+						});
+						
+						cardElement.addEventListener('mouseleave', () => {
+							cardElement.style.transform = 'scale(1)';
+							cardElement.style.filter = '';
+						});
+					}
 				});
-				
-				card.addEventListener('mouseleave', () => {
-					card.style.transform = 'scale(1)';
-				});
+			}
+			
+			// === КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) ===
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ +5 (как в scoiatael_ability_1) =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +5 (зелёный)
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+5';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
+		},
+		
+		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
 			});
 			
-			const cancelBtn = modalOverlay.querySelector('.ability-cancel-btn');
-			cancelBtn.addEventListener('click', () => {
-				document.body.removeChild(modalOverlay);
-				audioManager.playSound('button');
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
+			
+			cancelBtn.addEventListener('click', () => {
+				// Отменяем выделение и сбрасываем флаг использования
+				this.removeHighlights(gameState);
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// Сбрасываем флаг использования способности
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				// Обновляем иконку способности (возвращаем активное состояние)
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.classList.remove('boost-target');
+					card.style.filter = '';
+					card.style.transform = '';
+					card.style.boxShadow = '';
+				});
+			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			this.removeCancelButton();
 		},
 		
 		boostCard: function(card, amount) {
@@ -823,11 +1648,20 @@ const leaderAbilities = {
 			const enemyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
+			// ===== ФИЛЬТРУЕМ ТОЛЬКО ОТРЯДЫ (НЕ ГЕРОИ, НЕ АРТЕФАКТЫ) =====
 			rows.forEach(row => {
 				gameState.opponent.rows[row].cards.forEach(card => {
+					// ===== ВАЖНО: ТОЛЬКО ОТРЯДЫ =====
 					if (card.type === 'unit') {
+						// Пропускаем героев
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
-						enemyUnits.push({ card: card, row: row });
+						// Пропускаем карты с силой 0 (уже уничтоженные)
+						if (card.strength <= 0) return;
+						enemyUnits.push({ 
+							card: card, 
+							row: row,
+							uniqueId: card.uniqueId 
+						});
 					}
 				});
 			});
@@ -837,24 +1671,64 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			// Сохраняем состояние для отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._damageAmount = damageAmount;
+			this._maxSelections = maxSelections;
+			
 			this.highlightEnemyUnitsForDamage(enemyUnits, selectedCards, maxSelections, damageAmount, gameState, gameModule);
 			return true;
 		},
 		
 		highlightEnemyUnitsForDamage: function(enemyUnits, selectedCards, maxSelections, damageAmount, gameState, gameModule) {
 			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
+			this._mouseEnterHandlers = [];
+			this._mouseLeaveHandlers = [];
 			
 			const clickHandler = (target) => {
-				return () => {
-					const alreadySelected = selectedCards.some(s => s.card.uniqueId === target.card.uniqueId);
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.opponent.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем, что это отряд
+					if (target.card.type !== 'unit') {
+						gameModule.showGameMessage('Можно наносить урон только отрядам!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
+						return;
+					}
+					
+					// Проверяем, что карта ещё жива
+					if (target.card.strength <= 0) {
+						gameModule.showGameMessage('Эта карта уже уничтожена', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					const alreadySelected = selectedCards.some(s => s.uniqueId === target.uniqueId);
 					if (!alreadySelected && selectedCards.length < maxSelections) {
 						selectedCards.push(target);
-						this.highlightDamageCard(target.card, true);
+						this.highlightDamageCard(target.uniqueId, true);
 						audioManager.playSound('cardAdd');
 					} else if (alreadySelected) {
-						const index = selectedCards.findIndex(s => s.card.uniqueId === target.card.uniqueId);
+						const index = selectedCards.findIndex(s => s.uniqueId === target.uniqueId);
 						selectedCards.splice(index, 1);
-						this.highlightDamageCard(target.card, false);
+						this.highlightDamageCard(target.uniqueId, false);
 						audioManager.playSound('cardRemove');
 					}
 					
@@ -862,28 +1736,56 @@ const leaderAbilities = {
 				};
 			};
 			
+			// Подсвечиваем только отряды (не герои)
 			for (const row of rows) {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
+				
 				const cards = rowElement.querySelectorAll('.board-card');
 				cards.forEach(card => {
-					const cardId = card.dataset.cardId;
 					const uniqueId = card.dataset.uniqueId;
-					const target = enemyUnits.find(u => 
-						(u.card.id === cardId || u.card.uniqueId === uniqueId)
-					);
+					
+					// Ищем цель по uniqueId
+					const target = enemyUnits.find(u => u.uniqueId === uniqueId);
+					
 					if (target) {
+						// ===== ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: убеждаемся, что это отряд =====
+						if (target.card.type !== 'unit') return;
+						
+						// Проверяем, что это не герой
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						// Проверяем, что карта ещё жива
+						if (target.card.strength <= 0) return;
+						
 						card.style.cursor = 'pointer';
 						card.classList.add('damage-target');
-						card.addEventListener('click', clickHandler(target));
-						card.addEventListener('mouseenter', () => {
-							card.style.transform = 'scale(1.05)';
-						});
-						card.addEventListener('mouseleave', () => {
+						
+						const handler = clickHandler(target);
+						card.addEventListener('click', handler);
+						this._clickHandlers.push({ element: card, handler: handler });
+						
+						// Сохраняем связь для highlightDamageCard
+						card.dataset.damageUniqueId = target.uniqueId;
+						
+						// ===== СОХРАНЯЕМ ОБРАБОТЧИКИ НАВЕДЕНИЯ =====
+						const mouseEnterHandler = () => {
+							if (!card.classList.contains('damage-selected')) {
+								card.style.transform = 'scale(1.05)';
+							}
+						};
+						
+						const mouseLeaveHandler = () => {
 							if (!card.classList.contains('damage-selected')) {
 								card.style.transform = 'scale(1)';
 							}
-						});
+						};
+						
+						card.addEventListener('mouseenter', mouseEnterHandler);
+						card.addEventListener('mouseleave', mouseLeaveHandler);
+						
+						this._mouseEnterHandlers.push({ element: card, handler: mouseEnterHandler });
+						this._mouseLeaveHandlers.push({ element: card, handler: mouseLeaveHandler });
 					}
 				});
 			}
@@ -895,8 +1797,13 @@ const leaderAbilities = {
 					return;
 				}
 				
+				// Применяем урон с анимацией
 				selectedCards.forEach(item => {
 					this.dealDamage(item.card, damageAmount);
+					
+					// Анимация урона
+					this.createDamageVisualEffect(item.card, item.row, gameModule);
+					
 					if (item.card.strength <= 0) {
 						this.destroyCard(gameState, item.card, item.row, gameModule);
 					}
@@ -908,40 +1815,116 @@ const leaderAbilities = {
 				gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён урон ${selectedCards.length} отрядам.`, 'info');
 				audioManager.playSound('card_damage');
 				
-				this.removeDamageHighlights();
+				this.removeHighlights(gameState);
 				this.removeDamageCounter();
+				this.removeCancelButton();
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			// Кнопка отмены
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД highlightDamageCard =====
+		highlightDamageCard: function(uniqueId, isSelected) {
+			const allCards = document.querySelectorAll('.board-card');
+			allCards.forEach(card => {
+				if (card.dataset.uniqueId === uniqueId || card.dataset.damageUniqueId === uniqueId) {
+					if (isSelected) {
+						card.classList.add('damage-selected');
+						card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
+						card.style.transform = 'scale(1.05)';
+					} else {
+						card.classList.remove('damage-selected');
+						card.style.filter = '';
+						card.style.transform = 'scale(1)';
+					}
+				}
 			});
 		},
 		
-		highlightDamageCard: function(card, isSelected) {
-			const rows = ['close', 'ranged', 'siege'];
-			for (const row of rows) {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-				if (!rowElement) return;
-				const cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
-				if (cardElement) {
-					if (isSelected) {
-						cardElement.classList.add('damage-selected');
-						cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
+		// ===== АНИМАЦИЯ УРОНА =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
 					} else {
-						cardElement.classList.remove('damage-selected');
-						cardElement.style.filter = '';
+						cardElement = elements[0];
 					}
 				}
 			}
+			
+			if (!cardElement) return;
+			
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-3';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		createDamageCounter: function(max) {
-			if (document.getElementById('abilityCounter')) return;
+			const existingCounter = document.getElementById('abilityCounter');
+			if (existingCounter) existingCounter.remove();
+			
 			const counter = document.createElement('div');
 			counter.id = 'abilityCounter';
 			counter.className = 'ability-counter';
 			counter.textContent = `Выбрано: 0/${max}`;
 			counter.style.cssText = `
 				position: fixed;
-				top: 80px;
+				top: 50%;
 				left: 50%;
-				transform: translateX(-50%);
+				transform: translate(-50%, -50%);
 				background: rgba(0, 0, 0, 0.85);
 				color: #d4af37;
 				padding: 12px 24px;
@@ -949,10 +1932,11 @@ const leaderAbilities = {
 				font-family: 'Gwent', sans-serif;
 				font-size: 18px;
 				font-weight: bold;
-				z-index: 10005;
+				z-index: 10050;
 				border: 2px solid #d4af37;
-				box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+				text-align: center;
 				pointer-events: none;
+				box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 			`;
 			document.body.appendChild(counter);
 		},
@@ -968,10 +1952,13 @@ const leaderAbilities = {
 		},
 		
 		showDamageConfirmButton: function(onConfirm) {
-			if (document.getElementById('abilityConfirmBtn')) return;
+			const existingBtn = document.getElementById('abilityConfirmBtn');
+			if (existingBtn) existingBtn.remove();
+			
 			const confirmBtn = document.createElement('button');
 			confirmBtn.id = 'abilityConfirmBtn';
 			confirmBtn.textContent = 'ПОДТВЕРДИТЬ';
+			confirmBtn.className = 'ability-confirm-btn';
 			confirmBtn.style.cssText = `
 				position: fixed;
 				bottom: 30px;
@@ -979,7 +1966,7 @@ const leaderAbilities = {
 				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 				color: #4CAF50;
 				border: 2px solid #4CAF50;
-				padding: 12px 32px;
+				padding: 12px 35px;
 				border-radius: 8px;
 				cursor: pointer;
 				font-weight: bold;
@@ -987,10 +1974,14 @@ const leaderAbilities = {
 				font-size: 16px;
 				text-transform: uppercase;
 				letter-spacing: 2px;
-				z-index: 10005;
+				z-index: 10050;
 				transition: all 0.3s ease;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
+			confirmBtn.addEventListener('click', () => {
+				onConfirm();
+				audioManager.playSound('button');
+			});
 			confirmBtn.addEventListener('mouseenter', () => {
 				confirmBtn.style.transform = 'scale(1.05)';
 				confirmBtn.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
@@ -1000,38 +1991,18 @@ const leaderAbilities = {
 				confirmBtn.style.transform = 'scale(1)';
 				confirmBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
-			confirmBtn.addEventListener('click', () => {
-				onConfirm();
-				audioManager.playSound('button');
-			});
 			document.body.appendChild(confirmBtn);
+			this._confirmBtn = confirmBtn;
 		},
 		
-		removeDamageHighlights: function() {
-			const rows = ['close', 'ranged', 'siege'];
-			for (const row of rows) {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-				if (!rowElement) continue;
-				const cards = rowElement.querySelectorAll('.board-card');
-				cards.forEach(card => {
-					card.style.cursor = '';
-					card.classList.remove('damage-target', 'damage-selected');
-					card.style.filter = '';
-					card.style.transform = '';
-					const newCard = card.cloneNode(true);
-					card.parentNode.replaceChild(newCard, card);
-				});
-			}
-			this.removeCancelButton();
-			const confirmBtn = document.getElementById('abilityConfirmBtn');
-			if (confirmBtn) confirmBtn.remove();
-		},
-		
-		showCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
 			const cancelBtn = document.createElement('button');
 			cancelBtn.id = 'abilityCancelBtn';
 			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
 			cancelBtn.style.cssText = `
 				position: fixed;
 				bottom: 30px;
@@ -1040,7 +2011,7 @@ const leaderAbilities = {
 				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 				color: #d4af37;
 				border: 2px solid #d4af37;
-				padding: 12px 32px;
+				padding: 12px 35px;
 				border-radius: 8px;
 				cursor: pointer;
 				font-weight: bold;
@@ -1048,30 +2019,100 @@ const leaderAbilities = {
 				font-size: 16px;
 				text-transform: uppercase;
 				letter-spacing: 2px;
-				z-index: 10005;
+				z-index: 10050;
 				transition: all 0.3s ease;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
+			
 			cancelBtn.addEventListener('mouseenter', () => {
 				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
 				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
 				audioManager.playSound('touch');
 			});
+			
 			cancelBtn.addEventListener('mouseleave', () => {
 				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
 				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
+			
 			cancelBtn.addEventListener('click', () => {
-				this.removeDamageHighlights();
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				this.removeHighlights(gameState);
 				this.removeDamageCounter();
+				this.removeCancelButton();
+				
 				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
 			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
 		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
+			
+			if (this._confirmBtn && this._confirmBtn.parentNode) {
+				this._confirmBtn.remove();
+				this._confirmBtn = null;
+			}
+			const confirmBtn = document.getElementById('abilityConfirmBtn');
+			if (confirmBtn) confirmBtn.remove();
+		},
+		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД removeHighlights =====
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`opponent${this._gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.classList.remove('damage-target', 'damage-selected');
+					card.style.filter = '';
+					card.style.transform = '';
+					card.style.boxShadow = '';
+				});
+			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			// Удаляем обработчики mouseenter
+			if (this._mouseEnterHandlers) {
+				this._mouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._mouseEnterHandlers = [];
+			}
+			
+			// Удаляем обработчики mouseleave
+			if (this._mouseLeaveHandlers) {
+				this._mouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._mouseLeaveHandlers = [];
+			}
+			
+			this.removeCancelButton();
 		},
 		
 		dealDamage: function(card, amount) {
@@ -1095,178 +2136,329 @@ const leaderAbilities = {
 			}
 		}
 	},
-    'realms_ability_3': {
-        name: 'Стена щитов',
-        description: 'Усильте дружественный отряд на 2 еденицы и призвать в руку артефакт',
-        execute: function(gameState, gameModule) {
-            const friendlyUnits = [];
-            const rows = ['close', 'ranged', 'siege'];
-            
-            rows.forEach(row => {
-                gameState.player.rows[row].cards.forEach((card, index) => {
-                    if (card.type === 'unit') {
-                        friendlyUnits.push({ card: card, row: row, index: index });
-                    }
-                });
-            });
-            
-            if (friendlyUnits.length === 0) {
-                gameModule.showGameMessage('Нет дружественных отрядов на поле для усиления', 'warning');
-                return false;
-            }
-            
-            this.showTargetSelection(friendlyUnits, gameState, gameModule);
-            return true;
-        },
-        
-        showTargetSelection: function(friendlyUnits, gameState, gameModule) {
-            const rows = ['close', 'ranged', 'siege'];
-            const clickHandler = (event) => {
-                const cardElement = event.currentTarget;
-                const cardId = cardElement.dataset.cardId;
-                const uniqueId = cardElement.dataset.uniqueId;
-                const row = cardElement.dataset.row;
-                
-                let targetCard = null;
-                for (const r of rows) {
-                    const card = gameState.player.rows[r].cards.find(c => 
-                        (c.id === cardId || c.uniqueId === uniqueId)
-                    );
-                    if (card) {
-                        targetCard = card;
-                        break;
-                    }
-                }
-                
-                if (targetCard) {
-                    if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
-                        gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
-                        this.removeHighlights();
-                        document.removeEventListener('click', clickHandler);
-                        return;
-                    }
-                    
-                    this.boostCard(targetCard, 2);
-                    
-                    // Ищем артефакт в колоде
-                    let artifactIndex = -1;
-                    let artifactCard = null;
-                    for (let i = 0; i < gameState.player.deck.length; i++) {
-                        if (gameState.player.deck[i].type === 'artifact') {
-                            artifactIndex = i;
-                            artifactCard = gameState.player.deck[i];
-                            break;
-                        }
-                    }
-                    
-                    if (artifactCard && gameState.player.hand.length < 10) {
-                        gameState.player.deck.splice(artifactIndex, 1);
-                        gameState.player.hand.push(artifactCard);
-                        gameModule.displayPlayerHand();
-                        gameModule.displayPlayerDeck();
-                        gameModule.showGameMessage(`Артефакт "${artifactCard.name}" добавлен в руку из колоды!`, 'info');
-                        audioManager.playSound('cardAdd');
-                    } else if (gameState.player.hand.length >= 10) {
-                        gameModule.showGameMessage('Нет места в руке для артефакта', 'warning');
-                    } else {
-                        gameModule.showGameMessage('В колоде нет артефактов', 'warning');
-                    }
-                    
-                    gameState.player.abilityUsedThisRound = true;
-                    gameModule.updateRowStrength(row, 'player');
-                    gameModule.updateTotalScoreDisplays();
-                    gameModule.updateCardStrengthDisplay(targetCard, row, 'player');
-                    gameModule.showGameMessage(`Способность "${this.name}" активирована! ${targetCard.name} усилен на 2 ед.`, 'info');
-                    audioManager.playSound('card_boost');
-                }
-                
-                this.removeHighlights();
-                document.removeEventListener('click', clickHandler);
-            };
-            
-            this.highlightPlayerUnits(gameState, rows, clickHandler);
-        },
-        
-        highlightPlayerUnits: function(gameState, rows, clickHandler) {
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = 'pointer';
-                    card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #4CAF50)';
-                    card.style.transition = 'all 0.2s ease';
-                    card.dataset.row = row;
-                    card.addEventListener('click', clickHandler);
-                    card.addEventListener('mouseenter', () => {
-                        card.style.transform = 'scale(1.05)';
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        card.style.transform = 'scale(1)';
-                    });
-                });
-            }
-            this.showCancelButton();
-        },
-        
-        removeHighlights: function() {
-            const rows = ['close', 'ranged', 'siege'];
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = '';
-                    card.style.filter = '';
-                    card.style.transform = '';
-                    const newCard = card.cloneNode(true);
-                    card.parentNode.replaceChild(newCard, card);
-                });
-            }
-            this.removeCancelButton();
-        },
-        
-        showCancelButton: function() {
-            if (document.getElementById('abilityCancelBtn')) return;
-            const cancelBtn = document.createElement('button');
-            cancelBtn.id = 'abilityCancelBtn';
-            cancelBtn.textContent = 'ОТМЕНА';
-            cancelBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #d4af37;
-                color: #1a1a1a;
-                border: none;
-                padding: 10px 30px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-weight: bold;
-                z-index: 10002;
-                font-family: 'Gwent', sans-serif;
-            `;
-            cancelBtn.addEventListener('click', () => {
-                this.removeHighlights();
-                audioManager.playSound('button');
-            });
-            document.body.appendChild(cancelBtn);
-        },
-        
-        removeCancelButton: function() {
-            const btn = document.getElementById('abilityCancelBtn');
-            if (btn) btn.remove();
-        },
-        
-        boostCard: function(card, amount) {
-            if (card.baseStrength === undefined) card.baseStrength = card.strength;
-            if (card.originalStrength === undefined) card.originalStrength = card.strength;
-            card.strength = (card.strength || 0) + amount;
-            card.currentStrength = card.strength;
-            card.modifiedStrength = card.strength;
-            card._displayStrength = card.strength;
-        }
-    },
+	'realms_ability_3': {
+		name: 'Стена щитов',
+		description: 'Усильте дружественный отряд на 2 еденицы и призвать в руку артефакт',
+		execute: function(gameState, gameModule) {
+			const friendlyUnits = [];
+			const rows = ['close', 'ranged', 'siege'];
+			
+			rows.forEach(row => {
+				gameState.player.rows[row].cards.forEach((card, index) => {
+					if (card.type === 'unit') {
+						// Пропускаем героев
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+						friendlyUnits.push({ card: card, row: row, index: index });
+					}
+				});
+			});
+			
+			if (friendlyUnits.length === 0) {
+				gameModule.showGameMessage('Нет дружественных отрядов на поле для усиления', 'warning');
+				return false;
+			}
+			
+			// Сохраняем состояние для отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._boostAmount = 2;
+			
+			this.showTargetSelection(friendlyUnits, gameState, gameModule);
+			return true;
+		},
+		
+		showTargetSelection: function(friendlyUnits, gameState, gameModule) {
+			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
+			
+			const clickHandler = (target) => {
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.player.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Применяем усиление
+					this.boostCard(target.card, this._boostAmount);
+					
+					// === АНИМАЦИЯ УСИЛЕНИЯ +2 (как в scoiatael_ability_1) ===
+					this.createBoostVisualEffect(target.card, target.row, gameModule);
+					
+					// Ищем артефакт в колоде
+					let artifactIndex = -1;
+					let artifactCard = null;
+					for (let i = 0; i < gameState.player.deck.length; i++) {
+						if (gameState.player.deck[i].type === 'artifact') {
+							artifactIndex = i;
+							artifactCard = gameState.player.deck[i];
+							break;
+						}
+					}
+					
+					if (artifactCard && gameState.player.hand.length < 10) {
+						gameState.player.deck.splice(artifactIndex, 1);
+						gameState.player.hand.push(artifactCard);
+						gameModule.displayPlayerHand();
+						gameModule.displayPlayerDeck();
+						gameModule.showGameMessage(`Артефакт "${artifactCard.name}" добавлен в руку из колоды!`, 'info');
+						audioManager.playSound('cardAdd');
+					} else if (gameState.player.hand.length >= 10) {
+						gameModule.showGameMessage('Нет места в руке для артефакта', 'warning');
+					} else {
+						gameModule.showGameMessage('В колоде нет артефактов', 'warning');
+					}
+					
+					gameState.player.abilityUsedThisRound = true;
+					gameModule.updateRowStrength(target.row, 'player');
+					gameModule.updateTotalScoreDisplays();
+					gameModule.updateCardStrengthDisplay(target.card, target.row, 'player');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на ${this._boostAmount} ед.`, 'info');
+					audioManager.playSound('card_boost');
+					
+					this.removeHighlights(gameState);
+				};
+			};
+			
+			// Подсвечиваем доступные карты (не героев)
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					const cardId = card.dataset.cardId;
+					const uniqueId = card.dataset.uniqueId;
+					const target = friendlyUnits.find(u => 
+						(u.card.id === cardId || u.card.uniqueId === uniqueId)
+					);
+					if (target) {
+						// Дополнительная проверка: убеждаемся, что это не герой
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						card.style.cursor = 'pointer';
+						card.classList.add('boost-target');
+						
+						const handler = clickHandler(target);
+						card.addEventListener('click', handler);
+						this._clickHandlers.push({ element: card, handler: handler });
+						
+						card.addEventListener('mouseenter', () => {
+							card.style.transform = 'scale(1.05)';
+							card.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #4CAF50)';
+						});
+						
+						card.addEventListener('mouseleave', () => {
+							card.style.transform = 'scale(1)';
+							card.style.filter = '';
+						});
+					}
+				});
+			}
+			
+			// === КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) ===
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ +2 (как в scoiatael_ability_1) =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +2 (зелёный)
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+2';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
+		},
+		
+		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				// Отменяем выделение и сбрасываем флаг использования
+				this.removeHighlights(gameState);
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// Сбрасываем флаг использования способности
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				// Обновляем иконку способности (возвращаем активное состояние)
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.classList.remove('boost-target');
+					card.style.filter = '';
+					card.style.transform = '';
+					card.style.boxShadow = '';
+				});
+			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			this.removeCancelButton();
+		},
+		
+		boostCard: function(card, amount) {
+			if (card.baseStrength === undefined) card.baseStrength = card.strength;
+			if (card.originalStrength === undefined) card.originalStrength = card.strength;
+			card.strength = (card.strength || 0) + amount;
+			card.currentStrength = card.strength;
+			card.modifiedStrength = card.strength;
+			card._displayStrength = card.strength;
+		}
+	},
 	'realms_ability_4': {
 		name: 'Побуждение к действию',
 		description: 'Усильте дружественный отряд на поле на 3 еденицы',
@@ -1288,27 +2480,57 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			// Сохраняем состояние для отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._boostAmount = 3;
+			
 			this.showTargetSelection(friendlyUnits, gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(friendlyUnits, gameState, gameModule) {
 			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
 			
 			const clickHandler = (target) => {
-				return () => {
-					this.boostCard(target.card, 3);
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.player.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Применяем усиление
+					this.boostCard(target.card, this._boostAmount);
+					
+					// === АНИМАЦИЯ УСИЛЕНИЯ +3 (как в scoiatael_ability_1) ===
+					this.createBoostVisualEffect(target.card, target.row, gameModule);
+					
 					gameState.player.abilityUsedThisRound = true;
 					
 					gameModule.updateRowStrength(target.row, 'player');
 					gameModule.updateTotalScoreDisplays();
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на 3 ед.`, 'info');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на ${this._boostAmount} ед.`, 'info');
 					audioManager.playSound('card_boost');
 					
-					this.removeTargetHighlights();
+					this.removeHighlights(gameState);
 				};
 			};
 			
+			// Подсвечиваем доступные карты (не героев)
 			for (const row of rows) {
 				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
@@ -1320,23 +2542,187 @@ const leaderAbilities = {
 						(u.card.id === cardId || u.card.uniqueId === uniqueId)
 					);
 					if (target) {
+						// Дополнительная проверка: убеждаемся, что это не герой
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
 						card.style.cursor = 'pointer';
 						card.classList.add('boost-target');
-						card.addEventListener('click', clickHandler(target));
+						
+						const handler = clickHandler(target);
+						card.addEventListener('click', handler);
+						this._clickHandlers.push({ element: card, handler: handler });
+						
 						card.addEventListener('mouseenter', () => {
 							card.style.transform = 'scale(1.05)';
+							card.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #4CAF50)';
 						});
+						
 						card.addEventListener('mouseleave', () => {
 							card.style.transform = 'scale(1)';
+							card.style.filter = '';
 						});
 					}
 				});
 			}
 			
-			this.showTargetCancelButton();
+			// === КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) ===
+			this.showCancelButton(gameState, gameModule);
 		},
 		
-		removeTargetHighlights: function() {
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ +3 (как в scoiatael_ability_1) =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +3 (зелёный)
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+3';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
+		},
+		
+		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				// Отменяем выделение и сбрасываем флаг использования
+				this.removeHighlights(gameState);
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// Сбрасываем флаг использования способности
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				// Обновляем иконку способности (возвращаем активное состояние)
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		removeHighlights: function(gameState) {
 			const rows = ['close', 'ranged', 'siege'];
 			for (const row of rows) {
 				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
@@ -1345,30 +2731,21 @@ const leaderAbilities = {
 				cards.forEach(card => {
 					card.style.cursor = '';
 					card.classList.remove('boost-target');
+					card.style.filter = '';
 					card.style.transform = '';
-					const newCard = card.cloneNode(true);
-					card.parentNode.replaceChild(newCard, card);
+					card.style.boxShadow = '';
 				});
 			}
-			this.removeTargetCancelButton();
-		},
-		
-		showTargetCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
-			const cancelBtn = document.createElement('button');
-			cancelBtn.id = 'abilityCancelBtn';
-			cancelBtn.textContent = 'ОТМЕНА';
-			cancelBtn.className = 'ability-cancel-btn';
-			cancelBtn.addEventListener('click', () => {
-				this.removeTargetHighlights();
-				audioManager.playSound('button');
-			});
-			document.body.appendChild(cancelBtn);
-		},
-		
-		removeTargetCancelButton: function() {
-			const btn = document.getElementById('abilityCancelBtn');
-			if (btn) btn.remove();
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			this.removeCancelButton();
 		},
 		
 		boostCard: function(card, amount) {
@@ -1800,234 +3177,438 @@ const leaderAbilities = {
 		}
 	},
 
-    'nilfgaard_ability_1': {
-        name: 'Имперское построение',
-        description: 'Усильте 2 дружественных отряда на 1 еденицу и поменяйте их местами (только в пределах одного ряда)',
-        execute: function(gameState, gameModule) {
-            this.showDoubleTargetSelection(gameState, gameModule);
-            return true;
-        },
-        
-        showDoubleTargetSelection: function(gameState, gameModule) {
-            let selectedCards = [];
-            const rows = ['close', 'ranged', 'siege'];
-            
-            const clickHandler = (event) => {
-                const cardElement = event.currentTarget;
-                const cardId = cardElement.dataset.cardId;
-                const uniqueId = cardElement.dataset.uniqueId;
-                const row = cardElement.dataset.row;
-                
-                let targetCard = null;
-                for (const r of rows) {
-                    const card = gameState.player.rows[r].cards.find(c => 
-                        (c.id === cardId || c.uniqueId === uniqueId)
-                    );
-                    if (card) {
-                        targetCard = card;
-                        break;
-                    }
-                }
-                
-                if (targetCard) {
-                    if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
-                        gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
-                        return;
-                    }
-                    
-                    const alreadySelected = selectedCards.some(s => s.card.uniqueId === targetCard.uniqueId);
-                    if (!alreadySelected && selectedCards.length < 2) {
-                        selectedCards.push({ card: targetCard, row: row, element: cardElement });
-                        cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #4CAF50)';
-                        audioManager.playSound('cardAdd');
-                    } else if (alreadySelected) {
-                        selectedCards = selectedCards.filter(s => s.card.uniqueId !== targetCard.uniqueId);
-                        cardElement.style.filter = '';
-                        audioManager.playSound('cardRemove');
-                    }
-                    
-                    this.updateSelectionCounter(2, selectedCards.length);
-                }
-            };
-            
-            this.highlightPlayerUnits(gameState, rows, clickHandler);
-            this.createSelectionCounter(2);
-            this.showConfirmButton(() => {
-                if (selectedCards.length !== 2) {
-                    gameModule.showGameMessage('Выберите 2 отряда', 'warning');
-                    return;
-                }
-                
-                if (selectedCards[0].row !== selectedCards[1].row) {
-                    gameModule.showGameMessage('Отряды должны быть в одном ряду для обмена!', 'warning');
-                    this.removeHighlights();
-                    this.removeSelectionCounter();
-                    return;
-                }
-                
-                // Усиливаем оба отряда
-                this.boostCard(selectedCards[0].card, 1);
-                this.boostCard(selectedCards[1].card, 1);
-                
-                // Меняем местами
-                const rowCards = gameState.player.rows[selectedCards[0].row].cards;
-                const index1 = rowCards.findIndex(c => c.uniqueId === selectedCards[0].card.uniqueId);
-                const index2 = rowCards.findIndex(c => c.uniqueId === selectedCards[1].card.uniqueId);
-                if (index1 !== -1 && index2 !== -1) {
-                    [rowCards[index1], rowCards[index2]] = [rowCards[index2], rowCards[index1]];
-                    gameModule.redrawRow(selectedCards[0].row, 'player');
-                }
-                
-                gameState.player.abilityUsedThisRound = true;
-                gameModule.updateTotalScoreDisplays();
-                gameModule.showGameMessage(`Способность "${this.name}" активирована! Отряды усилены и обменяны местами.`, 'info');
-                audioManager.playSound('card_boost');
-                
-                this.removeHighlights();
-                this.removeSelectionCounter();
-            });
-        },
-        
-        highlightPlayerUnits: function(gameState, rows, clickHandler) {
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = 'pointer';
-                    card.style.transition = 'all 0.2s ease';
-                    card.dataset.row = row;
-                    card.addEventListener('click', clickHandler);
-                    card.addEventListener('mouseenter', () => {
-                        if (!card.style.filter || !card.style.filter.includes('#4CAF50')) {
-                            card.style.transform = 'scale(1.05)';
-                        }
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        card.style.transform = 'scale(1)';
-                    });
-                });
-            }
-            this.showCancelButton();
-        },
-        
-        createSelectionCounter: function(max) {
-            if (document.getElementById('abilityCounter')) return;
-            const counter = document.createElement('div');
-            counter.id = 'abilityCounter';
-            counter.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0,0,0,0.8);
-                color: #d4af37;
-                padding: 10px 20px;
-                border-radius: 5px;
-                font-family: 'Gwent', sans-serif;
-                font-size: 16px;
-                z-index: 10002;
-            `;
-            counter.textContent = `Выбрано: 0/${max}`;
-            document.body.appendChild(counter);
-        },
-        
-        updateSelectionCounter: function(max, current) {
-            const counter = document.getElementById('abilityCounter');
-            if (counter) counter.textContent = `Выбрано: ${current}/${max}`;
-        },
-        
-        removeSelectionCounter: function() {
-            const counter = document.getElementById('abilityCounter');
-            if (counter) counter.remove();
-        },
-        
-        showConfirmButton: function(onConfirm) {
-            if (document.getElementById('abilityConfirmBtn')) return;
-            const confirmBtn = document.createElement('button');
-            confirmBtn.id = 'abilityConfirmBtn';
-            confirmBtn.textContent = 'ПОДТВЕРДИТЬ ОБМЕН';
-            confirmBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: #4CAF50;
-                color: white;
-                border: none;
-                padding: 10px 30px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-weight: bold;
-                z-index: 10002;
-                font-family: 'Gwent', sans-serif;
-            `;
-            confirmBtn.addEventListener('click', () => {
-                onConfirm();
-                audioManager.playSound('button');
-            });
-            document.body.appendChild(confirmBtn);
-        },
-        
-        removeHighlights: function() {
-            const rows = ['close', 'ranged', 'siege'];
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = '';
-                    card.style.filter = '';
-                    card.style.transform = '';
-                    const newCard = card.cloneNode(true);
-                    card.parentNode.replaceChild(newCard, card);
-                });
-            }
-            this.removeCancelButton();
-            const confirmBtn = document.getElementById('abilityConfirmBtn');
-            if (confirmBtn) confirmBtn.remove();
-        },
-        
-        showCancelButton: function() {
-            if (document.getElementById('abilityCancelBtn')) return;
-            const cancelBtn = document.createElement('button');
-            cancelBtn.id = 'abilityCancelBtn';
-            cancelBtn.textContent = 'ОТМЕНА';
-            cancelBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                background: #d4af37;
-                color: #1a1a1a;
-                border: none;
-                padding: 10px 30px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-weight: bold;
-                z-index: 10002;
-                font-family: 'Gwent', sans-serif;
-            `;
-            cancelBtn.addEventListener('click', () => {
-                this.removeHighlights();
-                this.removeSelectionCounter();
-                audioManager.playSound('button');
-            });
-            document.body.appendChild(cancelBtn);
-        },
-        
-        removeCancelButton: function() {
-            const btn = document.getElementById('abilityCancelBtn');
-            if (btn) btn.remove();
-        },
-        
-        boostCard: function(card, amount) {
-            if (card.baseStrength === undefined) card.baseStrength = card.strength;
-            if (card.originalStrength === undefined) card.originalStrength = card.strength;
-            card.strength = (card.strength || 0) + amount;
-            card.currentStrength = card.strength;
-            card.modifiedStrength = card.strength;
-            card._displayStrength = card.strength;
-        }
-    },
+	'nilfgaard_ability_1': {
+		name: 'Имперское построение',
+		description: 'Усильте 2 дружественных отряда на 1 еденицу и поменяйте их местами (только в пределах одного ряда)',
+		execute: function(gameState, gameModule) {
+			// ===== ПРОВЕРЯЕМ, ЕСТЬ ЛИ МИНИМУМ 2 ОТРЯДА В ОДНОМ РЯДУ =====
+			let hasValidPair = false;
+			const rows = ['close', 'ranged', 'siege'];
+			
+			for (const row of rows) {
+				const rowCards = gameState.player.rows[row].cards;
+				// Считаем только отряды (не герои)
+				const unitCount = rowCards.filter(card => 
+					card.type === 'unit' && 
+					!(card.tags && (card.tags.includes('hero') || card.tags.includes('герой')))
+				).length;
+				
+				if (unitCount >= 2) {
+					hasValidPair = true;
+					break;
+				}
+			}
+			
+			// ===== ЕСЛИ НЕТ 2-Х ОТРЯДОВ В ОДНОМ РЯДУ - ВОЗВРАЩАЕМ FALSE =====
+			if (!hasValidPair) {
+				gameModule.showGameMessage('Нужно минимум 2 отряда в одном ряду для обмена', 'warning');
+				return false;
+			}
+			
+			this.showDoubleTargetSelection(gameState, gameModule);
+			return true;
+		},
+		
+		showDoubleTargetSelection: function(gameState, gameModule) {
+			let selectedCards = [];
+			const rows = ['close', 'ranged', 'siege'];
+			
+			// Сохраняем ссылки на обработчики
+			this._clickHandlers = [];
+			this._mouseEnterHandlers = [];
+			this._mouseLeaveHandlers = [];
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
+			const clickHandler = (event) => {
+				const cardElement = event.currentTarget;
+				const cardId = cardElement.dataset.cardId;
+				const uniqueId = cardElement.dataset.uniqueId;
+				const row = cardElement.dataset.row;
+				
+				let targetCard = null;
+				for (const r of rows) {
+					const card = gameState.player.rows[r].cards.find(c => 
+						(c.id === cardId || c.uniqueId === uniqueId)
+					);
+					if (card) {
+						targetCard = card;
+						break;
+					}
+				}
+				
+				if (targetCard) {
+					// Проверяем, что это отряд
+					if (targetCard.type !== 'unit') {
+						gameModule.showGameMessage('Можно выбирать только отряды!', 'warning');
+						return;
+					}
+					
+					// Проверяем героя
+					if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
+						return;
+					}
+					
+					const alreadySelected = selectedCards.some(s => s.card.uniqueId === targetCard.uniqueId);
+					if (!alreadySelected && selectedCards.length < 2) {
+						selectedCards.push({ card: targetCard, row: row, element: cardElement });
+						cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #4CAF50)';
+						audioManager.playSound('cardAdd');
+					} else if (alreadySelected) {
+						selectedCards = selectedCards.filter(s => s.card.uniqueId !== targetCard.uniqueId);
+						cardElement.style.filter = '';
+						audioManager.playSound('cardRemove');
+					}
+					
+					this.updateSelectionCounter(2, selectedCards.length);
+				}
+			};
+			
+			this.highlightPlayerUnits(gameState, rows, clickHandler);
+			this.createSelectionCounter(2);
+			this.showConfirmButton(() => {
+				if (selectedCards.length !== 2) {
+					gameModule.showGameMessage('Выберите 2 отряда', 'warning');
+					return;
+				}
+				
+				if (selectedCards[0].row !== selectedCards[1].row) {
+					gameModule.showGameMessage('Отряды должны быть в одном ряду для обмена!', 'warning');
+					this.removeHighlights(gameState);
+					this.removeSelectionCounter();
+					return;
+				}
+				
+				// Усиливаем оба отряда с анимацией
+				selectedCards.forEach(item => {
+					this.boostCard(item.card, 1);
+					this.createBoostVisualEffect(item.card, item.row, gameModule);
+				});
+				
+				// Меняем местами
+				const rowCards = gameState.player.rows[selectedCards[0].row].cards;
+				const index1 = rowCards.findIndex(c => c.uniqueId === selectedCards[0].card.uniqueId);
+				const index2 = rowCards.findIndex(c => c.uniqueId === selectedCards[1].card.uniqueId);
+				if (index1 !== -1 && index2 !== -1) {
+					[rowCards[index1], rowCards[index2]] = [rowCards[index2], rowCards[index1]];
+					gameModule.redrawRow(selectedCards[0].row, 'player');
+				}
+				
+				gameState.player.abilityUsedThisRound = true;
+				gameModule.updateTotalScoreDisplays();
+				gameModule.showGameMessage(`Способность "${this.name}" активирована! Отряды усилены и обменяны местами.`, 'info');
+				audioManager.playSound('card_boost');
+				
+				this.removeHighlights(gameState);
+				this.removeSelectionCounter();
+				this.removeCancelButton();
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+		},
+		
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+1';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
+		},
+		
+		highlightPlayerUnits: function(gameState, rows, clickHandler) {
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${this._gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					const uniqueId = card.dataset.uniqueId;
+					
+					// Находим карту в gameState
+					let targetCard = null;
+					for (const r of rows) {
+						const found = gameState.player.rows[r].cards.find(c => c.uniqueId === uniqueId);
+						if (found) {
+							targetCard = found;
+							break;
+						}
+					}
+					
+					if (targetCard && targetCard.type === 'unit') {
+						// Проверяем, что это не герой
+						if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) return;
+						
+						card.style.cursor = 'pointer';
+						card.style.transition = 'all 0.2s ease';
+						card.dataset.row = row;
+						card.addEventListener('click', clickHandler);
+						
+						// Сохраняем обработчик для удаления
+						this._clickHandlers.push({ element: card, handler: clickHandler });
+						
+						// Обработчики наведения
+						const mouseEnterHandler = () => {
+							if (!card.style.filter || !card.style.filter.includes('#4CAF50')) {
+								card.style.transform = 'scale(1.05)';
+							}
+						};
+						
+						const mouseLeaveHandler = () => {
+							card.style.transform = 'scale(1)';
+						};
+						
+						card.addEventListener('mouseenter', mouseEnterHandler);
+						card.addEventListener('mouseleave', mouseLeaveHandler);
+						
+						this._mouseEnterHandlers.push({ element: card, handler: mouseEnterHandler });
+						this._mouseLeaveHandlers.push({ element: card, handler: mouseLeaveHandler });
+					}
+				});
+			}
+			this.showCancelButton(gameState);
+		},
+		
+		createSelectionCounter: function(max) {
+			if (document.getElementById('abilityCounter')) return;
+			const counter = document.createElement('div');
+			counter.id = 'abilityCounter';
+			counter.style.cssText = `
+				position: fixed;
+				top: 20px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: rgba(0,0,0,0.8);
+				color: #d4af37;
+				padding: 10px 20px;
+				border-radius: 5px;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				z-index: 10002;
+			`;
+			counter.textContent = `Выбрано: 0/${max}`;
+			document.body.appendChild(counter);
+		},
+		
+		updateSelectionCounter: function(max, current) {
+			const counter = document.getElementById('abilityCounter');
+			if (counter) counter.textContent = `Выбрано: ${current}/${max}`;
+		},
+		
+		removeSelectionCounter: function() {
+			const counter = document.getElementById('abilityCounter');
+			if (counter) counter.remove();
+		},
+		
+		showConfirmButton: function(onConfirm) {
+			if (document.getElementById('abilityConfirmBtn')) return;
+			const confirmBtn = document.createElement('button');
+			confirmBtn.id = 'abilityConfirmBtn';
+			confirmBtn.textContent = 'ПОДТВЕРДИТЬ ОБМЕН';
+			confirmBtn.style.cssText = `
+				position: fixed;
+				bottom: 20px;
+				right: 20px;
+				background: #4CAF50;
+				color: white;
+				border: none;
+				padding: 10px 30px;
+				border-radius: 5px;
+				cursor: pointer;
+				font-weight: bold;
+				z-index: 10002;
+				font-family: 'Gwent', sans-serif;
+				transition: all 0.3s ease;
+			`;
+			confirmBtn.addEventListener('mouseenter', () => {
+				confirmBtn.style.transform = 'scale(1.05)';
+				confirmBtn.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.5)';
+			});
+			confirmBtn.addEventListener('mouseleave', () => {
+				confirmBtn.style.transform = 'scale(1)';
+				confirmBtn.style.boxShadow = 'none';
+			});
+			confirmBtn.addEventListener('click', () => {
+				onConfirm();
+				audioManager.playSound('button');
+			});
+			document.body.appendChild(confirmBtn);
+			this._confirmBtn = confirmBtn;
+		},
+		
+		showCancelButton: function(gameState) {
+			if (document.getElementById('abilityCancelBtn')) return;
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 20px;
+				left: 20px;
+				background: #d4af37;
+				color: #1a1a1a;
+				border: none;
+				padding: 10px 30px;
+				border-radius: 5px;
+				cursor: pointer;
+				font-weight: bold;
+				z-index: 10002;
+				font-family: 'Gwent', sans-serif;
+				transition: all 0.3s ease;
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'scale(1)';
+				cancelBtn.style.boxShadow = 'none';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				this.removeHighlights(gameState);
+				this.removeSelectionCounter();
+				this.removeCancelButton();
+				audioManager.playSound('button');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД removeHighlights =====
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${this._gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.style.filter = '';
+					card.style.transform = '';
+					card.style.boxShadow = '';
+				});
+			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			// Удаляем обработчики mouseenter
+			if (this._mouseEnterHandlers) {
+				this._mouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._mouseEnterHandlers = [];
+			}
+			
+			// Удаляем обработчики mouseleave
+			if (this._mouseLeaveHandlers) {
+				this._mouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._mouseLeaveHandlers = [];
+			}
+			
+			this.removeCancelButton();
+			const confirmBtn = document.getElementById('abilityConfirmBtn');
+			if (confirmBtn) confirmBtn.remove();
+			this._confirmBtn = null;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		boostCard: function(card, amount) {
+			if (card.baseStrength === undefined) card.baseStrength = card.strength;
+			if (card.originalStrength === undefined) card.originalStrength = card.strength;
+			card.strength = (card.strength || 0) + amount;
+			card.currentStrength = card.strength;
+			card.modifiedStrength = card.strength;
+			card._displayStrength = card.strength;
+		}
+	},
 	'nilfgaard_ability_2': {
 		name: 'Заточение',
 		description: 'Нанесите вражескому отряду 3 еденицы урона',
@@ -2037,12 +3618,14 @@ const leaderAbilities = {
 			const rows = ['close', 'ranged', 'siege'];
 			
 			rows.forEach(row => {
-				gameState.opponent.rows[row].cards.forEach((card, index) => {
+				gameState.opponent.rows[row].cards.forEach((card) => {
 					if (card.type === 'unit') {
+						// Пропускаем героев
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 						enemyUnits.push({
 							card: card,
 							row: row,
-							index: index
+							uniqueId: card.uniqueId
 						});
 					}
 				});
@@ -2053,103 +3636,327 @@ const leaderAbilities = {
 				return false;
 			}
 			
-			// Показываем выбор цели
+			// Сохраняем состояние для отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._damageAmount = 3;
+			
 			this.showTargetSelection(enemyUnits, gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(enemyUnits, gameState, gameModule) {
-			const modalOverlay = document.createElement('div');
-			modalOverlay.className = 'ability-target-overlay';
-			modalOverlay.style.cssText = `
-				position: fixed;
+			// Убираем старые выделения
+			this.removeHighlights(gameState);
+			
+			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
+			
+			const clickHandler = (target) => {
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.opponent.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Дополнительная проверка перед нанесением урона
+					if (target.card.type !== 'unit') {
+						gameModule.showGameMessage('Можно наносить урон только отрядам!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					if (target.card.strength <= 0) {
+						gameModule.showGameMessage('Эта карта уже уничтожена', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Наносим урон
+					this.dealDamage(target.card, this._damageAmount);
+					gameState.player.abilityUsedThisRound = true;
+					
+					// Обновляем отображение силы
+					gameModule.updateRowStrength(target.row, 'opponent');
+					gameModule.updateTotalScoreDisplays();
+					
+					// === АНИМАЦИЯ УРОНА -3 ===
+					this.createDamageVisualEffect(target.card, target.row, gameModule);
+					
+					// Если карта уничтожена
+					if (target.card.strength <= 0) {
+						this.destroyCard(gameState, target.card, target.row, gameModule);
+					}
+					
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён ${this._damageAmount} урон ${target.card.name}.`, 'info');
+					audioManager.playSound('card_damage');
+					
+					// Убираем подсветку
+					this.removeHighlights(gameState);
+				};
+			};
+			
+			// Подсвечиваем доступные карты
+			for (const row of rows) {
+				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(cardElement => {
+					const cardId = cardElement.dataset.cardId;
+					const uniqueId = cardElement.dataset.uniqueId;
+					
+					const target = enemyUnits.find(u => 
+						(u.card.id === cardId || u.card.uniqueId === uniqueId)
+					);
+					
+					if (target) {
+						// Дополнительная проверка: убеждаемся, что это отряд
+						if (target.card.type !== 'unit') return;
+						
+						// Проверяем, что это не герой
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						cardElement._targetData = target;
+						
+						cardElement.style.cursor = 'pointer';
+						cardElement.classList.add('damage-target');
+						
+						const handler = clickHandler(target);
+						cardElement.addEventListener('click', handler);
+						this._clickHandlers.push({ element: cardElement, handler: handler });
+						
+						cardElement.addEventListener('mouseenter', () => {
+							cardElement.style.transform = 'scale(1.05)';
+							cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #ff4444)';
+						});
+						
+						cardElement.addEventListener('mouseleave', () => {
+							cardElement.style.transform = 'scale(1)';
+							cardElement.style.filter = '';
+						});
+					}
+				});
+			}
+			
+			// === КНОПКА ОТМЕНЫ ===
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== АНИМАЦИЯ УРОНА -3 (как в scoiatael_ability_3) =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией -3 (красный)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-3';
+			damageOverlay.style.cssText = `
+				position: absolute;
 				top: 0;
 				left: 0;
 				width: 100%;
 				height: 100%;
-				background: rgba(0,0,0,0.85);
 				display: flex;
-				flex-direction: column;
 				align-items: center;
 				justify-content: center;
-				z-index: 10001;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
 				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
 			`;
 			
-			modalOverlay.innerHTML = `
-				<div class="ability-target-modal">
-					<div class="ability-target-title">ВЫБЕРИТЕ ЦЕЛЬ ДЛЯ УРОНА (3 ЕД.)</div>
-					<div class="ability-target-cards">
-						${enemyUnits.map((unit, idx) => `
-							<div class="ability-target-card" data-target-index="${idx}">
-								<div class="ability-target-card-name">${unit.card.name}</div>
-								<div class="ability-target-card-strength">Сила: ${unit.card.strength} → ${Math.max(0, unit.card.strength - 3)}</div>
-								<div class="ability-target-card-row">Ряд: ${this.getRowName(unit.row)}</div>
-							</div>
-						`).join('')}
-					</div>
-					<button class="ability-cancel-btn">ОТМЕНА</button>
-				</div>
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
+		},
+		
+		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
 			
-			document.body.appendChild(modalOverlay);
-			
-			const targetCards = modalOverlay.querySelectorAll('.ability-target-card');
-			targetCards.forEach(card => {
-				card.addEventListener('click', (e) => {
-					const index = parseInt(card.dataset.targetIndex);
-					const target = enemyUnits[index];
-					
-					this.dealDamage(target.card, 3);
-					gameState.player.abilityUsedThisRound = true;
-					
-					gameModule.updateRowStrength(target.row, 'opponent');
-					gameModule.updateTotalScoreDisplays();
-					gameModule.updateCardStrengthDisplay(target.card, target.row, 'opponent');
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён 3 урон ${target.card.name}.`, 'info');
-					audioManager.playSound('card_damage');
-					
-					document.body.removeChild(modalOverlay);
-				});
-				
-				card.addEventListener('mouseenter', () => {
-					audioManager.playSound('touch');
-					card.style.transform = 'scale(1.02)';
-				});
-				
-				card.addEventListener('mouseleave', () => {
-					card.style.transform = 'scale(1)';
-				});
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
 			});
 			
-			const cancelBtn = modalOverlay.querySelector('.ability-cancel-btn');
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
 			cancelBtn.addEventListener('click', () => {
-				document.body.removeChild(modalOverlay);
+				// Отменяем выделение и сбрасываем флаг использования
+				this.removeHighlights(gameState);
 				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// Сбрасываем флаг использования способности
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				// Обновляем иконку способности (возвращаем активное состояние)
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
 			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			
+			for (const row of rows) {
+				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.classList.remove('damage-target');
+					card.style.transform = '';
+					card.style.filter = '';
+					card.style.boxShadow = '';
+				});
+			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			this._currentTargets = null;
+			this.removeCancelButton();
 		},
 		
 		dealDamage: function(card, amount) {
-			if (card.baseStrength === undefined) {
-				card.baseStrength = card.strength;
-			}
-			if (card.originalStrength === undefined) {
-				card.originalStrength = card.strength;
-			}
-			
+			if (card.baseStrength === undefined) card.baseStrength = card.strength;
+			if (card.originalStrength === undefined) card.originalStrength = card.strength;
 			const newStrength = (card.strength || 0) - amount;
 			card.strength = Math.max(0, newStrength);
 			card.currentStrength = card.strength;
 			card._displayStrength = card.strength;
 		},
 		
-		getRowName: function(row) {
-			const names = {
-				'close': 'Ближний бой',
-				'ranged': 'Дальний бой',
-				'siege': 'Осадный'
-			};
-			return names[row] || row;
+		destroyCard: function(gameState, card, row, gameModule) {
+			const rowCards = gameState.opponent.rows[row].cards;
+			const cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
+			if (cardIndex !== -1) {
+				const destroyedCard = rowCards.splice(cardIndex, 1)[0];
+				gameModule.addCardToDiscard(destroyedCard, 'opponent');
+				gameModule.redrawRow(row, 'opponent');
+				gameModule.updateRowStrength(row, 'opponent');
+				audioManager.playSound('card_destroy');
+			}
 		}
 	},
 	'nilfgaard_ability_3': {
@@ -2161,14 +3968,22 @@ const leaderAbilities = {
 			
 			rows.forEach(row => {
 				gameState.opponent.rows[row].cards.forEach((card) => {
-					if (card.type === 'unit' && (card.strength || 0) <= 5) {
+					if (card.type === 'unit') {
 						const isHero = card.tags && (card.tags.includes('hero') || card.tags.includes('герой'));
 						if (!isHero) {
-							destroyableUnits.push({ 
-								card: card, 
-								row: row,
-								uniqueId: card.uniqueId 
-							});
+							const currentStrength = card.currentStrength !== undefined ? 
+								card.currentStrength : (card.strength || 0);
+							if (currentStrength <= 5 && currentStrength > 0) {
+								// ===== УБЕЖДАЕМСЯ, ЧТО У КАРТЫ ЕСТЬ uniqueId =====
+								if (!card.uniqueId) {
+									card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+								}
+								destroyableUnits.push({ 
+									card: card, 
+									row: row,
+									uniqueId: card.uniqueId 
+								});
+							}
 						}
 					}
 				});
@@ -2179,50 +3994,74 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
 			this.showTargetSelection(destroyableUnits, gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(destroyableUnits, gameState, gameModule) {
-			// Сохраняем ссылки на обработчики для последующего удаления
-			const handlers = new Map();
+			this._clickHandlers = [];
+			this._mouseEnterHandlers = [];
+			this._mouseLeaveHandlers = [];
+			this.currentDestroyableUnits = destroyableUnits;
 			
-			// Подсвечиваем только подходящие карты
 			for (const unit of destroyableUnits) {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(unit.row)}Row`);
 				if (!rowElement) continue;
 				
-				// Ищем карту на доске по uniqueId
+				// ===== ИЩЕМ ПО uniqueId =====
 				let cardElement = rowElement.querySelector(`[data-unique-id="${unit.uniqueId}"]`);
 				
-				// Если не нашли по uniqueId, ищем по card-id
+				// Если не нашли по uniqueId, обновляем DOM
+				if (!cardElement) {
+					// Ищем все карты в ряду и обновляем их data-unique-id
+					const allCards = rowElement.querySelectorAll('.board-card');
+					const rowState = gameState.opponent.rows[unit.row];
+					allCards.forEach((el, index) => {
+						if (index < rowState.cards.length) {
+							const cardData = rowState.cards[index];
+							if (cardData.uniqueId) {
+								el.dataset.uniqueId = cardData.uniqueId;
+							}
+						}
+					});
+					// Пробуем найти снова
+					cardElement = rowElement.querySelector(`[data-unique-id="${unit.uniqueId}"]`);
+				}
+				
+				// Если всё ещё не нашли, пробуем по id (как запасной вариант)
 				if (!cardElement) {
 					cardElement = rowElement.querySelector(`[data-card-id="${unit.card.id}"]`);
+					// Если нашли по id, добавляем uniqueId в DOM
+					if (cardElement && unit.uniqueId) {
+						cardElement.dataset.uniqueId = unit.uniqueId;
+					}
 				}
 				
 				if (cardElement) {
-					// Сохраняем оригинальные стили
-					const originalCursor = cardElement.style.cursor;
-					const originalFilter = cardElement.style.filter;
-					
-					// Подсвечиваем карту
 					cardElement.style.cursor = 'pointer';
 					cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
 					cardElement.classList.add('destroyable-target');
 					
-					// Создаем обработчик с замыканием на конкретную карту
+					// ===== СОХРАНЯЕМ uniqueId В DOM =====
+					if (unit.uniqueId) {
+						cardElement.dataset.uniqueId = unit.uniqueId;
+					}
+					
 					const clickHandler = (event) => {
 						event.stopPropagation();
 						event.preventDefault();
 						
-						// Находим актуальную карту в gameState
+						// ===== ИЩЕМ КАРТУ ПО uniqueId =====
 						let targetCard = null;
 						let targetRow = null;
+						const targetUniqueId = unit.uniqueId;
 						
-						// Ищем по uniqueId
 						for (const row of ['close', 'ranged', 'siege']) {
 							const foundCard = gameState.opponent.rows[row].cards.find(c => 
-								c.uniqueId === unit.uniqueId
+								c.uniqueId === targetUniqueId
 							);
 							if (foundCard) {
 								targetCard = foundCard;
@@ -2231,8 +4070,9 @@ const leaderAbilities = {
 							}
 						}
 						
-						// Если не нашли по uniqueId, ищем по id
+						// Если не нашли по uniqueId (маловероятно, но на всякий случай)
 						if (!targetCard) {
+							console.warn('Карта не найдена по uniqueId, ищем по id');
 							for (const row of ['close', 'ranged', 'siege']) {
 								const foundCard = gameState.opponent.rows[row].cards.find(c => 
 									c.id === unit.card.id
@@ -2246,20 +4086,44 @@ const leaderAbilities = {
 						}
 						
 						if (targetCard) {
-							this.destroyCard(gameState, targetCard, targetRow, gameModule);
-							gameState.player.abilityUsedThisRound = true;
+							// Создаём анимацию уничтожения
+							this.createDestroyVisualEffect(targetCard, targetRow, gameModule);
 							
-							gameModule.updateTotalScoreDisplays();
-							gameModule.showGameMessage(`Способность "${this.name}" активирована! ${targetCard.name} уничтожен.`, 'info');
-							audioManager.playSound('card_destroy');
+							// Уничтожаем карту с задержкой
+							setTimeout(() => {
+								// ===== ЕЩЁ РАЗ ПРОВЕРЯЕМ, ЧТО КАРТА ВСЁ ЕЩЁ НА ПОЛЕ =====
+								let stillExists = false;
+								if (targetRow && gameState.opponent.rows[targetRow]) {
+									stillExists = gameState.opponent.rows[targetRow].cards.some(
+										c => c.uniqueId === targetCard.uniqueId
+									);
+								}
+								
+								if (stillExists) {
+									this.destroyCard(gameState, targetCard, targetRow, gameModule);
+									gameState.player.abilityUsedThisRound = true;
+									
+									gameModule.updateTotalScoreDisplays();
+									gameModule.showGameMessage(`Способность "${this.name}" активирована! ${targetCard.name} уничтожен.`, 'info');
+									audioManager.playSound('card_destroy');
+									
+									if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+										window.boardModule.updateAbilityAvailability(gameState);
+									}
+								} else {
+									gameModule.showGameMessage('Эта карта уже была уничтожена', 'warning');
+								}
+							}, 500);
+						} else {
+							gameModule.showGameMessage('Карта не найдена на поле', 'warning');
 						}
 						
-						// Убираем подсветку и обработчики всех карт
+						// Убираем подсветку и обработчики
 						this.removeDestroyHighlights(destroyableUnits, gameModule);
 					};
 					
 					cardElement.addEventListener('click', clickHandler);
-					handlers.set(cardElement, clickHandler);
+					this._clickHandlers.push({ element: cardElement, handler: clickHandler });
 					
 					// Эффект при наведении
 					const mouseEnterHandler = () => {
@@ -2272,50 +4136,116 @@ const leaderAbilities = {
 					cardElement.addEventListener('mouseenter', mouseEnterHandler);
 					cardElement.addEventListener('mouseleave', mouseLeaveHandler);
 					
-					// Сохраняем обработчики наведения
-					handlers.set(cardElement + '_enter', mouseEnterHandler);
-					handlers.set(cardElement + '_leave', mouseLeaveHandler);
+					this._mouseEnterHandlers.push({ element: cardElement, handler: mouseEnterHandler });
+					this._mouseLeaveHandlers.push({ element: cardElement, handler: mouseLeaveHandler });
 				}
 			}
-			
-			// Сохраняем для удаления
-			this.currentHandlers = handlers;
-			this.currentDestroyableUnits = destroyableUnits;
 			
 			this.showDestroyCancelButton(gameState, gameModule);
 		},
 		
-		removeDestroyHighlights: function(destroyableUnits, gameModule) {
-			// Удаляем все обработчики и подсветку
-			if (this.currentHandlers) {
-				for (const unit of destroyableUnits) {
-					const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(unit.row)}Row`);
-					if (rowElement) {
-						let cardElement = rowElement.querySelector(`[data-unique-id="${unit.uniqueId}"]`);
-						if (!cardElement) {
-							cardElement = rowElement.querySelector(`[data-card-id="${unit.card.id}"]`);
-						}
-						if (cardElement) {
-							// Удаляем обработчик клика
-							const clickHandler = this.currentHandlers.get(cardElement);
-							if (clickHandler) {
-								cardElement.removeEventListener('click', clickHandler);
-							}
-							// Удаляем обработчики наведения
-							const enterHandler = this.currentHandlers.get(cardElement + '_enter');
-							const leaveHandler = this.currentHandlers.get(cardElement + '_leave');
-							if (enterHandler) cardElement.removeEventListener('mouseenter', enterHandler);
-							if (leaveHandler) cardElement.removeEventListener('mouseleave', leaveHandler);
-							
-							// Сбрасываем стили
-							cardElement.style.cursor = '';
-							cardElement.style.filter = '';
-							cardElement.style.transform = '';
-							cardElement.classList.remove('destroyable-target');
-						}
+		// ===== АНИМАЦИЯ УНИЧТОЖЕНИЯ =====
+		createDestroyVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			// ===== ИЩЕМ ПО uniqueId =====
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				// Пробуем по id
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					// Если несколько копий, ищем по позиции
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
 					}
 				}
-				this.currentHandlers.clear();
+			}
+			
+			if (!cardElement) return;
+			
+			// Эффект уничтожения (как при казни)
+			const destroyOverlay = document.createElement('div');
+			destroyOverlay.className = 'card-destroy-overlay';
+			destroyOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: url('card/neutral/scorch.jpg') center/cover no-repeat;
+				z-index: 100;
+				border-radius: 5px;
+				pointer-events: none;
+				animation: destroyCardAnimation 1s ease-out forwards;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 30px 15px rgba(255, 0, 0, 0.8)';
+			cardElement.style.transition = 'box-shadow 0.3s ease-out';
+			
+			cardElement.appendChild(destroyOverlay);
+			
+			setTimeout(() => {
+				if (destroyOverlay.parentNode) {
+					destroyOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1000);
+		},
+		
+		removeDestroyHighlights: function(destroyableUnits, gameModule) {
+			// Удаляем все обработчики
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			if (this._mouseEnterHandlers) {
+				this._mouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._mouseEnterHandlers = [];
+			}
+			
+			if (this._mouseLeaveHandlers) {
+				this._mouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._mouseLeaveHandlers = [];
+			}
+			
+			// Убираем подсветку со всех карт
+			for (const unit of destroyableUnits) {
+				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(unit.row)}Row`);
+				if (rowElement) {
+					// Ищем по uniqueId
+					let cardElement = rowElement.querySelector(`[data-unique-id="${unit.uniqueId}"]`);
+					if (!cardElement) {
+						cardElement = rowElement.querySelector(`[data-card-id="${unit.card.id}"]`);
+					}
+					if (cardElement) {
+						cardElement.style.cursor = '';
+						cardElement.style.filter = '';
+						cardElement.style.transform = '';
+						cardElement.style.boxShadow = '';
+						cardElement.classList.remove('destroyable-target');
+					}
+				}
 			}
 			this.removeDestroyCancelButton();
 		},
@@ -2329,37 +4259,48 @@ const leaderAbilities = {
 			cancelBtn.className = 'ability-cancel-btn';
 			cancelBtn.style.cssText = `
 				position: fixed;
-				bottom: 20px;
+				bottom: 30px;
 				left: 50%;
 				transform: translateX(-50%);
 				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 				color: #d4af37;
 				border: 2px solid #d4af37;
-				padding: 10px 30px;
-				border-radius: 5px;
+				padding: 12px 35px;
+				border-radius: 8px;
 				cursor: pointer;
 				font-weight: bold;
 				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
 				text-transform: uppercase;
 				letter-spacing: 2px;
-				z-index: 10002;
+				z-index: 10050;
 				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
 			
 			cancelBtn.addEventListener('mouseenter', () => {
 				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
-				cancelBtn.style.boxShadow = '0 0 15px rgba(212, 175, 55, 0.5)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
 				audioManager.playSound('touch');
 			});
 			
 			cancelBtn.addEventListener('mouseleave', () => {
 				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
-				cancelBtn.style.boxShadow = 'none';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
 			
 			cancelBtn.addEventListener('click', () => {
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
 				this.removeDestroyHighlights(this.currentDestroyableUnits || [], gameModule);
 				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
 			});
 			
 			document.body.appendChild(cancelBtn);
@@ -2375,34 +4316,68 @@ const leaderAbilities = {
 			if (btn) btn.remove();
 		},
 		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД destroyCard =====
 		destroyCard: function(gameState, card, row, gameModule) {
 			const rowCards = gameState.opponent.rows[row].cards;
-			// Ищем карту по uniqueId
-			let cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
+			
+			// ===== ИЩЕМ ТОЛЬКО ПО uniqueId =====
+			let cardIndex = -1;
+			if (card.uniqueId) {
+				cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
+			}
+			
+			// Если не нашли по uniqueId, пробуем найти по id + позиции
+			if (cardIndex === -1) {
+				// Ищем по id, но проверяем, что это та же карта
+				const matchingCards = rowCards.map((c, idx) => ({ card: c, index: idx }))
+					.filter(item => item.card.id === card.id);
+				
+				if (matchingCards.length === 1) {
+					cardIndex = matchingCards[0].index;
+				} else if (matchingCards.length > 1) {
+					// Если несколько копий, ищем по дополнительным признакам
+					// Используем uniqueId из переданной карты
+					if (card.uniqueId) {
+						const found = matchingCards.find(item => item.card.uniqueId === card.uniqueId);
+						if (found) {
+							cardIndex = found.index;
+						}
+					}
+					// Если всё ещё не нашли, берём первую (но это может быть не та карта)
+					if (cardIndex === -1) {
+						console.warn('Не удалось точно определить карту для уничтожения, используется первая копия');
+						cardIndex = matchingCards[0].index;
+					}
+				}
+			}
 			
 			if (cardIndex !== -1) {
 				const destroyedCard = rowCards.splice(cardIndex, 1)[0];
 				gameModule.addCardToDiscard(destroyedCard, 'opponent');
 				gameModule.redrawRow(row, 'opponent');
 				gameModule.updateRowStrength(row, 'opponent');
+			} else {
+				console.error('Карта не найдена для уничтожения:', card);
 			}
 		}
 	},
 	'nilfgaard_ability_4': {
 		name: 'Туссентское гостеприимство',
-		description: 'Усильте случайный дружественный отряд на 1 еденицу',
+		description: 'Усильте случайный дружественный отряд на 5 еденицу',
 		execute: function(gameState, gameModule) {
-			// Собираем все дружественные отряды на поле
+			// Собираем все дружественные отряды на поле (исключая героев)
 			const friendlyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
 			rows.forEach(row => {
-				gameState.player.rows[row].cards.forEach((card, index) => {
+				gameState.player.rows[row].cards.forEach((card) => {
 					if (card.type === 'unit') {
+						// Пропускаем героев
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 						friendlyUnits.push({
 							card: card,
 							row: row,
-							index: index
+							uniqueId: card.uniqueId
 						});
 					}
 				});
@@ -2413,20 +4388,111 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			// Сохраняем состояние для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._boostAmount = 5;
+			
 			// Выбираем случайный отряд
 			const randomIndex = Math.floor(Math.random() * friendlyUnits.length);
 			const target = friendlyUnits[randomIndex];
 			
-			this.boostCard(target.card, 5);
+			this.boostCard(target.card, this._boostAmount);
+			
+			// === АНИМАЦИЯ УСИЛЕНИЯ +5 (как в scoiatael_ability_1) ===
+			this.createBoostVisualEffect(target.card, target.row, gameModule);
+			
 			gameState.player.abilityUsedThisRound = true;
 			
 			gameModule.updateRowStrength(target.row, 'player');
 			gameModule.updateTotalScoreDisplays();
 			gameModule.updateCardStrengthDisplay(target.card, target.row, 'player');
-			gameModule.showGameMessage(`Способность "${this.name}" активирована! Случайный отряд "${target.card.name}" усилен на 1 ед.`, 'info');
+			gameModule.showGameMessage(`Способность "${this.name}" активирована! Случайный отряд "${target.card.name}" усилен на ${this._boostAmount} ед.`, 'info');
 			audioManager.playSound('card_boost');
 			
 			return true;
+		},
+		
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ +5 (как в scoiatael_ability_1) =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +5 (зелёный)
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+5';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		boostCard: function(card, amount) {
@@ -2815,320 +4881,531 @@ const leaderAbilities = {
 		}
 	},
 
-'monsters_ability_1': {
-    name: 'Белый Хлад',
-    description: 'Создайте эффект мороза только в ближнем ряду противника',
-    execute: function(gameState, gameModule) {
-        const row = 'close';
-        this.applyFrostToOpponentRow(gameState, row, gameModule);
-        return true;
-    },
-    
-    applyFrostToOpponentRow: function(gameState, row, gameModule) {
-        // Убираем существующие эффекты погоды в этом ряду у противника
-        this.removeWeatherFromOpponentRow(gameState, row, gameModule);
-        
-        // Применяем мороз ТОЛЬКО к ряду противника
-        if (!gameState.weather) {
-            gameState.weather = {
-                cards: [],
-                maxWeatherCards: 3,
-                effects: {
-                    'close': null,
-                    'ranged': null,
-                    'siege': null
-                }
-            };
-        }
-        
-        gameState.weather.effects[row] = {
-            card: { name: 'Трескучий мороз', type: 'special', faction: 'monsters' },
-            image: 'board/frost.png',
-            sound: 'frost',
-            onlyOpponent: true
-        };
-        
-        // Применяем визуальный эффект ТОЛЬКО на ряд противника
-        this.applyVisualWeatherToOpponentRow(row, 'board/frost.png', gameModule);
-        if (gameModule.playWeatherSound) {
-            gameModule.playWeatherSound('frost');
-        }
-        
-        // Уменьшаем силу отрядов противника в этом ряду до 1
-        gameState.opponent.rows[row].cards.forEach(card => {
-            if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
-            
-            if (card.baseStrength === undefined) card.baseStrength = card.strength || 0;
-            if (card.originalStrength === undefined) card.originalStrength = card.strength || 0;
-            
-            card.underWeather = true;
-            card.currentStrength = 1;
-            card.strength = 1;
-            
-            // Обновляем отображение карты
-            if (gameModule.updateCardStrengthDisplay) {
-                gameModule.updateCardStrengthDisplay(card, row, 'opponent');
-            }
-        });
-        
-        if (gameModule.updateRowStrength) {
-            gameModule.updateRowStrength(row, 'opponent');
-        }
-        if (gameModule.updateTotalScoreDisplays) {
-            gameModule.updateTotalScoreDisplays();
-        }
-        
-        gameState.player.abilityUsedThisRound = true;
-        if (gameModule.showGameMessage) {
-            gameModule.showGameMessage(`Способность "${this.name}" активирована! Мороз в ближнем ряду противника.`, 'info');
-        }
-        if (audioManager && audioManager.playSound) {
-            audioManager.playSound('weather');
-        }
-    },
-    
-    applyVisualWeatherToOpponentRow: function(row, image, gameModule) {
-        const opponentRowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-        if (opponentRowElement) {
-            // Удаляем существующий эффект погоды в этом ряду
-            const existingEffect = opponentRowElement.querySelector(`[data-weather-row="${row}"][data-weather-side="opponent"]`);
-            if (existingEffect) {
-                existingEffect.remove();
-            }
-            
-            const weatherOverlay = document.createElement('div');
-            weatherOverlay.className = 'weather-effect-overlay';
-            weatherOverlay.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: url('${image}') center/cover;
-                pointer-events: none;
-                z-index: 5;
-            `;
-            weatherOverlay.dataset.weatherRow = row;
-            weatherOverlay.dataset.weatherSide = 'opponent';
-            opponentRowElement.style.position = 'relative';
-            opponentRowElement.appendChild(weatherOverlay);
-        }
-    },
-    
-    removeWeatherFromOpponentRow: function(gameState, row, gameModule) {
-        // Удаляем визуальный эффект
-        const opponentEffects = document.querySelectorAll(`[data-weather-row="${row}"][data-weather-side="opponent"]`);
-        opponentEffects.forEach(effect => effect.remove());
-        
-        // Проверяем, существует ли weather в gameState
-        if (gameState && gameState.weather && gameState.weather.effects && gameState.weather.effects[row]) {
-            gameState.weather.effects[row] = null;
-        }
-        
-        // Восстанавливаем силу карт
-        if (gameState && gameState.opponent && gameState.opponent.rows && gameState.opponent.rows[row]) {
-            gameState.opponent.rows[row].cards.forEach(card => {
-                if (card.underWeather) {
-                    card.underWeather = false;
-                    if (card.originalStrength !== undefined) {
-                        card.strength = card.originalStrength;
-                        card.currentStrength = card.originalStrength;
-                    }
-                    if (gameModule && gameModule.updateCardStrengthDisplay) {
-                        gameModule.updateCardStrengthDisplay(card, row, 'opponent');
-                    }
-                }
-            });
-            if (gameModule && gameModule.updateRowStrength) {
-                gameModule.updateRowStrength(row, 'opponent');
-            }
-        }
-    }
-},
-    'monsters_ability_2': {
-        name: 'Неутолимый голод',
-        description: 'Уничтожьте дружественный отряд, затем призовите Волколака из колоды в этом же ряду',
-        execute: function(gameState, gameModule) {
-            const friendlyUnits = [];
-            const rows = ['close', 'ranged', 'siege'];
-            
-            rows.forEach(row => {
-                gameState.player.rows[row].cards.forEach((card, index) => {
-                    if (card.type === 'unit') {
-                        friendlyUnits.push({ card: card, row: row, index: index });
-                    }
-                });
-            });
-            
-            if (friendlyUnits.length === 0) {
-                gameModule.showGameMessage('Нет дружественных отрядов для жертвоприношения', 'warning');
-                return false;
-            }
-            
-            this.showSacrificeSelection(friendlyUnits, gameState, gameModule);
-            return true;
-        },
-        
-        showSacrificeSelection: function(friendlyUnits, gameState, gameModule) {
-            const rows = ['close', 'ranged', 'siege'];
-            
-            const clickHandler = (event) => {
-                const cardElement = event.currentTarget;
-                const cardId = cardElement.dataset.cardId;
-                const uniqueId = cardElement.dataset.uniqueId;
-                const row = cardElement.dataset.row;
-                
-                let targetCard = null;
-                for (const r of rows) {
-                    const card = gameState.player.rows[r].cards.find(c => 
-                        (c.id === cardId || c.uniqueId === uniqueId)
-                    );
-                    if (card) {
-                        targetCard = card;
-                        break;
-                    }
-                }
-                
-                if (targetCard) {
-                    const sacrificedStrength = targetCard.strength || 0;
-                    const targetRow = row;
-                    
-                    // Уничтожаем отряд
-                    this.destroyFriendlyUnit(gameState, targetCard, targetRow, gameModule);
-                    
-                    // Ищем Волколака в колоде
-                    let werewolfIndex = -1;
-                    let werewolfCard = null;
-                    for (let i = 0; i < gameState.player.deck.length; i++) {
-                        const card = gameState.player.deck[i];
-                        if (card.name === 'Волколак' || (card.tags && card.tags.includes('werewolf'))) {
-                            werewolfIndex = i;
-                            werewolfCard = card;
-                            break;
-                        }
-                    }
-                    
-                    if (werewolfCard) {
-                        gameState.player.deck.splice(werewolfIndex, 1);
-                        // Усиливаем Волколака
-                        this.boostCard(werewolfCard, sacrificedStrength);
-                        gameState.player.rows[targetRow].cards.push(werewolfCard);
-                        gameModule.displayCardOnRow(targetRow, werewolfCard, 'player');
-                        gameModule.updateRowStrength(targetRow, 'player');
-                        gameModule.updateCardStrengthDisplay(werewolfCard, targetRow, 'player');
-                        gameModule.showGameMessage(`Волколак призван из колоды с силой ${werewolfCard.strength}!`, 'info');
-                    } else {
-                        gameModule.showGameMessage('В колоде нет Волколака!', 'warning');
-                    }
-                    
-                    gameState.player.abilityUsedThisRound = true;
-                    gameModule.updateTotalScoreDisplays();
-                    gameModule.showGameMessage(`Способность "${this.name}" активирована!`, 'info');
-                    audioManager.playSound('summon');
-                }
-                
-                this.removeHighlights();
-            };
-            
-            this.highlightPlayerUnitsForSacrifice(gameState, rows, clickHandler);
-        },
-        
-        highlightPlayerUnitsForSacrifice: function(gameState, rows, clickHandler) {
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = 'pointer';
-                    card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
-                    card.style.transition = 'all 0.2s ease';
-                    card.dataset.row = row;
-                    card.addEventListener('click', clickHandler);
-                    card.addEventListener('mouseenter', () => {
-                        card.style.transform = 'scale(1.05)';
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        card.style.transform = 'scale(1)';
-                    });
-                });
-            }
-            this.showCancelButton();
-        },
-        
-        destroyFriendlyUnit: function(gameState, card, row, gameModule) {
-            const rowCards = gameState.player.rows[row].cards;
-            const cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
-            if (cardIndex !== -1) {
-                const destroyedCard = rowCards.splice(cardIndex, 1)[0];
-                gameModule.addCardToDiscard(destroyedCard, 'player');
-                gameModule.redrawRow(row, 'player');
-                gameModule.updateRowStrength(row, 'player');
-                audioManager.playSound('card_destroy');
-            }
-        },
-        
-        removeHighlights: function() {
-            const rows = ['close', 'ranged', 'siege'];
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = '';
-                    card.style.filter = '';
-                    card.style.transform = '';
-                    const newCard = card.cloneNode(true);
-                    card.parentNode.replaceChild(newCard, card);
-                });
-            }
-            this.removeCancelButton();
-        },
-        
-        showCancelButton: function() {
-            if (document.getElementById('abilityCancelBtn')) return;
-            const cancelBtn = document.createElement('button');
-            cancelBtn.id = 'abilityCancelBtn';
-            cancelBtn.textContent = 'ОТМЕНА';
-            cancelBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #d4af37;
-                color: #1a1a1a;
-                border: none;
-                padding: 10px 30px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-weight: bold;
-                z-index: 10002;
-                font-family: 'Gwent', sans-serif;
-            `;
-            cancelBtn.addEventListener('click', () => {
-                this.removeHighlights();
-                audioManager.playSound('button');
-            });
-            document.body.appendChild(cancelBtn);
-        },
-        
-        removeCancelButton: function() {
-            const btn = document.getElementById('abilityCancelBtn');
-            if (btn) btn.remove();
-        },
-        
-        boostCard: function(card, amount) {
-            if (card.baseStrength === undefined) card.baseStrength = card.strength;
-            if (card.originalStrength === undefined) card.originalStrength = card.strength;
-            card.strength = (card.strength || 0) + amount;
-            card.currentStrength = card.strength;
-            card.modifiedStrength = card.strength;
-            card._displayStrength = card.strength;
-        }
-    },
+	'monsters_ability_1': {
+		name: 'Белый Хлад',
+		description: 'Создайте эффект мороза только в ближнем ряду противника',
+		execute: function(gameState, gameModule) {
+			const row = 'close';
+			this.applyFrostToOpponentRow(gameState, row, gameModule);
+			return true;
+		},
+		
+		applyFrostToOpponentRow: function(gameState, row, gameModule) {
+			// Убираем существующие эффекты погоды в этом ряду у противника
+			this.removeWeatherFromOpponentRow(gameState, row, gameModule);
+			
+			// Применяем мороз ТОЛЬКО к ряду противника
+			if (!gameState.weather) {
+				gameState.weather = {
+					cards: [],
+					maxWeatherCards: 3,
+					effects: {
+						'close': null,
+						'ranged': null,
+						'siege': null
+					}
+				};
+			}
+			
+			gameState.weather.effects[row] = {
+				card: { name: 'Трескучий мороз', type: 'special', faction: 'monsters' },
+				image: 'board/frost.png',
+				sound: 'frost',
+				onlyOpponent: true
+			};
+			
+			// Применяем визуальный эффект ТОЛЬКО на ряд противника
+			this.applyVisualWeatherToOpponentRow(row, 'board/frost.png', gameModule);
+			if (gameModule.playWeatherSound) {
+				gameModule.playWeatherSound('frost');
+			}
+			
+			// Уменьшаем силу отрядов противника в этом ряду до 1
+			gameState.opponent.rows[row].cards.forEach(card => {
+				if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+				
+				if (card.baseStrength === undefined) card.baseStrength = card.strength || 0;
+				if (card.originalStrength === undefined) card.originalStrength = card.strength || 0;
+				
+				card.underWeather = true;
+				card.currentStrength = 1;
+				card.strength = 1;
+				
+				// Обновляем отображение карты
+				if (gameModule.updateCardStrengthDisplay) {
+					gameModule.updateCardStrengthDisplay(card, row, 'opponent');
+				}
+			});
+			
+			if (gameModule.updateRowStrength) {
+				gameModule.updateRowStrength(row, 'opponent');
+			}
+			if (gameModule.updateTotalScoreDisplays) {
+				gameModule.updateTotalScoreDisplays();
+			}
+			
+			gameState.player.abilityUsedThisRound = true;
+			if (gameModule.showGameMessage) {
+				gameModule.showGameMessage(`Способность "${this.name}" активирована! Мороз в ближнем ряду противника.`, 'info');
+			}
+			if (audioManager && audioManager.playSound) {
+				audioManager.playSound('weather');
+			}
+		},
+		
+		applyVisualWeatherToOpponentRow: function(row, image, gameModule) {
+			const opponentRowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (opponentRowElement) {
+				// Удаляем существующий эффект погоды в этом ряду
+				const existingEffect = opponentRowElement.querySelector(`[data-weather-row="${row}"][data-weather-side="opponent"]`);
+				if (existingEffect) {
+					existingEffect.remove();
+				}
+				
+				const weatherOverlay = document.createElement('div');
+				weatherOverlay.className = 'weather-effect-overlay';
+				weatherOverlay.style.cssText = `
+					position: absolute;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+					background: url('${image}') center/cover;
+					pointer-events: none;
+					z-index: 5;
+				`;
+				weatherOverlay.dataset.weatherRow = row;
+				weatherOverlay.dataset.weatherSide = 'opponent';
+				opponentRowElement.style.position = 'relative';
+				opponentRowElement.appendChild(weatherOverlay);
+			}
+		},
+		
+		removeWeatherFromOpponentRow: function(gameState, row, gameModule) {
+			// Удаляем визуальный эффект
+			const opponentEffects = document.querySelectorAll(`[data-weather-row="${row}"][data-weather-side="opponent"]`);
+			opponentEffects.forEach(effect => effect.remove());
+			
+			// Проверяем, существует ли weather в gameState
+			if (gameState && gameState.weather && gameState.weather.effects && gameState.weather.effects[row]) {
+				gameState.weather.effects[row] = null;
+			}
+			
+			// Восстанавливаем силу карт
+			if (gameState && gameState.opponent && gameState.opponent.rows && gameState.opponent.rows[row]) {
+				gameState.opponent.rows[row].cards.forEach(card => {
+					if (card.underWeather) {
+						card.underWeather = false;
+						if (card.originalStrength !== undefined) {
+							card.strength = card.originalStrength;
+							card.currentStrength = card.originalStrength;
+						}
+						if (gameModule && gameModule.updateCardStrengthDisplay) {
+							gameModule.updateCardStrengthDisplay(card, row, 'opponent');
+						}
+					}
+				});
+				if (gameModule && gameModule.updateRowStrength) {
+					gameModule.updateRowStrength(row, 'opponent');
+				}
+			}
+		}
+	},
+	'monsters_ability_2': {
+		name: 'Неутолимый голод',
+		description: 'Уничтожьте дружественный отряд, затем призовите Волколака, усиленного на значение силы уничтоженого отряда, из колоды на поле в этом же ряду',
+		execute: function(gameState, gameModule) {
+			const friendlyUnits = [];
+			const rows = ['close', 'ranged', 'siege'];
+			
+			rows.forEach(row => {
+				gameState.player.rows[row].cards.forEach((card, index) => {
+					// ===== ТОЛЬКО ОТРЯДЫ (НЕ ГЕРОИ) =====
+					if (card.type === 'unit') {
+						// Проверяем, что это не герой
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) {
+							return;
+						}
+						// Проверяем, что карта жива (сила > 0)
+						const currentStrength = card.currentStrength !== undefined ? 
+							card.currentStrength : (card.strength || 0);
+						if (currentStrength <= 0) {
+							return;
+						}
+						// Убеждаемся, что есть uniqueId
+						if (!card.uniqueId) {
+							card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+						}
+						friendlyUnits.push({ 
+							card: card, 
+							row: row, 
+							index: index,
+							uniqueId: card.uniqueId 
+						});
+					}
+				});
+			});
+			
+			if (friendlyUnits.length === 0) {
+				gameModule.showGameMessage('Нет дружественных отрядов для жертвоприношения', 'warning');
+				return false;
+			}
+			
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
+			this.showSacrificeSelection(friendlyUnits, gameState, gameModule);
+			return true;
+		},
+		
+		showSacrificeSelection: function(friendlyUnits, gameState, gameModule) {
+			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
+			this._mouseEnterHandlers = [];
+			this._mouseLeaveHandlers = [];
+			
+			const clickHandler = (event) => {
+				const cardElement = event.currentTarget;
+				const uniqueId = cardElement.dataset.uniqueId;
+				const row = cardElement.dataset.row;
+				
+				// ===== ИЩЕМ КАРТУ ПО uniqueId =====
+				let targetCard = null;
+				let targetRow = null;
+				for (const r of rows) {
+					const card = gameState.player.rows[r].cards.find(c => 
+						c.uniqueId === uniqueId
+					);
+					if (card) {
+						targetCard = card;
+						targetRow = r;
+						break;
+					}
+				}
+				
+				if (targetCard) {
+					// ===== ПРОВЕРЯЕМ, ЧТО ЭТО НЕ ГЕРОЙ =====
+					if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя пожертвовать Героя!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					// Проверяем, что это отряд
+					if (targetCard.type !== 'unit') {
+						gameModule.showGameMessage('Можно жертвовать только отряды!', 'warning');
+						this.removeHighlights(gameState);
+						return;
+					}
+					
+					const sacrificedStrength = targetCard.strength || 0;
+					
+					// ===== АНИМАЦИЯ УНИЧТОЖЕНИЯ ЖЕРТВЫ =====
+					this.createDestroyVisualEffect(targetCard, targetRow, gameModule);
+					
+					// Уничтожаем отряд с задержкой
+					setTimeout(() => {
+						this.destroyFriendlyUnit(gameState, targetCard, targetRow, gameModule);
+						
+						// Ищем Волколака в колоде
+						let werewolfIndex = -1;
+						let werewolfCard = null;
+						for (let i = 0; i < gameState.player.deck.length; i++) {
+							const card = gameState.player.deck[i];
+							if (card.name === 'Волколак' || 
+								card.name === 'Werewolf' ||
+								(card.tags && card.tags.includes('werewolf'))) {
+								werewolfIndex = i;
+								werewolfCard = card;
+								break;
+							}
+						}
+						
+						if (werewolfCard) {
+							gameState.player.deck.splice(werewolfIndex, 1);
+							// Усиливаем Волколака
+							this.boostCard(werewolfCard, sacrificedStrength);
+							
+							// Находим место для Волколака в том же ряду
+							const rowState = gameState.player.rows[targetRow];
+							if (rowState.cards.length < 9) {
+								// Добавляем в тот же ряд
+								werewolfCard.owner = 'player';
+								werewolfCard.row = targetRow;
+								werewolfCard.uniqueId = `werewolf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+								rowState.cards.push(werewolfCard);
+								gameModule.displayCardOnRow(targetRow, werewolfCard, 'player');
+								gameModule.updateRowStrength(targetRow, 'player');
+								gameModule.updateCardStrengthDisplay(werewolfCard, targetRow, 'player');
+								gameModule.showGameMessage(`Волколак призван из колоды с силой ${werewolfCard.strength}!`, 'info');
+							} else {
+								// Если нет места, добавляем в руку
+								gameState.player.hand.push(werewolfCard);
+								gameModule.displayPlayerHand();
+								gameModule.showGameMessage(`Нет места на поле! Волколак добавлен в руку.`, 'info');
+							}
+							audioManager.playSound('summon');
+						} else {
+							gameModule.showGameMessage('В колоде нет Волколака!', 'warning');
+						}
+						
+						gameState.player.abilityUsedThisRound = true;
+						gameModule.updateTotalScoreDisplays();
+						gameModule.showGameMessage(`Способность "${this.name}" активирована!`, 'info');
+						audioManager.playSound('card_destroy');
+						
+						if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+							window.boardModule.updateAbilityAvailability(gameState);
+						}
+					}, 500);
+				}
+				
+				this.removeHighlights(gameState);
+			};
+			
+			// ===== ПОДСВЕЧИВАЕМ ТОЛЬКО ОТРЯДЫ (НЕ ГЕРОИ) =====
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					const uniqueId = card.dataset.uniqueId;
+					
+					// Ищем цель по uniqueId
+					const target = friendlyUnits.find(u => u.uniqueId === uniqueId);
+					
+					if (target) {
+						// ===== ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА =====
+						if (target.card.type !== 'unit') return;
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						card.style.cursor = 'pointer';
+						card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
+						card.style.transition = 'all 0.2s ease';
+						card.dataset.row = row;
+						card.dataset.uniqueId = target.uniqueId;
+						
+						const handler = clickHandler;
+						card.addEventListener('click', handler);
+						this._clickHandlers.push({ element: card, handler: handler });
+						
+						// Обработчики наведения
+						const mouseEnterHandler = () => {
+							card.style.transform = 'scale(1.05)';
+						};
+						const mouseLeaveHandler = () => {
+							card.style.transform = 'scale(1)';
+						};
+						
+						card.addEventListener('mouseenter', mouseEnterHandler);
+						card.addEventListener('mouseleave', mouseLeaveHandler);
+						
+						this._mouseEnterHandlers.push({ element: card, handler: mouseEnterHandler });
+						this._mouseLeaveHandlers.push({ element: card, handler: mouseLeaveHandler });
+					}
+				});
+			}
+			this.showCancelButton(gameState);
+		},
+		
+		// ===== АНИМАЦИЯ УНИЧТОЖЕНИЯ =====
+		createDestroyVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Эффект уничтожения (как при казни)
+			const destroyOverlay = document.createElement('div');
+			destroyOverlay.className = 'card-destroy-overlay';
+			destroyOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: url('card/neutral/scorch.jpg') center/cover no-repeat;
+				z-index: 100;
+				border-radius: 5px;
+				pointer-events: none;
+				animation: destroyCardAnimation 1s ease-out forwards;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 30px 15px rgba(255, 0, 0, 0.8)';
+			cardElement.style.transition = 'box-shadow 0.3s ease-out';
+			
+			cardElement.appendChild(destroyOverlay);
+			
+			setTimeout(() => {
+				if (destroyOverlay.parentNode) {
+					destroyOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1000);
+		},
+		
+		destroyFriendlyUnit: function(gameState, card, row, gameModule) {
+			const rowCards = gameState.player.rows[row].cards;
+			// ===== ИЩЕМ ПО uniqueId =====
+			let cardIndex = -1;
+			if (card.uniqueId) {
+				cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
+			}
+			if (cardIndex === -1) {
+				cardIndex = rowCards.findIndex(c => c.id === card.id);
+			}
+			if (cardIndex !== -1) {
+				const destroyedCard = rowCards.splice(cardIndex, 1)[0];
+				gameModule.addCardToDiscard(destroyedCard, 'player');
+				gameModule.redrawRow(row, 'player');
+				gameModule.updateRowStrength(row, 'player');
+				audioManager.playSound('card_destroy');
+			}
+		},
+		
+		removeHighlights: function(gameState) {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${this._gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.style.filter = '';
+					card.style.transform = '';
+					card.style.boxShadow = '';
+				});
+			}
+			
+			// Удаляем обработчики
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			if (this._mouseEnterHandlers) {
+				this._mouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._mouseEnterHandlers = [];
+			}
+			
+			if (this._mouseLeaveHandlers) {
+				this._mouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._mouseLeaveHandlers = [];
+			}
+			
+			this.removeCancelButton();
+		},
+		
+		showCancelButton: function(gameState) {
+			if (document.getElementById('abilityCancelBtn')) return;
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				this.removeHighlights(gameState);
+				audioManager.playSound('button');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		boostCard: function(card, amount) {
+			if (card.baseStrength === undefined) card.baseStrength = card.strength;
+			if (card.originalStrength === undefined) card.originalStrength = card.strength;
+			card.strength = (card.strength || 0) + amount;
+			card.currentStrength = card.strength;
+			card.modifiedStrength = card.strength;
+			card._displayStrength = card.strength;
+		}
+	},
 	'monsters_ability_3': {
 		name: 'Запах крови',
 		description: 'Нанесите 2 ед. урона по вражескому ряду с наибольшим количеством карт',
 		execute: function(gameState, gameModule) {
+			// Сохраняем ссылки для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
 			// Находим ряд противника с наибольшим количеством карт
 			let targetRow = null;
 			let maxCards = -1;
@@ -3147,23 +5424,30 @@ const leaderAbilities = {
 				return false;
 			}
 			
-			// Наносим урон 2 всем отрядам в выбранном ряду
-			let damagedCount = 0;
+			// Сохраняем карты для анимации
+			const damagedCards = [];
 			const unitsToDestroy = [];
+			const damageAmount = 2;
 			
 			gameState.opponent.rows[targetRow].cards.forEach(card => {
 				if (card.type === 'unit') {
 					// Пропускаем героев
 					if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 					
-					this.dealDamage(card, 2);
-					damagedCount++;
-					gameModule.updateCardStrengthDisplay(card, targetRow, 'opponent');
+					// Сохраняем карту до нанесения урона
+					damagedCards.push({ card: card, row: targetRow });
+					
+					this.dealDamage(card, damageAmount);
 					
 					if (card.strength <= 0) {
 						unitsToDestroy.push({ card: card, row: targetRow });
 					}
 				}
+			});
+			
+			// === ВАЖНО: ПОКАЗЫВАЕМ АНИМАЦИЮ УРОНА ДЛЯ КАЖДОЙ КАРТЫ ===
+			damagedCards.forEach(item => {
+				this.createDamageVisualEffect(item.card, item.row, gameModule);
 			});
 			
 			// Уничтожаем уничтоженные карты
@@ -3174,10 +5458,92 @@ const leaderAbilities = {
 			gameState.player.abilityUsedThisRound = true;
 			gameModule.updateRowStrength(targetRow, 'opponent');
 			gameModule.updateTotalScoreDisplays();
-			gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён 2 урон ${damagedCount} отрядам в ряду ${this.getRowName(targetRow)}.`, 'info');
+			gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён 2 урон ${damagedCards.length} отрядам в ряду ${this.getRowName(targetRow)}.`, 'info');
 			audioManager.playSound('card_damage');
 			
 			return true;
+		},
+		
+		// ===== АНИМАЦИЯ УРОНА -2 (как в scoiatael_ability_3) =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией -2 (красный, как в scoiatael_ability_3)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-2';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		dealDamage: function(card, amount) {
@@ -3215,23 +5581,26 @@ const leaderAbilities = {
 		name: 'Сила природы',
 		description: 'Призовите Духа Леса',
 		execute: function(gameState, gameModule) {
-			// Проверяем, есть ли место на поле
-			let targetRow = null;
+			// ===== СОБИРАЕМ ВСЕ ДОСТУПНЫЕ РЯДЫ =====
+			const availableRows = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
 			for (const row of rows) {
 				if (gameState.player.rows[row].cards.length < 9) {
-					targetRow = row;
-					break;
+					availableRows.push(row);
 				}
 			}
 			
-			if (targetRow === null) {
+			if (availableRows.length === 0) {
 				gameModule.showGameMessage('Нет свободных рядов для призыва Духа Леса', 'warning');
 				return false;
 			}
 			
-			// Ищем Духа Леса в ОБЩЕЙ КОЛЛЕКЦИИ (cardsData), а не в колоде игрока
+			// ===== ВЫБИРАЕМ СЛУЧАЙНЫЙ РЯД ИЗ ДОСТУПНЫХ =====
+			const randomIndex = Math.floor(Math.random() * availableRows.length);
+			const targetRow = availableRows[randomIndex];
+			
+			// Ищем Духа Леса
 			let spiritCard = null;
 			
 			// Ищем среди всех карт фракции monsters
@@ -3249,9 +5618,9 @@ const leaderAbilities = {
 			
 			// Если не нашли через cardsData, пробуем другие способы
 			if (!spiritCard) {
-				// Пробуем через getCardById
+				// Пробуем через getCardByIdIncludingHidden
 				if (window.cardsModule && window.cardsModule.getCardByIdIncludingHidden) {
-					spiritCard = window.cardsModule.getCardByIdIncludingHidden('monsters_unit_???'); // нужно знать ID
+					spiritCard = window.cardsModule.getCardByIdIncludingHidden('monsters_unit_forest_spirit');
 				}
 				
 				// Если всё ещё не нашли, создаём карту динамически
@@ -3290,7 +5659,7 @@ const leaderAbilities = {
 			summonedCard.isSummoned = true;
 			summonedCard.summonSource = 'monsters_ability_4';
 			
-			// Размещаем карту на поле
+			// ===== РАЗМЕЩАЕМ КАРТУ В ВЫБРАННОМ РЯДУ =====
 			gameState.player.rows[targetRow].cards.push(summonedCard);
 			gameModule.displayCardOnRow(targetRow, summonedCard, 'player');
 			gameModule.updateRowStrength(targetRow, 'player');
@@ -3308,6 +5677,10 @@ const leaderAbilities = {
 			gameModule.showGameMessage(`Способность "${this.name}" активирована! Дух Леса призван в ряд ${rowNames[targetRow]}.`, 'info');
 			audioManager.playSound('summon');
 			
+			if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+				window.boardModule.updateAbilityAvailability(gameState);
+			}
+			
 			return true;
 		}
 	},
@@ -3320,9 +5693,25 @@ const leaderAbilities = {
 			
 			rows.forEach(row => {
 				gameState.player.rows[row].cards.forEach(card => {
-					if (card.type === 'unit' && card.faction !== 'neutral') {
+					// ===== ТОЛЬКО ОТРЯДЫ (НЕ ГЕРОИ, НЕ НЕЙТРАЛЬНЫЕ) =====
+					if (card.type === 'unit') {
+						// Проверяем, что это не герой
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
-						friendlyUnits.push({ card: card, row: row });
+						// Проверяем, что это не нейтральный отряд
+						if (card.faction === 'neutral') return;
+						// Проверяем, что карта жива
+						const currentStrength = card.currentStrength !== undefined ? 
+							card.currentStrength : (card.strength || 0);
+						if (currentStrength <= 0) return;
+						// Убеждаемся, что есть uniqueId
+						if (!card.uniqueId) {
+							card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+						}
+						friendlyUnits.push({ 
+							card: card, 
+							row: row,
+							uniqueId: card.uniqueId 
+						});
 					}
 				});
 			});
@@ -3332,90 +5721,303 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			// Сохраняем состояние для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._boostAmount = 3;
+			
 			this.showTargetSelection(friendlyUnits, gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(friendlyUnits, gameState, gameModule) {
 			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
+			this._mouseEnterHandlers = [];
+			this._mouseLeaveHandlers = [];
 			
 			const clickHandler = (target) => {
-				return () => {
+				return (event) => {
+					// ===== ПРОВЕРЯЕМ ПО uniqueId =====
+					const stillExists = gameState.player.rows[target.row].cards.some(
+						c => c.uniqueId === target.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeMonsterHighlights();
+						return;
+					}
+					
+					// Проверяем, что это не нейтральный отряд
 					if (target.card.faction === 'neutral') {
 						gameModule.showGameMessage('Нельзя усилить нейтральный отряд!', 'warning');
 						return;
 					}
 					
-					this.boostCard(target.card, 3);
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя усилить Героя!', 'warning');
+						this.removeMonsterHighlights();
+						return;
+					}
+					
+					// Проверяем, что это отряд
+					if (target.card.type !== 'unit') {
+						gameModule.showGameMessage('Можно усиливать только отряды!', 'warning');
+						this.removeMonsterHighlights();
+						return;
+					}
+					
+					// Применяем усиление
+					this.boostCard(target.card, this._boostAmount);
+					
+					// Анимация усиления
+					this.createBoostVisualEffect(target.card, target.row, gameModule);
+					
 					gameState.player.abilityUsedThisRound = true;
 					
 					gameModule.updateRowStrength(target.row, 'player');
 					gameModule.updateTotalScoreDisplays();
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на 3 ед.`, 'info');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! ${target.card.name} усилен на ${this._boostAmount} ед.`, 'info');
 					audioManager.playSound('card_boost');
 					
 					this.removeMonsterHighlights();
+					
+					if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+						window.boardModule.updateAbilityAvailability(gameState);
+					}
 				};
 			};
 			
+			// ===== ПОДСВЕЧИВАЕМ ТОЛЬКО ПОДХОДЯЩИЕ КАРТЫ =====
 			for (const row of rows) {
 				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
+				
 				const cards = rowElement.querySelectorAll('.board-card');
-				cards.forEach(card => {
-					const cardId = card.dataset.cardId;
-					const uniqueId = card.dataset.uniqueId;
-					const target = friendlyUnits.find(u => 
-						(u.card.id === cardId || u.card.uniqueId === uniqueId)
-					);
+				cards.forEach(cardElement => {
+					const uniqueId = cardElement.dataset.uniqueId;
+					
+					// Ищем цель по uniqueId
+					const target = friendlyUnits.find(u => u.uniqueId === uniqueId);
+					
 					if (target) {
-						card.style.cursor = 'pointer';
-						card.classList.add('boost-target');
-						card.addEventListener('click', clickHandler(target));
-						card.addEventListener('mouseenter', () => {
-							card.style.transform = 'scale(1.05)';
-						});
-						card.addEventListener('mouseleave', () => {
-							card.style.transform = 'scale(1)';
-						});
+						// ===== ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА =====
+						if (target.card.type !== 'unit') return;
+						if (target.card.faction === 'neutral') return;
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						cardElement.style.cursor = 'pointer';
+						cardElement.classList.add('boost-target');
+						cardElement.dataset.boostUniqueId = target.uniqueId;
+						
+						const handler = clickHandler(target);
+						cardElement.addEventListener('click', handler);
+						this._clickHandlers.push({ element: cardElement, handler: handler });
+						
+						// Обработчики наведения
+						const mouseEnterHandler = () => {
+							if (!cardElement.classList.contains('boost-selected')) {
+								cardElement.style.transform = 'scale(1.05)';
+								cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #4CAF50)';
+							}
+						};
+						
+						const mouseLeaveHandler = () => {
+							if (!cardElement.classList.contains('boost-selected')) {
+								cardElement.style.transform = 'scale(1)';
+								cardElement.style.filter = '';
+							}
+						};
+						
+						cardElement.addEventListener('mouseenter', mouseEnterHandler);
+						cardElement.addEventListener('mouseleave', mouseLeaveHandler);
+						
+						this._mouseEnterHandlers.push({ element: cardElement, handler: mouseEnterHandler });
+						this._mouseLeaveHandlers.push({ element: cardElement, handler: mouseLeaveHandler });
 					}
 				});
 			}
 			
-			this.showMonsterCancelButton();
+			this.showMonsterCancelButton(gameState, gameModule);
+		},
+		
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+3';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		removeMonsterHighlights: function() {
 			const rows = ['close', 'ranged', 'siege'];
 			for (const row of rows) {
-				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				const rowElement = document.getElementById(`player${this._gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
 				const cards = rowElement.querySelectorAll('.board-card');
 				cards.forEach(card => {
 					card.style.cursor = '';
-					card.classList.remove('boost-target');
+					card.classList.remove('boost-target', 'boost-selected');
+					card.style.filter = '';
 					card.style.transform = '';
-					const newCard = card.cloneNode(true);
-					card.parentNode.replaceChild(newCard, card);
+					card.style.boxShadow = '';
 				});
 			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			// Удаляем обработчики mouseenter
+			if (this._mouseEnterHandlers) {
+				this._mouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._mouseEnterHandlers = [];
+			}
+			
+			// Удаляем обработчики mouseleave
+			if (this._mouseLeaveHandlers) {
+				this._mouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._mouseLeaveHandlers = [];
+			}
+			
 			this.removeMonsterCancelButton();
 		},
 		
-		showMonsterCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
+		showMonsterCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
 			const cancelBtn = document.createElement('button');
 			cancelBtn.id = 'abilityCancelBtn';
 			cancelBtn.textContent = 'ОТМЕНА';
 			cancelBtn.className = 'ability-cancel-btn';
-			cancelBtn.addEventListener('click', () => {
-				this.removeMonsterHighlights();
-				audioManager.playSound('button');
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
 			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				// Отменяем выделение и сбрасываем флаг использования
+				this.removeMonsterHighlights();
+				
+				// Сбрасываем флаг использования способности
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// Обновляем иконку способности (возвращаем активное состояние)
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
 		removeMonsterCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
 		},
@@ -3607,55 +6209,59 @@ const leaderAbilities = {
 		name: 'Натиск',
 		description: 'Нанесите 3 ед. урона вражескому отряду',
 		execute: function(gameState, gameModule) {
+			// Сохраняем состояние для анимации и отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._damageAmount = 3;
+			
 			this.showTargetSelection(gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(gameState, gameModule) {
 			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
 			
-			const clickHandler = (event) => {
-				const cardElement = event.currentTarget;
-				const cardId = cardElement.dataset.cardId;
-				const uniqueId = cardElement.dataset.uniqueId;
-				const row = cardElement.dataset.row;
-				
-				let targetCard = null;
-				let targetRow = null;
-				for (const r of rows) {
-					const card = gameState.opponent.rows[r].cards.find(c => 
-						(c.id === cardId || c.uniqueId === uniqueId)
+			const clickHandler = (target) => {
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.opponent.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
 					);
-					if (card) {
-						targetCard = card;
-						targetRow = r;
-						break;
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights();
+						return;
 					}
-				}
-				
-				if (targetCard) {
-					if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
+					
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
 						gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
 						this.removeHighlights();
 						return;
 					}
 					
-					this.dealDamage(targetCard, 3);
+					// Сохраняем карту до нанесения урона для анимации
+					const cardCopy = { card: target.card, row: target.row };
+					
+					this.dealDamage(target.card, this._damageAmount);
 					gameState.player.abilityUsedThisRound = true;
 					
-					gameModule.updateRowStrength(targetRow, 'opponent');
-					gameModule.updateTotalScoreDisplays();
-					gameModule.updateRowStrength(targetRow, 'opponent');
+					// === АНИМАЦИЯ УРОНА -3 (как в scoiatael_ability_3) ===
+					this.createDamageVisualEffect(cardCopy.card, cardCopy.row, gameModule);
 					
-					if (targetCard.strength <= 0) {
-						this.destroyCard(gameState, targetCard, targetRow, gameModule);
+					gameModule.updateRowStrength(target.row, 'opponent');
+					gameModule.updateTotalScoreDisplays();
+					
+					if (target.card.strength <= 0) {
+						this.destroyCard(gameState, target.card, target.row, gameModule);
 					}
 					
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён 3 урон ${targetCard.name}.`, 'info');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён ${this._damageAmount} урон ${target.card.name}.`, 'info');
 					audioManager.playSound('card_damage');
-				}
-				
-				this.removeHighlights();
+					
+					this.removeHighlights();
+				};
 			};
 			
 			this.highlightEnemyUnits(gameState, rows, clickHandler);
@@ -3663,71 +6269,222 @@ const leaderAbilities = {
 		
 		highlightEnemyUnits: function(gameState, rows, clickHandler) {
 			for (const row of rows) {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+				const rowElement = document.getElementById(`opponent${this._gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
 				const cards = rowElement.querySelectorAll('.board-card');
-				cards.forEach(card => {
-					card.style.cursor = 'pointer';
-					card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
-					card.style.transition = 'all 0.2s ease';
-					card.dataset.row = row;
-					card.addEventListener('click', clickHandler);
-					card.addEventListener('mouseenter', () => {
-						card.style.transform = 'scale(1.05)';
-					});
-					card.addEventListener('mouseleave', () => {
-						card.style.transform = 'scale(1)';
-					});
+				cards.forEach(cardElement => {
+					const cardId = cardElement.dataset.cardId;
+					const uniqueId = cardElement.dataset.uniqueId;
+					
+					// Ищем цель среди вражеских отрядов
+					let target = null;
+					for (const r of rows) {
+						const found = gameState.opponent.rows[r].cards.find(c => 
+							(c.id === cardId || c.uniqueId === uniqueId) && c.type === 'unit'
+						);
+						if (found) {
+							target = { card: found, row: r };
+							break;
+						}
+					}
+					
+					if (target) {
+						// Пропускаем героев
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						cardElement.style.cursor = 'pointer';
+						cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
+						cardElement.style.transition = 'all 0.2s ease';
+						cardElement.dataset.row = row;
+						
+						const handler = clickHandler(target);
+						cardElement.addEventListener('click', handler);
+						this._clickHandlers.push({ element: cardElement, handler: handler });
+						
+						cardElement.addEventListener('mouseenter', () => {
+							cardElement.style.transform = 'scale(1.05)';
+						});
+						cardElement.addEventListener('mouseleave', () => {
+							cardElement.style.transform = 'scale(1)';
+						});
+					}
 				});
 			}
-			this.showCancelButton();
+			this.showCancelButton(gameState);
+		},
+		
+		// ===== АНИМАЦИЯ УРОНА -3 (как в scoiatael_ability_3) =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией -3 (красный)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-3';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		removeHighlights: function() {
 			const rows = ['close', 'ranged', 'siege'];
 			for (const row of rows) {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+				const rowElement = document.getElementById(`opponent${this._gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
 				const cards = rowElement.querySelectorAll('.board-card');
 				cards.forEach(card => {
 					card.style.cursor = '';
 					card.style.filter = '';
 					card.style.transform = '';
-					const newCard = card.cloneNode(true);
-					card.parentNode.replaceChild(newCard, card);
+					card.style.boxShadow = '';
 				});
 			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
 			this.removeCancelButton();
 		},
 		
-		showCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
+		showCancelButton: function(gameState) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
 			const cancelBtn = document.createElement('button');
 			cancelBtn.id = 'abilityCancelBtn';
 			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
 			cancelBtn.style.cssText = `
 				position: fixed;
-				bottom: 20px;
+				bottom: 30px;
 				left: 50%;
 				transform: translateX(-50%);
-				background: #d4af37;
-				color: #1a1a1a;
-				border: none;
-				padding: 10px 30px;
-				border-radius: 5px;
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
 				cursor: pointer;
 				font-weight: bold;
-				z-index: 10002;
 				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
 			cancelBtn.addEventListener('click', () => {
+				// === ВАЖНО: СБРАСЫВАЕМ ФЛАГ ИСПОЛЬЗОВАНИЯ ===
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
 				this.removeHighlights();
 				audioManager.playSound('button');
+				this._gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// === ОБНОВЛЯЕМ ИКОНКУ СПОСОБНОСТИ ===
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
 			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
 		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
 		},
@@ -3762,215 +6519,426 @@ const leaderAbilities = {
 			return names[row] || row;
 		}
 	},
-    'skellige_ability_4': {
-        name: 'Медвежий ритуал',
-        description: 'Нанесите 1 ед. урона дружественному отряду. И призовите Берсерка из колоды',
-        execute: function(gameState, gameModule) {
-            const friendlyUnits = [];
-            const rows = ['close', 'ranged', 'siege'];
-            
-            rows.forEach(row => {
-                gameState.player.rows[row].cards.forEach((card, index) => {
-                    if (card.type === 'unit') {
-                        friendlyUnits.push({ card: card, row: row, index: index });
-                    }
-                });
-            });
-            
-            if (friendlyUnits.length === 0) {
-                gameModule.showGameMessage('Нет дружественных отрядов для ритуала', 'warning');
-                return false;
-            }
-            
-            this.showRitualSelection(friendlyUnits, gameState, gameModule);
-            return true;
-        },
-        
-        showRitualSelection: function(friendlyUnits, gameState, gameModule) {
-            const rows = ['close', 'ranged', 'siege'];
-            
-            const clickHandler = (event) => {
-                const cardElement = event.currentTarget;
-                const cardId = cardElement.dataset.cardId;
-                const uniqueId = cardElement.dataset.uniqueId;
-                const row = cardElement.dataset.row;
-                
-                let targetCard = null;
-                for (const r of rows) {
-                    const card = gameState.player.rows[r].cards.find(c => 
-                        (c.id === cardId || c.uniqueId === uniqueId)
-                    );
-                    if (card) {
-                        targetCard = card;
-                        break;
-                    }
-                }
-                
-                if (targetCard) {
-                    if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
-                        gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
-                        this.removeHighlights();
-                        return;
-                    }
-                    
-                    // Наносим 1 урон
-                    this.dealDamage(targetCard, 1);
-                    gameModule.updateCardStrengthDisplay(targetCard, row, 'player');
-                    gameModule.updateRowStrength(row, 'player');
-                    
-                    if (targetCard.strength <= 0) {
-                        this.destroyCard(gameState, targetCard, row, gameModule);
-                    }
-                    
-                    // Ищем Берсерка в колоде
-                    let berserkerIndex = -1;
-                    let berserkerCard = null;
-                    for (let i = 0; i < gameState.player.deck.length; i++) {
-                        const card = gameState.player.deck[i];
-                        if (card.name === 'Берсерк' || (card.tags && card.tags.includes('berserker'))) {
-                            berserkerIndex = i;
-                            berserkerCard = card;
-                            break;
-                        }
-                    }
-                    
-                    if (berserkerCard) {
-                        gameState.player.deck.splice(berserkerIndex, 1);
-                        
-                        // Находим свободный ряд
-                        let targetRow = null;
-                        for (const r of rows) {
-                            if (gameState.player.rows[r].cards.length < 9) {
-                                targetRow = r;
-                                break;
-                            }
-                        }
-                        
-                        if (targetRow) {
-                            gameState.player.rows[targetRow].cards.push(berserkerCard);
-                            gameModule.displayCardOnRow(targetRow, berserkerCard, 'player');
-                            gameModule.updateRowStrength(targetRow, 'player');
-                            gameModule.updateCardStrengthDisplay(berserkerCard, targetRow, 'player');
-                            gameModule.showGameMessage(`Берсерк призван из колоды в ряд ${this.getRowName(targetRow)}!`, 'info');
-                        } else {
-                            gameState.player.hand.push(berserkerCard);
-                            gameModule.displayPlayerHand();
-                            gameModule.showGameMessage(`Нет места на поле! Берсерк добавлен в руку.`, 'info');
-                        }
-                        audioManager.playSound('summon');
-                    } else {
-                        gameModule.showGameMessage('В колоде нет Берсерка!', 'warning');
-                    }
-                    
-                    gameState.player.abilityUsedThisRound = true;
-                    gameModule.updateTotalScoreDisplays();
-                    gameModule.showGameMessage(`Способность "${this.name}" активирована!`, 'info');
-                    audioManager.playSound('card_damage');
-                }
-                
-                this.removeHighlights();
-            };
-            
-            this.highlightPlayerUnitsForRitual(gameState, rows, clickHandler);
-        },
-        
-        highlightPlayerUnitsForRitual: function(gameState, rows, clickHandler) {
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = 'pointer';
-                    card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff9800)';
-                    card.style.transition = 'all 0.2s ease';
-                    card.dataset.row = row;
-                    card.addEventListener('click', clickHandler);
-                    card.addEventListener('mouseenter', () => {
-                        card.style.transform = 'scale(1.05)';
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        card.style.transform = 'scale(1)';
-                    });
-                });
-            }
-            this.showCancelButton();
-        },
-        
-        dealDamage: function(card, amount) {
-            if (card.baseStrength === undefined) card.baseStrength = card.strength;
-            if (card.originalStrength === undefined) card.originalStrength = card.strength;
-            const newStrength = (card.strength || 0) - amount;
-            card.strength = Math.max(0, newStrength);
-            card.currentStrength = card.strength;
-            card._displayStrength = card.strength;
-        },
-        
-        destroyCard: function(gameState, card, row, gameModule) {
-            const rowCards = gameState.player.rows[row].cards;
-            const cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
-            if (cardIndex !== -1) {
-                const destroyedCard = rowCards.splice(cardIndex, 1)[0];
-                gameModule.addCardToDiscard(destroyedCard, 'player');
-                gameModule.redrawRow(row, 'player');
-                gameModule.updateRowStrength(row, 'player');
-                audioManager.playSound('card_destroy');
-            }
-        },
-        
-        removeHighlights: function() {
-            const rows = ['close', 'ranged', 'siege'];
-            for (const row of rows) {
-                const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
-                if (!rowElement) continue;
-                const cards = rowElement.querySelectorAll('.board-card');
-                cards.forEach(card => {
-                    card.style.cursor = '';
-                    card.style.filter = '';
-                    card.style.transform = '';
-                    const newCard = card.cloneNode(true);
-                    card.parentNode.replaceChild(newCard, card);
-                });
-            }
-            this.removeCancelButton();
-        },
-        
-        showCancelButton: function() {
-            if (document.getElementById('abilityCancelBtn')) return;
-            const cancelBtn = document.createElement('button');
-            cancelBtn.id = 'abilityCancelBtn';
-            cancelBtn.textContent = 'ОТМЕНА';
-            cancelBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #d4af37;
-                color: #1a1a1a;
-                border: none;
-                padding: 10px 30px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-weight: bold;
-                z-index: 10002;
-                font-family: 'Gwent', sans-serif;
-            `;
-            cancelBtn.addEventListener('click', () => {
-                this.removeHighlights();
-                audioManager.playSound('button');
-            });
-            document.body.appendChild(cancelBtn);
-        },
-        
-        removeCancelButton: function() {
-            const btn = document.getElementById('abilityCancelBtn');
-            if (btn) btn.remove();
-        },
-        
-        getRowName: function(row) {
-            const names = { 'close': 'ближнего боя', 'ranged': 'дальнего боя', 'siege': 'осадном' };
-            return names[row] || row;
-        }
-    },
+	'skellige_ability_4': {
+		name: 'Медвежий ритуал',
+		description: 'Нанесите 1 ед. урона дружественному отряду. И призовите Берсерка из колоды',
+		execute: function(gameState, gameModule) {
+			const friendlyUnits = [];
+			const rows = ['close', 'ranged', 'siege'];
+			
+			rows.forEach(row => {
+				gameState.player.rows[row].cards.forEach((card, index) => {
+					if (card.type === 'unit') {
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+						const currentStrength = card.currentStrength !== undefined ? 
+							card.currentStrength : (card.strength || 0);
+						if (currentStrength <= 0) return;
+						if (!card.uniqueId) {
+							card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+						}
+						friendlyUnits.push({ 
+							card: card, 
+							row: row, 
+							index: index,
+							uniqueId: card.uniqueId 
+						});
+					}
+				});
+			});
+			
+			if (friendlyUnits.length === 0) {
+				gameModule.showGameMessage('Нет дружественных отрядов для ритуала', 'warning');
+				return false;
+			}
+			
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
+			this.showRitualSelection(friendlyUnits, gameState, gameModule);
+			return true;
+		},
+		
+		showRitualSelection: function(friendlyUnits, gameState, gameModule) {
+			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
+			this._mouseEnterHandlers = [];
+			this._mouseLeaveHandlers = [];
+			
+			const clickHandler = (event) => {
+				const cardElement = event.currentTarget;
+				const uniqueId = cardElement.dataset.uniqueId;
+				const row = cardElement.dataset.row;
+				
+				let targetCard = null;
+				for (const r of rows) {
+					const card = gameState.player.rows[r].cards.find(c => 
+						c.uniqueId === uniqueId
+					);
+					if (card) {
+						targetCard = card;
+						break;
+					}
+				}
+				
+				if (targetCard) {
+					if (targetCard.tags && (targetCard.tags.includes('hero') || targetCard.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
+						this.removeHighlights();
+						return;
+					}
+					
+					if (targetCard.type !== 'unit') {
+						gameModule.showGameMessage('Можно выбрать только отряды!', 'warning');
+						this.removeHighlights();
+						return;
+					}
+					
+					// ===== ПОКАЗЫВАЕМ АНИМАЦИЮ УРОНА =====
+					this.createDamageVisualEffect(targetCard, row, gameModule);
+					
+					// Наносим урон с задержкой
+					setTimeout(() => {
+						this.dealDamage(targetCard, 1);
+						gameModule.updateCardStrengthDisplay(targetCard, row, 'player');
+						gameModule.updateRowStrength(row, 'player');
+						
+						if (targetCard.strength <= 0) {
+							this.destroyCard(gameState, targetCard, row, gameModule);
+						}
+						
+						// Ищем Берсерка в колоде
+						let berserkerIndex = -1;
+						let berserkerCard = null;
+						for (let i = 0; i < gameState.player.deck.length; i++) {
+							const card = gameState.player.deck[i];
+							if (card.name === 'Берсерк' || 
+								card.name === 'Berserker' ||
+								(card.tags && card.tags.includes('berserker'))) {
+								berserkerIndex = i;
+								berserkerCard = card;
+								break;
+							}
+						}
+						
+						if (berserkerCard) {
+							gameState.player.deck.splice(berserkerIndex, 1);
+							
+							let targetRow = null;
+							for (const r of rows) {
+								if (gameState.player.rows[r].cards.length < 9) {
+									targetRow = r;
+									break;
+								}
+							}
+							
+							if (targetRow) {
+								berserkerCard.owner = 'player';
+								berserkerCard.row = targetRow;
+								berserkerCard.uniqueId = `berserker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+								gameState.player.rows[targetRow].cards.push(berserkerCard);
+								gameModule.displayCardOnRow(targetRow, berserkerCard, 'player');
+								gameModule.updateRowStrength(targetRow, 'player');
+								gameModule.updateCardStrengthDisplay(berserkerCard, targetRow, 'player');
+								gameModule.showGameMessage(`Берсерк призван из колоды в ряд ${this.getRowName(targetRow)}!`, 'info');
+							} else {
+								gameState.player.hand.push(berserkerCard);
+								gameModule.displayPlayerHand();
+								gameModule.showGameMessage(`Нет места на поле! Берсерк добавлен в руку.`, 'info');
+							}
+							audioManager.playSound('summon');
+						} else {
+							gameModule.showGameMessage('В колоде нет Берсерка!', 'warning');
+						}
+						
+						gameState.player.abilityUsedThisRound = true;
+						gameModule.updateTotalScoreDisplays();
+						gameModule.showGameMessage(`Способность "${this.name}" активирована!`, 'info');
+						audioManager.playSound('card_damage');
+						
+						if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+							window.boardModule.updateAbilityAvailability(gameState);
+						}
+					}, 500);
+				}
+				
+				this.removeHighlights();
+			};
+			
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					const uniqueId = card.dataset.uniqueId;
+					const target = friendlyUnits.find(u => u.uniqueId === uniqueId);
+					
+					if (target) {
+						if (target.card.type !== 'unit') return;
+						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
+						
+						card.style.cursor = 'pointer';
+						card.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff9800)';
+						card.style.transition = 'all 0.2s ease';
+						card.dataset.row = row;
+						card.dataset.uniqueId = target.uniqueId;
+						
+						const handler = clickHandler;
+						card.addEventListener('click', handler);
+						this._clickHandlers.push({ element: card, handler: handler });
+						
+						const mouseEnterHandler = () => {
+							card.style.transform = 'scale(1.05)';
+						};
+						const mouseLeaveHandler = () => {
+							card.style.transform = 'scale(1)';
+						};
+						
+						card.addEventListener('mouseenter', mouseEnterHandler);
+						card.addEventListener('mouseleave', mouseLeaveHandler);
+						
+						this._mouseEnterHandlers.push({ element: card, handler: mouseEnterHandler });
+						this._mouseLeaveHandlers.push({ element: card, handler: mouseLeaveHandler });
+					}
+				});
+			}
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== ИСПРАВЛЕННЫЙ МЕТОД АНИМАЦИИ УРОНА =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) {
+				console.warn('Row element not found for damage effect:', row);
+				return;
+			}
+			
+			// ===== ИЩЕМ ЭЛЕМЕНТ КАРТЫ =====
+			let cardElement = null;
+			
+			// 1. Ищем по uniqueId
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			// 2. Если не нашли, ищем по data-card-id
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					// Если несколько копий, ищем по позиции в ряду
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// 3. Если всё ещё не нашли, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) {
+				console.warn('Card element not found for damage effect:', card.name, card.id, card.uniqueId);
+				return;
+			}
+			
+			// ===== ПОКАЗЫВАЕМ АНИМАЦИЮ УРОНА =====
+			// Создаём оверлей с анимацией -1
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-1';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 48px;
+				font-weight: bold;
+				text-shadow: 0 0 30px rgba(255, 23, 68, 0.9), 0 0 60px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderDamageAnimation 1s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 30px 15px rgba(255, 0, 0, 0.6)';
+			cardElement.style.transition = 'box-shadow 0.3s ease-out';
+			cardElement.style.zIndex = '10';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1 секунду
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+				cardElement.style.zIndex = '';
+			}, 1000);
+		},
+		
+		dealDamage: function(card, amount) {
+			if (card.baseStrength === undefined) card.baseStrength = card.strength;
+			if (card.originalStrength === undefined) card.originalStrength = card.strength;
+			const newStrength = (card.strength || 0) - amount;
+			card.strength = Math.max(0, newStrength);
+			card.currentStrength = card.strength;
+			card._displayStrength = card.strength;
+		},
+		
+		destroyCard: function(gameState, card, row, gameModule) {
+			const rowCards = gameState.player.rows[row].cards;
+			let cardIndex = -1;
+			if (card.uniqueId) {
+				cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
+			}
+			if (cardIndex === -1) {
+				cardIndex = rowCards.findIndex(c => c.id === card.id);
+			}
+			if (cardIndex !== -1) {
+				const destroyedCard = rowCards.splice(cardIndex, 1)[0];
+				gameModule.addCardToDiscard(destroyedCard, 'player');
+				gameModule.redrawRow(row, 'player');
+				gameModule.updateRowStrength(row, 'player');
+				audioManager.playSound('card_destroy');
+			}
+		},
+		
+		removeHighlights: function() {
+			const rows = ['close', 'ranged', 'siege'];
+			for (const row of rows) {
+				const rowElement = document.getElementById(`player${this._gameModule.capitalizeFirst(row)}Row`);
+				if (!rowElement) continue;
+				const cards = rowElement.querySelectorAll('.board-card');
+				cards.forEach(card => {
+					card.style.cursor = '';
+					card.style.filter = '';
+					card.style.transform = '';
+					card.style.boxShadow = '';
+					card.style.zIndex = '';
+				});
+			}
+			
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			if (this._mouseEnterHandlers) {
+				this._mouseEnterHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseenter', handler);
+				});
+				this._mouseEnterHandlers = [];
+			}
+			
+			if (this._mouseLeaveHandlers) {
+				this._mouseLeaveHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('mouseleave', handler);
+				});
+				this._mouseLeaveHandlers = [];
+			}
+			
+			this.removeCancelButton();
+		},
+		
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
+			const cancelBtn = document.createElement('button');
+			cancelBtn.id = 'abilityCancelBtn';
+			cancelBtn.textContent = 'ОТМЕНА';
+			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
+			cancelBtn.addEventListener('click', () => {
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				this.removeHighlights();
+				this.removeCancelButton();
+				
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
+			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
+		},
+		
+		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
+			const btn = document.getElementById('abilityCancelBtn');
+			if (btn) btn.remove();
+		},
+		
+		getRowName: function(row) {
+			const names = { 'close': 'ближнего боя', 'ranged': 'дальнего боя', 'siege': 'осадном' };
+			return names[row] || row;
+		}
+	},
 	'skellige_ability_5': {
 		name: 'Пламя славы',
 		description: 'Переместите не нейтральный отряд из вашей колоды в ваш сброс, затем нанесите вражескому отряду урон, равный значению силы перемещенного отряда',
@@ -4195,6 +7163,11 @@ const leaderAbilities = {
 		name: 'Заказ на убийство',
 		description: 'Нанесите 6 ед. урона вражескому отряду',
 		execute: function(gameState, gameModule) {
+			// Сохраняем состояние для анимации и отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._damageAmount = 6;
+			
 			this.showTargetSelection(gameState, gameModule);
 			return true;
 		},
@@ -4202,6 +7175,7 @@ const leaderAbilities = {
 		showTargetSelection: function(gameState, gameModule) {
 			const enemyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
+			this._clickHandlers = [];
 			
 			rows.forEach(row => {
 				gameState.opponent.rows[row].cards.forEach(card => {
@@ -4224,9 +7198,33 @@ const leaderAbilities = {
 			const rows = ['close', 'ranged', 'siege'];
 			
 			const clickHandler = (target) => {
-				return () => {
-					this.dealDamage(target.card, 6);
+				return (event) => {
+					// Проверяем, что цель все еще существует на поле
+					const stillExists = gameState.opponent.rows[target.row].cards.some(
+						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
+					);
+					
+					if (!stillExists) {
+						gameModule.showGameMessage('Эта карта уже не на поле', 'warning');
+						this.removeHighlights();
+						return;
+					}
+					
+					// Проверяем героя
+					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
+						gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
+						this.removeHighlights();
+						return;
+					}
+					
+					// Сохраняем карту до нанесения урона для анимации
+					const cardCopy = { card: target.card, row: target.row };
+					
+					this.dealDamage(target.card, this._damageAmount);
 					gameState.player.abilityUsedThisRound = true;
+					
+					// === АНИМАЦИЯ УРОНА -6 (как в scoiatael_ability_3) ===
+					this.createDamageVisualEffect(cardCopy.card, cardCopy.row, gameModule);
 					
 					gameModule.updateRowStrength(target.row, 'opponent');
 					gameModule.updateTotalScoreDisplays();
@@ -4235,7 +7233,7 @@ const leaderAbilities = {
 						this.destroyCard(gameState, target.card, target.row, gameModule);
 					}
 					
-					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён 6 урон ${target.card.name}.`, 'info');
+					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён ${this._damageAmount} урон ${target.card.name}.`, 'info');
 					audioManager.playSound('card_damage');
 					
 					this.removeHighlights();
@@ -4246,60 +7244,210 @@ const leaderAbilities = {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
 				const cards = rowElement.querySelectorAll('.board-card');
-				cards.forEach(card => {
-					const cardId = card.dataset.cardId;
-					const uniqueId = card.dataset.uniqueId;
+				cards.forEach(cardElement => {
+					const cardId = cardElement.dataset.cardId;
+					const uniqueId = cardElement.dataset.uniqueId;
 					const target = enemyUnits.find(u => 
 						(u.card.id === cardId || u.card.uniqueId === uniqueId)
 					);
 					if (target) {
-						card.style.cursor = 'pointer';
-						card.classList.add('damage-target');
-						card.addEventListener('click', clickHandler(target));
-						card.addEventListener('mouseenter', () => {
-							card.style.transform = 'scale(1.05)';
+						cardElement.style.cursor = 'pointer';
+						cardElement.classList.add('damage-target');
+						
+						const handler = clickHandler(target);
+						cardElement.addEventListener('click', handler);
+						this._clickHandlers.push({ element: cardElement, handler: handler });
+						
+						cardElement.addEventListener('mouseenter', () => {
+							cardElement.style.transform = 'scale(1.05)';
+							cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 12px #ff4444)';
 						});
-						card.addEventListener('mouseleave', () => {
-							card.style.transform = 'scale(1)';
+						cardElement.addEventListener('mouseleave', () => {
+							cardElement.style.transform = 'scale(1)';
+							cardElement.style.filter = '';
 						});
 					}
 				});
 			}
 			
-			this.showCancelButton();
+			// === КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) ===
+			this.showCancelButton(gameState, gameModule);
+		},
+		
+		// ===== АНИМАЦИЯ УРОНА -6 (как в scoiatael_ability_3) =====
+		createDamageVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией -6 (красный)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = '-6';
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		removeHighlights: function() {
 			const rows = ['close', 'ranged', 'siege'];
 			for (const row of rows) {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+				const rowElement = document.getElementById(`opponent${this._gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
 				const cards = rowElement.querySelectorAll('.board-card');
 				cards.forEach(card => {
 					card.style.cursor = '';
 					card.classList.remove('damage-target');
 					card.style.transform = '';
-					const newCard = card.cloneNode(true);
-					card.parentNode.replaceChild(newCard, card);
+					card.style.filter = '';
+					card.style.boxShadow = '';
 				});
 			}
+			
+			// Удаляем обработчики кликов
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
 			this.removeCancelButton();
 		},
 		
-		showCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
+		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
 			const cancelBtn = document.createElement('button');
 			cancelBtn.id = 'abilityCancelBtn';
 			cancelBtn.textContent = 'ОТМЕНА';
 			cancelBtn.className = 'ability-cancel-btn';
+			cancelBtn.style.cssText = `
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+				color: #d4af37;
+				border: 2px solid #d4af37;
+				padding: 12px 35px;
+				border-radius: 8px;
+				cursor: pointer;
+				font-weight: bold;
+				font-family: 'Gwent', sans-serif;
+				font-size: 16px;
+				text-transform: uppercase;
+				letter-spacing: 2px;
+				z-index: 10050;
+				transition: all 0.3s ease;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			`;
+			
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				audioManager.playSound('touch');
+			});
+			
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
+				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+			});
+			
 			cancelBtn.addEventListener('click', () => {
+				// === ВАЖНО: СБРАСЫВАЕМ ФЛАГ ИСПОЛЬЗОВАНИЯ ===
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
 				this.removeHighlights();
 				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// === ОБНОВЛЯЕМ ИКОНКУ СПОСОБНОСТИ ===
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
 			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
 		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
 		},
@@ -4329,6 +7477,10 @@ const leaderAbilities = {
 		name: 'Резня',
 		description: 'Нанесите от 1 до 3 ед. урона всем картам в ряду противника',
 		execute: function(gameState, gameModule) {
+			// Сохраняем состояние для анимации и отмены
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
 			this.showRowSelection(gameState, gameModule);
 			return true;
 		},
@@ -4353,12 +7505,25 @@ const leaderAbilities = {
 				return;
 			}
 			
+			// Сохраняем обработчики для удаления
+			this._rowHandlers = [];
+			
 			const clickHandler = (rowId, rowName) => {
-				return () => {
+				return (event) => {
 					let damagedCount = 0;
 					const unitsToDestroy = [];
 					const randomDamage = Math.floor(Math.random() * 3) + 1; // 1-3 урона
+					const damagedCards = [];
 					
+					// Сохраняем карты до нанесения урона для анимации
+					gameState.opponent.rows[rowId].cards.forEach(card => {
+						if (card.type === 'unit') {
+							if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+							damagedCards.push({ card: card, row: rowId });
+						}
+					});
+					
+					// Наносим урон
 					gameState.opponent.rows[rowId].cards.forEach(card => {
 						if (card.type === 'unit') {
 							if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
@@ -4372,6 +7537,12 @@ const leaderAbilities = {
 						}
 					});
 					
+					// === АНИМАЦИЯ УРОНА ДЛЯ КАЖДОЙ КАРТЫ ===
+					damagedCards.forEach(item => {
+						this.createDamageVisualEffect(item.card, item.row, gameModule, randomDamage);
+					});
+					
+					// Уничтожаем уничтоженные карты
 					unitsToDestroy.forEach(unit => {
 						this.destroyCard(gameState, unit.card, unit.row, gameModule);
 					});
@@ -4397,38 +7568,114 @@ const leaderAbilities = {
 				if (rowElement) {
 					rowElement.classList.add('row-damage-target');
 					rowElement.style.cursor = 'pointer';
-					rowElement.addEventListener('click', clickHandler(row.id, row.name));
+					rowElement.style.transition = 'all 0.2s ease';
+					
+					const handler = clickHandler(row.id, row.name);
+					rowElement.addEventListener('click', handler);
+					this._rowHandlers.push({ element: rowElement, handler: handler });
 					
 					rowElement.addEventListener('mouseenter', () => {
 						rowElement.style.transform = 'scale(1.02)';
-						rowElement.style.transition = 'all 0.2s ease';
+						rowElement.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.3)';
 					});
 					rowElement.addEventListener('mouseleave', () => {
 						rowElement.style.transform = 'scale(1)';
+						rowElement.style.boxShadow = '';
 					});
 				}
 			});
 			
-			this.showCancelButton();
+			// === ДОБАВЛЯЕМ КНОПКУ ОТМЕНЫ ===
+			this.showCancelButton(gameState, gameModule);
 		},
 		
-		removeHighlights: function() {
-			const rows = ['close', 'ranged', 'siege'];
-			rows.forEach(row => {
-				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
-				if (rowElement) {
-					rowElement.classList.remove('row-damage-target');
-					rowElement.style.cursor = '';
-					rowElement.style.transform = '';
-					const newRow = rowElement.cloneNode(true);
-					rowElement.parentNode.replaceChild(newRow, rowElement);
+		// ===== АНИМАЦИЯ УРОНА (как в scoiatael_ability_3) =====
+		createDamageVisualEffect: function(card, row, gameModule, damageAmount) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
 				}
-			});
-			this.removeCancelButton();
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией урона (красный)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = `-${damageAmount}`;
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
-		showCancelButton: function() {
-			if (document.getElementById('abilityCancelBtn')) return;
+		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
+		showCancelButton: function(gameState, gameModule) {
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
+			
 			const cancelBtn = document.createElement('button');
 			cancelBtn.id = 'abilityCancelBtn';
 			cancelBtn.textContent = 'ОТМЕНА';
@@ -4436,7 +7683,8 @@ const leaderAbilities = {
 			cancelBtn.style.cssText = `
 				position: fixed;
 				bottom: 30px;
-				left: 30px;
+				left: 50%;
+				transform: translateX(-50%);
 				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 				color: #d4af37;
 				border: 2px solid #d4af37;
@@ -4452,25 +7700,73 @@ const leaderAbilities = {
 				transition: all 0.3s ease;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 			`;
-			cancelBtn.addEventListener('click', () => {
-				this.removeHighlights();
-				audioManager.playSound('button');
-			});
+			
 			cancelBtn.addEventListener('mouseenter', () => {
-				cancelBtn.style.transform = 'scale(1.05)';
-				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
+				cancelBtn.style.boxShadow = '0 0 25px rgba(212, 175, 55, 0.4)';
 				audioManager.playSound('touch');
 			});
+			
 			cancelBtn.addEventListener('mouseleave', () => {
-				cancelBtn.style.transform = 'scale(1)';
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
 				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
+			
+			cancelBtn.addEventListener('click', () => {
+				// === ВАЖНО: СБРАСЫВАЕМ ФЛАГ ИСПОЛЬЗОВАНИЯ ===
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				// Убираем выделения с рядов
+				this.removeHighlights();
+				
+				// Убираем кнопку отмены
+				this.removeCancelButton();
+				
+				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				// Обновляем иконку способности (возвращаем активное состояние)
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
+			});
+			
 			document.body.appendChild(cancelBtn);
+			this._cancelBtn = cancelBtn;
 		},
 		
 		removeCancelButton: function() {
+			if (this._cancelBtn && this._cancelBtn.parentNode) {
+				this._cancelBtn.remove();
+				this._cancelBtn = null;
+			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
+		},
+		
+		removeHighlights: function() {
+			const rows = ['close', 'ranged', 'siege'];
+			rows.forEach(row => {
+				const rowElement = document.getElementById(`opponent${this._gameModule.capitalizeFirst(row)}Row`);
+				if (rowElement) {
+					rowElement.classList.remove('row-damage-target');
+					rowElement.style.cursor = '';
+					rowElement.style.transform = '';
+					rowElement.style.boxShadow = '';
+				}
+			});
+			
+			// Удаляем обработчики кликов с рядов
+			if (this._rowHandlers) {
+				this._rowHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._rowHandlers = [];
+			}
+			
+			this.removeCancelButton();
 		},
 		
 		dealDamage: function(card, amount) {
@@ -4542,6 +7838,11 @@ const leaderAbilities = {
 		name: 'Священное братство',
 		description: 'Усильте 2 случайных дружественных отряда на 2 ед.',
 		execute: function(gameState, gameModule) {
+			// Сохраняем состояние для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			this._boostAmount = 2;
+			
 			const friendlyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
@@ -4562,6 +7863,7 @@ const leaderAbilities = {
 			const boostAmount = 2;
 			const boostCount = Math.min(2, friendlyUnits.length);
 			
+			// Перемешиваем массив для случайного выбора
 			const shuffled = [...friendlyUnits];
 			for (let i = shuffled.length - 1; i > 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
@@ -4569,12 +7871,20 @@ const leaderAbilities = {
 			}
 			
 			let boostedCards = [];
+			const boostedWithRows = [];
+			
 			for (let i = 0; i < boostCount; i++) {
 				const target = shuffled[i];
 				this.boostCard(target.card, boostAmount);
-				gameModule.updateRowStrength(target.row, 'player');
 				boostedCards.push(target.card.name);
+				boostedWithRows.push(target);
 			}
+			
+			// === АНИМАЦИЯ УСИЛЕНИЯ ДЛЯ КАЖДОЙ КАРТЫ ===
+			boostedWithRows.forEach(item => {
+				this.createBoostVisualEffect(item.card, item.row, gameModule);
+				gameModule.updateRowStrength(item.row, 'player');
+			});
 			
 			gameState.player.abilityUsedThisRound = true;
 			gameModule.updateTotalScoreDisplays();
@@ -4582,6 +7892,88 @@ const leaderAbilities = {
 			audioManager.playSound('card_boost');
 			
 			return true;
+		},
+		
+		// ===== АНИМАЦИЯ УСИЛЕНИЯ +2 (как в scoiatael_ability_1) =====
+		createBoostVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`player${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.player.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.player.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией +2 (зелёный)
+			const boostOverlay = document.createElement('div');
+			boostOverlay.className = 'card-boost-overlay';
+			boostOverlay.textContent = '+2';
+			boostOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00ff00;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(0, 255, 0, 0.9), 0 0 40px rgba(0, 255, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(0, 255, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			
+			cardElement.appendChild(boostOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (boostOverlay.parentNode) {
+					boostOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1200);
 		},
 		
 		boostCard: function(card, amount) {

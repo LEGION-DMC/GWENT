@@ -961,6 +961,24 @@
 	width: 100%;
 }
 
+.ability-option__check {
+    animation: checkMarkAppear 0.3s ease;
+}
+
+@keyframes checkMarkAppear {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 .abilities-confirm-btn:hover {
 	transform: scale(1.01);
 	box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);

@@ -170,7 +170,7 @@ const factionAbilities = {
         {
             id: 'monsters_ability_2',
             name: 'Неутолимый голод',
-            description: 'Уничтожьте дружественный отряд, затем создайте в этом ряду Волколака и усильте ее на значение силы уничтоженного отряда',
+            description: 'Уничтожьте дружественный отряд, затем призовите Волколака, усиленного на значение силы уничтоженого отряда, из колоды на поле в этом же ряду',
             icon: 'faction/monsters/abilities/hangry.png'
         },
         {
@@ -409,22 +409,22 @@ function createDeckBuildingHTML() {
 						<h2>КОЛЛЕКЦИЯ</h2>
 						<div class="sort-buttons">
 							<button class="sort-btn active" data-type="all">
-								<img src="deck/all.png" alt="Все карты" title="Все карты">
+								<img src="deck/all.png" alt="Все карты" title="">
 							</button>
 							<button class="sort-btn" data-type="units">
-								<img src="deck/unit.png" alt="Отряды" title="Отряды">
+								<img src="deck/unit.png" alt="Отряды" title="">
 							</button>
 							<button class="sort-btn" data-type="specials">
-								<img src="deck/special.png" alt="Спец. карты" title="Спец. карты">
+								<img src="deck/special.png" alt="Спец. карты" title="">
 							</button>
 							<button class="sort-btn" data-type="tactics">
-								<img src="deck/tactic.png" alt="Тактика" title="Тактика">
+								<img src="deck/tactic.png" alt="Тактика" title="">
 							</button>
 							<button class="sort-btn" data-type="artifacts">
-								<img src="deck/artifact.png" alt="Артефакты" title="Артефакты">
+								<img src="deck/artifact.png" alt="Артефакты" title="">
 							</button>
 							<button class="sort-btn faction-sort-btn" data-type="faction">
-								<img src="faction/${faction.id}/sort.png" alt="Только карты фракции" title="Только карты фракции">
+								<img src="faction/${faction.id}/sort.png" alt="Только карты фракции" title="">
 							</button>
 						</div>
 					</div>
@@ -466,35 +466,35 @@ function createDeckBuildingHTML() {
                     <div class="stat-group">
                         <span class="stat-label">Карт в колоде</span>
                         <div class="stat-item">
-                            <img src="deck/stats_count.png" alt="Всего карт">
+                            <img src="deck/stats_count.png" alt="">
                             <span class="stat-value" id="totalCards">0</span>
                         </div>
                     </div>
                     <div class="stat-group">
                         <span class="stat-label">Карт отрядов</span>
                         <div class="stat-item">
-                            <img src="deck/stats_unit.png" alt="Отряды">
+                            <img src="deck/stats_unit.png" alt="">
                             <span class="stat-value" id="unitCards">0</span>
                         </div>
                     </div>
                     <div class="stat-group">
                         <span class="stat-label">Специальных карт</span>
                         <div class="stat-item">
-                            <img src="deck/stats_special.png" alt="Спец. карты">
+                            <img src="deck/stats_special.png" alt="">
                             <span class="stat-value" id="specialCards">0</span>
                         </div>
                     </div>
 					<div class="stat-group">
 						<span class="stat-label">Карт героев</span>
 						<div class="stat-item">
-							<img src="deck/stats_hero.png" alt="Герои">
+							<img src="deck/stats_hero.png" alt="">
 							<span class="stat-value" id="heroCards">0</span>
 						</div>
 					</div>
                     <div class="stat-group">
                         <span class="stat-label">Общая сила колоды</span>
                         <div class="stat-item">
-                            <img src="deck/stats_strength.png" alt="Общая сила">
+                            <img src="deck/stats_strength.png" alt="">
                             <span class="stat-value" id="totalStrength">0</span>
                         </div>
                     </div>
@@ -507,22 +507,22 @@ function createDeckBuildingHTML() {
 						<h2>КОЛОДА</h2>
 						<div class="sort-buttons">
 							<button class="sort-btn active" data-type="all">
-								<img src="deck/all.png" alt="Все карты" title="Все карты">
+								<img src="deck/all.png" alt="Все карты" title="">
 							</button>
 							<button class="sort-btn" data-type="units">
-								<img src="deck/unit.png" alt="Отряды" title="Отряды">
+								<img src="deck/unit.png" alt="Отряды" title="">
 							</button>
 							<button class="sort-btn" data-type="specials">
-								<img src="deck/special.png" alt="Спец. карты" title="Спец. карты">
+								<img src="deck/special.png" alt="Спец. карты" title="">
 							</button>
 							<button class="sort-btn" data-type="tactics">
-								<img src="deck/tactic.png" alt="Тактика" title="Тактика">
+								<img src="deck/tactic.png" alt="Тактика" title="">
 							</button>
 							<button class="sort-btn" data-type="artifacts">
-								<img src="deck/artifact.png" alt="Артефакты" title="Артефакты">
+								<img src="deck/artifact.png" alt="Артефакты" title="">
 							</button>
 							<button class="sort-btn deck-faction-sort-btn" data-type="faction">
-								<img src="faction/${faction.id}/sort.png" alt="Только карты фракции" title="Только карты фракции">
+								<img src="faction/${faction.id}/sort.png" alt="Только карты фракции" title="">
 							</button>
 						</div>
 					</div>
@@ -539,19 +539,19 @@ function createDeckBuildingHTML() {
 				</div>
 				
 				<div class="deck-controls-panel" id="deckControlsPanel">
-					<button class="deck-control-btn auto-build-btn" id="autoBuildBtn" title="Автоматический сбор колоды">
+					<button class="deck-control-btn auto-build-btn" id="autoBuildBtn" title="">
 						<img src="deck/auto_build.png" alt="A">
 						<span>АВТОСБОР</span>
 					</button>
-					<button class="deck-control-btn save-deck-btn" id="saveDeckBtn" title="Сохранить колоду в файл">
+					<button class="deck-control-btn save-deck-btn" id="saveDeckBtn" title="">
 						<img src="deck/auto_build.png" alt="S">
 						<span>СОХРАНИТЬ</span>
 					</button>
-					<button class="deck-control-btn load-deck-btn" id="loadDeckBtn" title="Загрузить колоду из файла">
+					<button class="deck-control-btn load-deck-btn" id="loadDeckBtn" title="">
 						<img src="deck/auto_build.png" alt="D">
 						<span>ЗАГРУЗИТЬ</span>
 					</button>
-					<button class="deck-control-btn clear-deck-btn" id="clearDeckBtn" title="Очистить колоду">
+					<button class="deck-control-btn clear-deck-btn" id="clearDeckBtn" title="">
 						<img src="deck/none_cards.png" alt="C">
 						<span>ОЧИСТИТЬ</span>
 					</button>
@@ -2198,8 +2198,25 @@ function setupAbilitiesModalEventListeners(modalOverlay, faction, abilities) {
     
     abilityOptions.forEach(option => {
         option.addEventListener('click', () => {
-            abilityOptions.forEach(opt => opt.classList.remove('selected'));
+            // Убираем выделение со всех опций
+            abilityOptions.forEach(opt => {
+                opt.classList.remove('selected');
+                // Удаляем существующий флажок
+                const existingCheck = opt.querySelector('.ability-option__check');
+                if (existingCheck) {
+                    existingCheck.remove();
+                }
+            });
+            
+            // Добавляем выделение выбранной опции
             option.classList.add('selected');
+            
+            // Создаем и добавляем флажок для выбранной опции
+            const checkMark = document.createElement('div');
+            checkMark.className = 'ability-option__check';
+            checkMark.innerHTML = `<img src="deck/activ.png" alt="Выбрано">`;
+            option.appendChild(checkMark);
+            
             selectedAbility = option.dataset.abilityId;
             audioManager.playSound('touch');
         });

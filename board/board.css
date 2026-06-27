@@ -1719,20 +1719,6 @@
     box-shadow: none;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 .leader-ability-wrapper {
     position: absolute;
     bottom: 170px;
@@ -1744,7 +1730,7 @@
     position: relative;
     width: 60px;
     height: 60px;
-    cursor: pointer;
+    cursor: url('../ui/cursor_hover.png'), pointer !important;
     transition: transform 0.2s ease;
     display: flex;
     align-items: center;
