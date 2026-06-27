@@ -2759,7 +2759,7 @@ const leaderAbilities = {
 	},
 	'realms_ability_5': {
 		name: 'Мобилизация',
-		description: 'Призовите бронзовый отряд на поле и усильте его и смежные с ним отряды на 3 еденицы',
+		description: 'Призовите бронзовый отряд на поле и усильте его и смежные с ним отряд на 3 еденицы',
 		isExecuting: false,  
 		pendingCard: null,   
 		pendingCardIndex: null, 
@@ -4186,7 +4186,6 @@ const leaderAbilities = {
 				left: 0;
 				width: 100%;
 				height: 100%;
-				background: url('card/neutral/scorch.jpg') center/cover no-repeat;
 				z-index: 100;
 				border-radius: 5px;
 				pointer-events: none;
@@ -5248,7 +5247,6 @@ const leaderAbilities = {
 				left: 0;
 				width: 100%;
 				height: 100%;
-				background: url('card/neutral/scorch.jpg') center/cover no-repeat;
 				z-index: 100;
 				border-radius: 5px;
 				pointer-events: none;
@@ -6036,7 +6034,7 @@ const leaderAbilities = {
 		name: 'Безрассудная ярость',
 		description: 'Случайным образом распределите 4 ед. урона между всеми вражескими отрядами',
 		execute: function(gameState, gameModule) {
-			// Собираем все вражеские отряды на поле
+			// Собираем все вражеские отряды на поле (не герои)
 			const enemyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
@@ -6045,6 +6043,8 @@ const leaderAbilities = {
 					if (card.type === 'unit') {
 						// Пропускаем героев
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+						// Пропускаем уже уничтоженные
+						if (card.strength <= 0) return;
 						enemyUnits.push({ card: card, row: row, index: index });
 					}
 				});
@@ -6055,31 +6055,72 @@ const leaderAbilities = {
 				return false;
 			}
 			
-			// Распределяем 4 урона случайным образом
+			// Сохраняем состояние для анимации
+			this._gameState = gameState;
+			this._gameModule = gameModule;
+			
+			// === РАСПРЕДЕЛЯЕМ УРОН ===
 			let remainingDamage = 4;
 			const unitsToDestroy = [];
+			const damagedUnits = [];
 			
-			// Создаём массив для случайного выбора
-			const aliveUnits = [...enemyUnits];
+			// Если отрядов больше 5 - выбираем 4 случайных
+			let targets = [...enemyUnits];
+			if (targets.length > 5) {
+				// Перемешиваем и берем первые 4
+				for (let i = targets.length - 1; i > 0; i--) {
+					const j = Math.floor(Math.random() * (i + 1));
+					[targets[i], targets[j]] = [targets[j], targets[i]];
+				}
+				targets = targets.slice(0, 4);
+			}
 			
-			while (remainingDamage > 0 && aliveUnits.length > 0) {
-				const randomIndex = Math.floor(Math.random() * aliveUnits.length);
-				const target = aliveUnits[randomIndex];
+			// Рассчитываем урон для каждого
+			const totalTargets = targets.length;
+			let damagePerUnit = Math.floor(remainingDamage / totalTargets);
+			let extraDamage = remainingDamage % totalTargets;
+			
+			// Если отряд всего 1 - наносим весь урон ему
+			if (totalTargets === 1) {
+				damagePerUnit = remainingDamage;
+				extraDamage = 0;
+			}
+			
+			// Наносим урон
+			targets.forEach((target, index) => {
+				let damage = damagePerUnit;
+				if (extraDamage > 0) {
+					damage += 1;
+					extraDamage--;
+				}
 				
-				this.dealDamage(target.card, 1);
-				remainingDamage--;
+				// Сохраняем для анимации
+				damagedUnits.push({ card: target.card, row: target.row, damage: damage });
+				
+				this.dealDamage(target.card, damage);
+				
+				// Обновляем отображение силы на карте
 				gameModule.updateCardStrengthDisplay(target.card, target.row, 'opponent');
 				
 				if (target.card.strength <= 0) {
 					unitsToDestroy.push({ card: target.card, row: target.row });
-					aliveUnits.splice(randomIndex, 1);
 				}
-			}
-			
-			// Уничтожаем уничтоженные карты
-			unitsToDestroy.forEach(unit => {
-				this.destroyCard(gameState, unit.card, unit.row, gameModule);
 			});
+			
+			// === АНИМАЦИЯ УРОНА ТОЛЬКО ДЛЯ ПОЛУЧИВШИХ УРОН ===
+			// Убеждаемся, что урон был нанесён (damage > 0)
+			damagedUnits.forEach(item => {
+				if (item.damage > 0) {
+					this.createDamageVisualEffect(item.card, item.row, gameModule, item.damage);
+				}
+			});
+			
+			// Уничтожаем уничтоженные карты (с задержкой после анимации)
+			setTimeout(() => {
+				unitsToDestroy.forEach(unit => {
+					this.destroyCard(gameState, unit.card, unit.row, gameModule);
+				});
+			}, 600);
 			
 			gameState.player.abilityUsedThisRound = true;
 			
@@ -6089,19 +6130,129 @@ const leaderAbilities = {
 			});
 			gameModule.updateTotalScoreDisplays();
 			
-			gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесено 4 ед. урона.`, 'info');
+			// Показываем только карты, которые получили урон
+			const damageInfo = damagedUnits
+				.filter(item => item.damage > 0)
+				.map(item => `${item.card.name} (-${item.damage})`)
+				.join(', ');
+			
+			if (damageInfo) {
+				gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён урон: ${damageInfo}`, 'info');
+			} else {
+				gameModule.showGameMessage(`Способность "${this.name}" активирована!`, 'info');
+			}
 			audioManager.playSound('card_damage');
 			
 			return true;
 		},
 		
+		// ===== МЕТОД АНИМАЦИИ УРОНА =====
+		createDamageVisualEffect: function(card, row, gameModule, damageAmount) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			// Ищем элемент карты на доске
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.id === card.id && c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
+					}
+				}
+			}
+			
+			// Если не нашли по селекторам, пробуем найти по позиции
+			if (!cardElement) {
+				const allCards = rowElement.querySelectorAll('.board-card');
+				const rowState = this._gameState.opponent.rows[row];
+				const position = rowState.cards.findIndex(c => 
+					c.id === card.id && c.uniqueId === card.uniqueId
+				);
+				if (position !== -1 && allCards[position]) {
+					cardElement = allCards[position];
+				}
+			}
+			
+			if (!cardElement) return;
+			
+			// Создаём элемент с анимацией урона (красный)
+			const damageOverlay = document.createElement('div');
+			damageOverlay.className = 'card-damage-overlay';
+			damageOverlay.textContent = `-${damageAmount}`;
+			damageOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #ff1744;
+				font-size: 36px;
+				font-weight: bold;
+				text-shadow: 0 0 20px rgba(255, 23, 68, 0.9), 0 0 40px rgba(255, 0, 0, 0.6);
+				z-index: 100;
+				pointer-events: none;
+				animation: leaderBoostAnimation 1.2s ease-out forwards;
+				font-family: 'Gwent', sans-serif;
+				letter-spacing: 2px;
+			`;
+			
+			// Добавляем красное свечение на карту
+			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
+			cardElement.style.transition = 'box-shadow 0.5s ease-out';
+			cardElement.style.zIndex = '10';
+			
+			cardElement.appendChild(damageOverlay);
+			
+			// Удаляем эффект через 1.2 секунды
+			setTimeout(() => {
+				if (damageOverlay.parentNode) {
+					damageOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+				cardElement.style.zIndex = '';
+			}, 1200);
+		},
+		
 		dealDamage: function(card, amount) {
 			if (card.baseStrength === undefined) card.baseStrength = card.strength;
 			if (card.originalStrength === undefined) card.originalStrength = card.strength;
-			const newStrength = (card.strength || 0) - amount;
-			card.strength = Math.max(0, newStrength);
-			card.currentStrength = card.strength;
-			card._displayStrength = card.strength;
+			
+			// Сохраняем текущую силу как базовую для модификаций
+			// Это важно для карт под погодой - сохраняем их текущее состояние
+			if (card._displayStrength !== undefined) {
+				card._displayStrength = Math.max(0, card._displayStrength - amount);
+				card.strength = card._displayStrength;
+				card.currentStrength = card._displayStrength;
+			} else {
+				const newStrength = (card.strength || 0) - amount;
+				card.strength = Math.max(0, newStrength);
+				card.currentStrength = card.strength;
+				card._displayStrength = card.strength;
+			}
+			
+			// Сохраняем модифицированную силу для отслеживания изменений
+			if (card.modifiedStrength === undefined) {
+				card.modifiedStrength = card.strength;
+			} else {
+				card.modifiedStrength = card.strength;
+			}
 		},
 		
 		destroyCard: function(gameState, card, row, gameModule) {
@@ -7163,6 +7314,25 @@ const leaderAbilities = {
 		name: 'Заказ на убийство',
 		description: 'Нанесите 6 ед. урона вражескому отряду',
 		execute: function(gameState, gameModule) {
+			// Сначала проверяем, есть ли вообще цели
+			let hasTargets = false;
+			const rows = ['close', 'ranged', 'siege'];
+			
+			rows.forEach(row => {
+				gameState.opponent.rows[row].cards.forEach(card => {
+					if (card.type === 'unit') {
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
+						hasTargets = true;
+					}
+				});
+			});
+			
+			// ===== ВАЖНО: ЕСЛИ НЕТ ЦЕЛЕЙ - ВОЗВРАЩАЕМ false, НЕ ПОМЕЧАЯ КАК ИСПОЛЬЗОВАННУЮ =====
+			if (!hasTargets) {
+				gameModule.showGameMessage('Нет вражеских отрядов для атаки', 'warning');
+				return false;  // ← Возвращаем false, способность НЕ считается использованной
+			}
+			
 			// Сохраняем состояние для анимации и отмены
 			this._gameState = gameState;
 			this._gameModule = gameModule;
@@ -7477,6 +7647,30 @@ const leaderAbilities = {
 		name: 'Резня',
 		description: 'Нанесите от 1 до 3 ед. урона всем картам в ряду противника',
 		execute: function(gameState, gameModule) {
+			// ===== СНАЧАЛА ПРОВЕРЯЕМ, ЕСТЬ ЛИ ВООБЩЕ КАРТЫ У ПРОТИВНИКА =====
+			let hasTargets = false;
+			const rows = ['close', 'ranged', 'siege'];
+			
+			rows.forEach(row => {
+				if (gameState.opponent.rows[row].cards.length > 0) {
+					// Проверяем, есть ли хотя бы один отряд (не герой)
+					const hasValidUnit = gameState.opponent.rows[row].cards.some(card => {
+						if (card.type !== 'unit') return false;
+						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return false;
+						return true;
+					});
+					if (hasValidUnit) {
+						hasTargets = true;
+					}
+				}
+			});
+			
+			// ===== ВАЖНО: ЕСЛИ НЕТ ЦЕЛЕЙ - ВОЗВРАЩАЕМ false, НЕ ПОМЕЧАЯ КАК ИСПОЛЬЗОВАННУЮ =====
+			if (!hasTargets) {
+				gameModule.showGameMessage('Нет отрядов противника на поле для атаки', 'warning');
+				return false;  // ← Возвращаем false, способность НЕ считается использованной
+			}
+			
 			// Сохраняем состояние для анимации и отмены
 			this._gameState = gameState;
 			this._gameModule = gameModule;
@@ -7494,14 +7688,23 @@ const leaderAbilities = {
 			];
 			
 			rows.forEach(row => {
-				const hasCards = gameState.opponent.rows[row.id].cards.length > 0;
-				if (hasCards) {
+				// Проверяем наличие уязвимых отрядов (не героев)
+				const hasValidUnits = gameState.opponent.rows[row.id].cards.some(card => {
+					if (card.type !== 'unit') return false;
+					if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return false;
+					return true;
+				});
+				if (hasValidUnits) {
 					rowsWithCards.push(row);
 				}
 			});
 			
 			if (rowsWithCards.length === 0) {
-				gameModule.showGameMessage('Нет отрядов противника на поле для атаки', 'warning');
+				gameModule.showGameMessage('Нет уязвимых отрядов противника для атаки', 'warning');
+				// ===== ВАЖНО: СБРАСЫВАЕМ ФЛАГ, ЕСЛИ НЕТ ЦЕЛЕЙ =====
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
 				return;
 			}
 			
@@ -7549,6 +7752,10 @@ const leaderAbilities = {
 					
 					if (damagedCount === 0) {
 						gameModule.showGameMessage('В выбранном ряду нет уязвимых отрядов', 'warning');
+						// ===== ВАЖНО: СБРАСЫВАЕМ ФЛАГ =====
+						if (gameState) {
+							gameState.player.abilityUsedThisRound = false;
+						}
 						this.removeHighlights();
 						return;
 					}
@@ -7560,6 +7767,11 @@ const leaderAbilities = {
 					audioManager.playSound('card_damage');
 					
 					this.removeHighlights();
+					
+					// Обновляем иконку способности
+					if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+						window.boardModule.updateAbilityAvailability(gameState);
+					}
 				};
 			};
 			
@@ -7994,14 +8206,24 @@ const leaderAbilities = {
 			
 			rows.forEach(row => {
 				gameState.opponent.rows[row].cards.forEach((card) => {
-					if (card.type === 'unit' && (card.strength || 0) <= 4) {
+					if (card.type === 'unit') {
 						const isHero = card.tags && (card.tags.includes('hero') || card.tags.includes('герой'));
 						if (!isHero) {
-							destroyableUnits.push({ 
-								card: card, 
-								row: row,
-								uniqueId: card.uniqueId 
-							});
+							// Используем currentStrength для проверки
+							const currentStrength = card.currentStrength !== undefined ? 
+								card.currentStrength : (card.strength || 0);
+							
+							if (currentStrength <= 4 && currentStrength > 0) {
+								if (!card.uniqueId) {
+									card.uniqueId = `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+								}
+								destroyableUnits.push({ 
+									card: card, 
+									row: row,
+									uniqueId: card.uniqueId,
+									cardId: card.id
+								});
+							}
 						}
 					}
 				});
@@ -8012,12 +8234,15 @@ const leaderAbilities = {
 				return false;
 			}
 			
+			this._gameState = gameState;
+			this._gameModule = gameModule;
 			this.showTargetSelection(destroyableUnits, gameState, gameModule);
 			return true;
 		},
 		
 		showTargetSelection: function(destroyableUnits, gameState, gameModule) {
-			const handlers = new Map();
+			this.currentDestroyableUnits = destroyableUnits;
+			this._clickHandlers = [];
 			
 			for (const unit of destroyableUnits) {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(unit.row)}Row`);
@@ -8028,10 +8253,29 @@ const leaderAbilities = {
 					cardElement = rowElement.querySelector(`[data-card-id="${unit.card.id}"]`);
 				}
 				
+				if (!cardElement) {
+					const allCards = rowElement.querySelectorAll('.board-card');
+					const rowState = gameState.opponent.rows[unit.row];
+					for (let i = 0; i < allCards.length && i < rowState.cards.length; i++) {
+						const cardData = rowState.cards[i];
+						if (cardData.id === unit.card.id || cardData.uniqueId === unit.uniqueId) {
+							cardElement = allCards[i];
+							if (cardData.uniqueId) {
+								cardElement.dataset.uniqueId = cardData.uniqueId;
+							}
+							break;
+						}
+					}
+				}
+				
 				if (cardElement) {
 					cardElement.style.cursor = 'pointer';
 					cardElement.style.filter = 'brightness(1.2) drop-shadow(0 0 8px #ff4444)';
 					cardElement.classList.add('destroyable-target');
+					
+					if (unit.uniqueId) {
+						cardElement.dataset.uniqueId = unit.uniqueId;
+					}
 					
 					const clickHandler = (event) => {
 						event.stopPropagation();
@@ -8039,10 +8283,11 @@ const leaderAbilities = {
 						
 						let targetCard = null;
 						let targetRow = null;
+						const targetUniqueId = cardElement.dataset.uniqueId || unit.uniqueId;
 						
 						for (const row of ['close', 'ranged', 'siege']) {
 							const foundCard = gameState.opponent.rows[row].cards.find(c => 
-								c.uniqueId === unit.uniqueId
+								c.uniqueId === targetUniqueId
 							);
 							if (foundCard) {
 								targetCard = foundCard;
@@ -8064,75 +8309,197 @@ const leaderAbilities = {
 							}
 						}
 						
-						if (targetCard) {
-							this.destroyCard(gameState, targetCard, targetRow, gameModule);
-							gameState.player.abilityUsedThisRound = true;
-							
-							gameModule.updateTotalScoreDisplays();
-							gameModule.showGameMessage(`Способность "${this.name}" активирована! ${targetCard.name} уничтожен.`, 'info');
-							audioManager.playSound('card_destroy');
+						if (!targetCard) {
+							gameModule.showGameMessage('Карта не найдена на поле', 'warning');
+							this.removeDestroyHighlights(gameState, gameModule);
+							return;
 						}
 						
-						this.removeDestroyHighlights(destroyableUnits, gameModule);
+						const currentStrength = targetCard.currentStrength !== undefined ? 
+							targetCard.currentStrength : (targetCard.strength || 0);
+						
+						if (currentStrength > 4 || currentStrength <= 0) {
+							gameModule.showGameMessage(`Сила карты ${currentStrength} - она не подходит для уничтожения`, 'warning');
+							this.removeDestroyHighlights(gameState, gameModule);
+							return;
+						}
+						
+						// Анимация уничтожения
+						this.createDestroyVisualEffect(targetCard, targetRow, gameModule);
+						
+						setTimeout(() => {
+							// ===== УДАЛЯЕМ КАРТУ БЕЗ ПЕРЕРИСОВКИ ВСЕГО РЯДА =====
+							this.destroyCardWithoutRedraw(gameState, targetCard, targetRow, gameModule);
+							gameState.player.abilityUsedThisRound = true;
+							
+							gameModule.updateRowStrength(targetRow, 'opponent');
+							gameModule.updateTotalScoreDisplays();
+							gameModule.showGameMessage(`Способность "${this.name}" активирована! ${targetCard.name} (сила ${currentStrength}) уничтожен.`, 'info');
+							audioManager.playSound('card_destroy');
+							
+							if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+								window.boardModule.updateAbilityAvailability(gameState);
+							}
+						}, 500);
+						
+						this.removeDestroyHighlights(gameState, gameModule);
 					};
 					
 					cardElement.addEventListener('click', clickHandler);
-					handlers.set(cardElement, clickHandler);
+					this._clickHandlers.push({ element: cardElement, handler: clickHandler });
 					
-					const mouseEnterHandler = () => {
+					cardElement.addEventListener('mouseenter', () => {
 						cardElement.style.transform = 'scale(1.05)';
-					};
-					const mouseLeaveHandler = () => {
+					});
+					cardElement.addEventListener('mouseleave', () => {
 						cardElement.style.transform = 'scale(1)';
-					};
-					
-					cardElement.addEventListener('mouseenter', mouseEnterHandler);
-					cardElement.addEventListener('mouseleave', mouseLeaveHandler);
-					
-					handlers.set(cardElement + '_enter', mouseEnterHandler);
-					handlers.set(cardElement + '_leave', mouseLeaveHandler);
+					});
 				}
 			}
-			
-			this.currentHandlers = handlers;
-			this.currentDestroyableUnits = destroyableUnits;
 			
 			this.showDestroyCancelButton(gameState, gameModule);
 		},
 		
-		removeDestroyHighlights: function(destroyableUnits, gameModule) {
-			if (this.currentHandlers) {
-				for (const unit of destroyableUnits) {
-					const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(unit.row)}Row`);
-					if (rowElement) {
-						let cardElement = rowElement.querySelector(`[data-unique-id="${unit.uniqueId}"]`);
-						if (!cardElement) {
-							cardElement = rowElement.querySelector(`[data-card-id="${unit.card.id}"]`);
-						}
-						if (cardElement) {
-							const clickHandler = this.currentHandlers.get(cardElement);
-							if (clickHandler) {
-								cardElement.removeEventListener('click', clickHandler);
-							}
-							const enterHandler = this.currentHandlers.get(cardElement + '_enter');
-							const leaveHandler = this.currentHandlers.get(cardElement + '_leave');
-							if (enterHandler) cardElement.removeEventListener('mouseenter', enterHandler);
-							if (leaveHandler) cardElement.removeEventListener('mouseleave', leaveHandler);
-							
-							cardElement.style.cursor = '';
-							cardElement.style.filter = '';
-							cardElement.style.transform = '';
-							cardElement.classList.remove('destroyable-target');
-						}
+		createDestroyVisualEffect: function(card, row, gameModule) {
+			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+			if (!rowElement) return;
+			
+			let cardElement = null;
+			
+			if (card.uniqueId) {
+				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
+			}
+			
+			if (!cardElement) {
+				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
+				if (elements.length === 1) {
+					cardElement = elements[0];
+				} else if (elements.length > 1) {
+					const rowState = this._gameState.opponent.rows[row];
+					const position = rowState.cards.findIndex(c => 
+						c.uniqueId === card.uniqueId
+					);
+					if (position !== -1 && elements[position]) {
+						cardElement = elements[position];
+					} else {
+						cardElement = elements[0];
 					}
 				}
-				this.currentHandlers.clear();
 			}
+			
+			if (!cardElement) return;
+			
+			const destroyOverlay = document.createElement('div');
+			destroyOverlay.className = 'card-destroy-overlay';
+			destroyOverlay.style.cssText = `
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				z-index: 100;
+				border-radius: 5px;
+				pointer-events: none;
+				animation: destroyCardAnimation 1s ease-out forwards;
+			`;
+			
+			cardElement.style.boxShadow = '0 0 30px 15px rgba(255, 0, 0, 0.8)';
+			cardElement.style.transition = 'box-shadow 0.3s ease-out';
+			
+			cardElement.appendChild(destroyOverlay);
+			
+			setTimeout(() => {
+				if (destroyOverlay.parentNode) {
+					destroyOverlay.remove();
+				}
+				cardElement.style.boxShadow = '';
+			}, 1000);
+		},
+		
+		// ===== НОВЫЙ МЕТОД: УДАЛЕНИЕ КАРТЫ БЕЗ ПЕРЕРИСОВКИ РЯДА =====
+		destroyCardWithoutRedraw: function(gameState, card, row, gameModule) {
+			const rowCards = gameState.opponent.rows[row].cards;
+			
+			// Ищем по uniqueId
+			let cardIndex = -1;
+			if (card.uniqueId) {
+				cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
+			}
+			
+			// Если не нашли, ищем по id
+			if (cardIndex === -1) {
+				const matchingCards = rowCards.map((c, idx) => ({ card: c, index: idx }))
+					.filter(item => item.card.id === card.id);
+				
+				if (matchingCards.length === 1) {
+					cardIndex = matchingCards[0].index;
+				} else if (matchingCards.length > 1) {
+					if (card.uniqueId) {
+						const found = matchingCards.find(item => item.card.uniqueId === card.uniqueId);
+						if (found) {
+							cardIndex = found.index;
+						}
+					}
+					if (cardIndex === -1) {
+						cardIndex = matchingCards[0].index;
+					}
+				}
+			}
+			
+			if (cardIndex !== -1) {
+				const destroyedCard = rowCards.splice(cardIndex, 1)[0];
+				gameModule.addCardToDiscard(destroyedCard, 'opponent');
+				
+				// ===== УДАЛЯЕМ КАРТУ ИЗ DOM БЕЗ ПЕРЕРИСОВКИ ВСЕГО РЯДА =====
+				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
+				if (rowElement) {
+					// Ищем элемент карты в DOM
+					let cardElement = null;
+					if (destroyedCard.uniqueId) {
+						cardElement = rowElement.querySelector(`[data-unique-id="${destroyedCard.uniqueId}"]`);
+					}
+					if (!cardElement) {
+						cardElement = rowElement.querySelector(`[data-card-id="${destroyedCard.id}"]`);
+					}
+					if (cardElement) {
+						// Добавляем анимацию исчезновения
+						cardElement.style.animation = 'cardDestroy 0.3s ease-out forwards';
+						setTimeout(() => {
+							if (cardElement.parentNode) {
+								cardElement.remove();
+							}
+						}, 300);
+					}
+				}
+				
+				// Обновляем силу ряда
+				gameModule.updateRowStrength(row, 'opponent');
+			}
+		},
+		
+		removeDestroyHighlights: function(gameState, gameModule) {
+			if (this._clickHandlers) {
+				this._clickHandlers.forEach(({ element, handler }) => {
+					element.removeEventListener('click', handler);
+				});
+				this._clickHandlers = [];
+			}
+			
+			const allCards = document.querySelectorAll('.board-card');
+			allCards.forEach(card => {
+				card.style.cursor = '';
+				card.style.filter = '';
+				card.style.transform = '';
+				card.style.boxShadow = '';
+				card.classList.remove('destroyable-target');
+			});
+			
 			this.removeDestroyCancelButton();
 		},
 		
 		showDestroyCancelButton: function(gameState, gameModule) {
-			if (document.getElementById('abilityCancelBtn')) return;
+			const existingBtn = document.getElementById('abilityCancelBtn');
+			if (existingBtn) existingBtn.remove();
 			
 			const cancelBtn = document.createElement('button');
 			cancelBtn.id = 'abilityCancelBtn';
@@ -8141,7 +8508,8 @@ const leaderAbilities = {
 			cancelBtn.style.cssText = `
 				position: fixed;
 				bottom: 30px;
-				left: 30px;
+				left: 50%;
+				transform: translateX(-50%);
 				background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
 				color: #d4af37;
 				border: 2px solid #d4af37;
@@ -8159,19 +8527,28 @@ const leaderAbilities = {
 			`;
 			
 			cancelBtn.addEventListener('mouseenter', () => {
-				cancelBtn.style.transform = 'scale(1.05)';
+				cancelBtn.style.transform = 'translateX(-50%) scale(1.05)';
 				cancelBtn.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.5)';
 				audioManager.playSound('touch');
 			});
 			
 			cancelBtn.addEventListener('mouseleave', () => {
-				cancelBtn.style.transform = 'scale(1)';
+				cancelBtn.style.transform = 'translateX(-50%) scale(1)';
 				cancelBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
 			});
 			
 			cancelBtn.addEventListener('click', () => {
-				this.removeDestroyHighlights(this.currentDestroyableUnits || [], gameModule);
+				if (gameState) {
+					gameState.player.abilityUsedThisRound = false;
+				}
+				
+				this.removeDestroyHighlights(gameState, gameModule);
 				audioManager.playSound('button');
+				gameModule.showGameMessage('Использование способности отменено', 'info');
+				
+				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
+					window.boardModule.updateAbilityAvailability(gameState);
+				}
 			});
 			
 			document.body.appendChild(cancelBtn);
@@ -8185,18 +8562,6 @@ const leaderAbilities = {
 			}
 			const btn = document.getElementById('abilityCancelBtn');
 			if (btn) btn.remove();
-		},
-		
-		destroyCard: function(gameState, card, row, gameModule) {
-			const rowCards = gameState.opponent.rows[row].cards;
-			let cardIndex = rowCards.findIndex(c => c.uniqueId === card.uniqueId);
-			
-			if (cardIndex !== -1) {
-				const destroyedCard = rowCards.splice(cardIndex, 1)[0];
-				gameModule.addCardToDiscard(destroyedCard, 'opponent');
-				gameModule.redrawRow(row, 'opponent');
-				gameModule.updateRowStrength(row, 'opponent');
-			}
 		}
 	},
 
