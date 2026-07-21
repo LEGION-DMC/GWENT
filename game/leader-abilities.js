@@ -3613,14 +3613,12 @@ const leaderAbilities = {
 		name: 'Заточение',
 		description: 'Нанесите вражескому отряду 3 еденицы урона',
 		execute: function(gameState, gameModule) {
-			// Собираем все вражеские отряды на поле
 			const enemyUnits = [];
 			const rows = ['close', 'ranged', 'siege'];
 			
 			rows.forEach(row => {
 				gameState.opponent.rows[row].cards.forEach((card) => {
 					if (card.type === 'unit') {
-						// Пропускаем героев
 						if (card.tags && (card.tags.includes('hero') || card.tags.includes('герой'))) return;
 						enemyUnits.push({
 							card: card,
@@ -3636,7 +3634,6 @@ const leaderAbilities = {
 				return false;
 			}
 			
-			// Сохраняем состояние для отмены
 			this._gameState = gameState;
 			this._gameModule = gameModule;
 			this._damageAmount = 3;
@@ -3646,7 +3643,6 @@ const leaderAbilities = {
 		},
 		
 		showTargetSelection: function(enemyUnits, gameState, gameModule) {
-			// Убираем старые выделения
 			this.removeHighlights(gameState);
 			
 			const rows = ['close', 'ranged', 'siege'];
@@ -3654,7 +3650,6 @@ const leaderAbilities = {
 			
 			const clickHandler = (target) => {
 				return (event) => {
-					// Проверяем, что цель все еще существует на поле
 					const stillExists = gameState.opponent.rows[target.row].cards.some(
 						c => c.uniqueId === target.card.uniqueId && c.type === 'unit'
 					);
@@ -3665,38 +3660,14 @@ const leaderAbilities = {
 						return;
 					}
 					
-					// Дополнительная проверка перед нанесением урона
-					if (target.card.type !== 'unit') {
-						gameModule.showGameMessage('Можно наносить урон только отрядам!', 'warning');
-						this.removeHighlights(gameState);
-						return;
-					}
-					
-					if (target.card.strength <= 0) {
-						gameModule.showGameMessage('Эта карта уже уничтожена', 'warning');
-						this.removeHighlights(gameState);
-						return;
-					}
-					
-					// Проверяем героя
-					if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) {
-						gameModule.showGameMessage('Нельзя нанести урон Герою!', 'warning');
-						this.removeHighlights(gameState);
-						return;
-					}
-					
-					// Наносим урон
 					this.dealDamage(target.card, this._damageAmount);
 					gameState.player.abilityUsedThisRound = true;
 					
-					// Обновляем отображение силы
 					gameModule.updateRowStrength(target.row, 'opponent');
 					gameModule.updateTotalScoreDisplays();
 					
-					// === АНИМАЦИЯ УРОНА -3 ===
 					this.createDamageVisualEffect(target.card, target.row, gameModule);
 					
-					// Если карта уничтожена
 					if (target.card.strength <= 0) {
 						this.destroyCard(gameState, target.card, target.row, gameModule);
 					}
@@ -3704,12 +3675,11 @@ const leaderAbilities = {
 					gameModule.showGameMessage(`Способность "${this.name}" активирована! Нанесён ${this._damageAmount} урон ${target.card.name}.`, 'info');
 					audioManager.playSound('card_damage');
 					
-					// Убираем подсветку
 					this.removeHighlights(gameState);
 				};
 			};
 			
-			// Подсвечиваем доступные карты
+			// === ТОТ ЖЕ ПОДХОД, ЧТО И В SKELLIGE_ABILITY_3 ===
 			for (const row of rows) {
 				const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
 				if (!rowElement) continue;
@@ -3719,18 +3689,21 @@ const leaderAbilities = {
 					const cardId = cardElement.dataset.cardId;
 					const uniqueId = cardElement.dataset.uniqueId;
 					
-					const target = enemyUnits.find(u => 
-						(u.card.id === cardId || u.card.uniqueId === uniqueId)
-					);
+					// Ищем цель среди вражеских отрядов (проверяем type === 'unit')
+					let target = null;
+					for (const r of rows) {
+						const found = gameState.opponent.rows[r].cards.find(c => 
+							(c.id === cardId || c.uniqueId === uniqueId) && c.type === 'unit'
+						);
+						if (found) {
+							target = { card: found, row: r };
+							break;
+						}
+					}
 					
 					if (target) {
-						// Дополнительная проверка: убеждаемся, что это отряд
-						if (target.card.type !== 'unit') return;
-						
-						// Проверяем, что это не герой
+						// Пропускаем героев
 						if (target.card.tags && (target.card.tags.includes('hero') || target.card.tags.includes('герой'))) return;
-						
-						cardElement._targetData = target;
 						
 						cardElement.style.cursor = 'pointer';
 						cardElement.classList.add('damage-target');
@@ -3752,46 +3725,19 @@ const leaderAbilities = {
 				});
 			}
 			
-			// === КНОПКА ОТМЕНЫ ===
 			this.showCancelButton(gameState, gameModule);
 		},
-		
-		// ===== АНИМАЦИЯ УРОНА -3 (как в scoiatael_ability_3) =====
+
 		createDamageVisualEffect: function(card, row, gameModule) {
 			const rowElement = document.getElementById(`opponent${gameModule.capitalizeFirst(row)}Row`);
 			if (!rowElement) return;
 			
-			// Ищем элемент карты на доске
-			let cardElement = null;
+			let cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
 			
-			if (card.uniqueId) {
-				cardElement = rowElement.querySelector(`[data-unique-id="${card.uniqueId}"]`);
-			}
-			
-			if (!cardElement) {
-				const elements = rowElement.querySelectorAll(`[data-card-id="${card.id}"]`);
-				if (elements.length === 1) {
-					cardElement = elements[0];
-				} else if (elements.length > 1) {
-					const rowState = this._gameState.opponent.rows[row];
-					const position = rowState.cards.findIndex(c => 
-						c.id === card.id && c.uniqueId === card.uniqueId
-					);
-					if (position !== -1 && elements[position]) {
-						cardElement = elements[position];
-					} else {
-						cardElement = elements[0];
-					}
-				}
-			}
-			
-			// Если не нашли по селекторам, пробуем найти по позиции
 			if (!cardElement) {
 				const allCards = rowElement.querySelectorAll('.board-card');
 				const rowState = this._gameState.opponent.rows[row];
-				const position = rowState.cards.findIndex(c => 
-					c.id === card.id && c.uniqueId === card.uniqueId
-				);
+				const position = rowState.cards.findIndex(c => c.uniqueId === card.uniqueId);
 				if (position !== -1 && allCards[position]) {
 					cardElement = allCards[position];
 				}
@@ -3799,7 +3745,6 @@ const leaderAbilities = {
 			
 			if (!cardElement) return;
 			
-			// Создаём элемент с анимацией -3 (красный)
 			const damageOverlay = document.createElement('div');
 			damageOverlay.className = 'card-damage-overlay';
 			damageOverlay.textContent = '-3';
@@ -3823,22 +3768,17 @@ const leaderAbilities = {
 				letter-spacing: 2px;
 			`;
 			
-			// Добавляем красное свечение на карту
 			cardElement.style.boxShadow = '0 0 20px 8px rgba(255, 0, 0, 0.5)';
 			cardElement.style.transition = 'box-shadow 0.5s ease-out';
 			
 			cardElement.appendChild(damageOverlay);
 			
-			// Удаляем эффект через 1.2 секунды
 			setTimeout(() => {
-				if (damageOverlay.parentNode) {
-					damageOverlay.remove();
-				}
+				if (damageOverlay.parentNode) damageOverlay.remove();
 				cardElement.style.boxShadow = '';
 			}, 1200);
 		},
 		
-		// ===== КНОПКА ОТМЕНЫ (как в scoiatael_ability_3) =====
 		showCancelButton: function(gameState, gameModule) {
 			const existingBtn = document.getElementById('abilityCancelBtn');
 			if (existingBtn) existingBtn.remove();
@@ -3880,17 +3820,14 @@ const leaderAbilities = {
 			});
 			
 			cancelBtn.addEventListener('click', () => {
-				// Отменяем выделение и сбрасываем флаг использования
 				this.removeHighlights(gameState);
 				audioManager.playSound('button');
 				gameModule.showGameMessage('Использование способности отменено', 'info');
 				
-				// Сбрасываем флаг использования способности
 				if (gameState) {
 					gameState.player.abilityUsedThisRound = false;
 				}
 				
-				// Обновляем иконку способности (возвращаем активное состояние)
 				if (window.boardModule && window.boardModule.updateAbilityAvailability) {
 					window.boardModule.updateAbilityAvailability(gameState);
 				}
@@ -3926,7 +3863,6 @@ const leaderAbilities = {
 				});
 			}
 			
-			// Удаляем обработчики кликов
 			if (this._clickHandlers) {
 				this._clickHandlers.forEach(({ element, handler }) => {
 					element.removeEventListener('click', handler);
@@ -3934,7 +3870,6 @@ const leaderAbilities = {
 				this._clickHandlers = [];
 			}
 			
-			this._currentTargets = null;
 			this.removeCancelButton();
 		},
 		
