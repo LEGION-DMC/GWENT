@@ -1599,13 +1599,6 @@ const gameModule = {
 		this.gameState.player.abilityUsedThisRound = false;
 		this.gameState.opponent.abilityUsedThisRound = false;
 		
-		// ===== СБРАСЫВАЕМ ИКОНКУ СПОСОБНОСТИ =====
-		if (window.boardModule?.updateAbilityAvailability) {
-			setTimeout(() => {
-				window.boardModule.updateAbilityAvailability(this.gameState);
-			}, 100);
-		}
-		
 		if (window.boardModule?.updateAbilityAvailability) {
 			setTimeout(() => {
 				window.boardModule.updateAbilityAvailability(this.gameState);
@@ -1626,21 +1619,25 @@ const gameModule = {
 		const rows = ['close', 'ranged', 'siege'];
 		
 		rows.forEach(row => {
+			// ===== ВАЖНО: Восстанавливаем силу карт ПЕРЕД отправкой в сброс =====
 			this.gameState.player.rows[row].cards.forEach(card => {
-				delete card.summonedByFlock;
-				delete card._originalId;
+				this.restoreCardToOriginalStrength(card);
 			});
 			
 			this.gameState.opponent.rows[row].cards.forEach(card => {
-				delete card.summonedByFlock;
-				delete card._originalId;
+				this.restoreCardToOriginalStrength(card);
 			});
 			
+			// Теперь отправляем в сброс с восстановленной силой
 			this.gameState.player.rows[row].cards.forEach(card => {
+				delete card.summonedByFlock;
+				delete card._originalId;
 				this.addCardToDiscard(card, 'player');
 			});
 			
 			this.gameState.opponent.rows[row].cards.forEach(card => {
+				delete card.summonedByFlock;
+				delete card._originalId;
 				this.addCardToDiscard(card, 'opponent');
 			});
 			
@@ -1666,33 +1663,73 @@ const gameModule = {
 		this.stopTurnTimer();
 	},
 
-    restoreAllCardStrengths: function() {
+	restoreCardToOriginalStrength: function(card) {
+		if (!card) return;
+		
+		// Восстанавливаем силу из baseStrength (исходная сила карты)
+		if (card.baseStrength !== undefined && card.baseStrength !== null) {
+			card.strength = card.baseStrength;
+			card.currentStrength = card.baseStrength;
+			card.modifiedStrength = card.baseStrength;
+		} 
+		// Если нет baseStrength, но есть originalStrength (старая система)
+		else if (card.originalStrength !== undefined && card.originalStrength !== null) {
+			card.strength = card.originalStrength;
+			card.currentStrength = card.originalStrength;
+			card.modifiedStrength = card.originalStrength;
+			delete card.originalStrength;
+		}
+		// Если есть _displayStrength, используем её как базовую
+		else if (card._displayStrength !== undefined && card._displayStrength !== null) {
+			card.strength = card._displayStrength;
+			card.currentStrength = card._displayStrength;
+			card.modifiedStrength = card._displayStrength;
+			delete card._displayStrength;
+		}
+		
+		// Сбрасываем состояние погоды
+		card.underWeather = false;
+		
+		// Удаляем временные поля
+		delete card._displayStrength;
+		delete card.summonedByFlock;
+		delete card.summonedByCall;
+		delete card.usedFlockTag;
+		delete card.completeCalled;
+		delete card.isSpy;
+		
+		// Если карта - артефакт с информацией об усилении, удаляем её
+		delete card.boostedCardId;
+		delete card.boostedCardUniqueId;
+		delete card.boostValue;
+		delete card.boostedCards;
+		delete card.copyNumber;
+		delete card.originalCallerId;
+		
+		// Восстанавливаем owner и row (будут перезаписаны при добавлении в сброс)
+		// Но оставляем для корректного отображения
+		card.owner = card.owner || 'player';
+	},
+
+	restoreAllCardStrengths: function() {
 		const rows = ['close', 'ranged', 'siege'];
 		const players = ['player', 'opponent'];
 		
 		rows.forEach(row => {
 			players.forEach(player => {
 				this.gameState[player].rows[row].cards.forEach(card => {
-					// Восстанавливаем от урона
-					if (card._displayStrength !== undefined) {
-						// Если была сохранена оригинальная сила, восстанавливаем ее
-						if (card.originalStrength !== undefined) {
-							delete card._displayStrength;
-						} else {
-							// Иначе оставляем текущую силу
-							card.strength = card._displayStrength;
-							delete card._displayStrength;
-						}
-					}
+					// Используем новый метод для восстановления
+					this.restoreCardToOriginalStrength(card);
 					
-					// Восстанавливаем от погоды
-					if (card.originalStrength !== undefined) {
-						card.strength = card.originalStrength;
-						delete card.originalStrength;
-					}
+					// Обновляем отображение
+					this.updateCardStrengthDisplay(card, row, player);
 				});
+				
+				this.updateRowStrength(row, player);
 			});
 		});
+		
+		this.updateTotalScoreDisplays();
 	},
 
     invalidateScoreCache: function(player) {
@@ -2132,10 +2169,31 @@ const gameModule = {
         this.handleTurnCompletion();
     },
 
-    addCardToDiscard: function(card, player) {
-        this.gameState[player].discard.push(card);
-        this.updateDiscardDisplay(player);
-    },
+	addCardToDiscard: function(card, player) {
+		// Убеждаемся, что сила восстановлена перед добавлением в сброс
+		this.restoreCardToOriginalStrength(card);
+		
+		// Проверяем, нет ли уже такой карты в сбросе (чтобы избежать дубликатов)
+		const isDuplicate = this.gameState[player].discard.some(
+			discardedCard => discardedCard.id === card.id && 
+							 discardedCard.uniqueId === card.uniqueId
+		);
+		
+		if (!isDuplicate) {
+			// Создаем глубокую копию для сброса, чтобы не было ссылок
+			const cardCopy = JSON.parse(JSON.stringify(card));
+			
+			// Убеждаемся, что в копии правильная сила
+			if (cardCopy.baseStrength !== undefined) {
+				cardCopy.strength = cardCopy.baseStrength;
+				cardCopy.currentStrength = cardCopy.baseStrength;
+				cardCopy.modifiedStrength = cardCopy.baseStrength;
+			}
+			
+			this.gameState[player].discard.push(cardCopy);
+			this.updateDiscardDisplay(player);
+		}
+	},
 
     getWeatherCardOwner: function(weatherCard) {
         if (weatherCard.owner) return weatherCard.owner;

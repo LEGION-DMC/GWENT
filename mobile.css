@@ -6,8 +6,6 @@
   
     .opponent-decks-area { top: 5.8%; right: 4.7%; gap: 80px; }
     .player-decks-area { bottom: 0.3%; right: 4.7%; gap: 80px; }
-  
-    .round-counter-area { top: 30%; right: 9.3%; }
 
     .opponent-total-score { top: 2.9%; left: 8%; }
     .player-total-score { bottom: -4%; left: 8%; }
@@ -16,7 +14,7 @@
     
     .board-card { top: -3px;} 
   
-    .game-controls { bottom: 18%; right: 5%; }
+    .game-controls { bottom: 18%; right: 13.5%; }
     #mulliganControls { bottom: 18% !important }
   
     .hand-card-strength { font-size: 14px; }
@@ -55,8 +53,6 @@
   
     .opponent-decks-area { top: 7%; right: 4.6%; }
     .player-decks-area { bottom: 1.8%; right: 4.6%; }
-  
-    .round-counter-area { top: 35%; right: 9.3%; }
 
     .opponent-total-score { top: 3.8%; left: 8%; }
     .player-total-score { bottom: -2%; left: 8%; }
@@ -133,8 +129,6 @@
     .discard-stack { width: 90px; height: 135px; }
     .opponent-decks-area { top: 6.7%; right: 4.6%; gap: 50px; }
     .player-decks-area { bottom: 1.2%; right: 4.6%; gap: 50px; }
-  
-    .round-counter-area { top: 35%; right: 9.3%; }
     
     .opponent-total-score { top: 2.5%; left: 7%; }
     .player-total-score { bottom: -2.8%; left: 7%; }
@@ -218,8 +212,6 @@
     .discard-stack { width: 90px; height: 135px; }
     .opponent-decks-area { top: 6.3%; right: 3.8%; gap: 50px; }
     .player-decks-area { bottom: 7.2%; right: 3.8%; gap: 50px; }
-  
-    .round-counter-area { top: 35%; right: 9.3%; }
     
     .opponent-total-score { top: 1.8%; left: 6.5%; }
     .player-total-score { bottom: 3.3%; left: 6.5%; }
@@ -303,8 +295,6 @@
     .discard-stack { width: 90px; height: 135px; }
     .opponent-decks-area { top: 5.5%; right: 3.8%; gap: 50px; }
     .player-decks-area { bottom: -2%; right: 3.8%; gap: 50px; }
-  
-    .round-counter-area { top: 35%; right: 9.3%; }
     
     .opponent-total-score { top: 0.8%; left: 6.5%; }
     .player-total-score { bottom: -7.3%; left: 6.5%; }

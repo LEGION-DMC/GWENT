@@ -269,6 +269,18 @@ const minimalCardsData = {
                 rarity: 'silver',
                 tags: ['mage'],
             },
+			{
+                name: 'Борх Три Галки',
+                namefull: 'Виллентретенмерт',
+                strength: 10,
+                image: 'borh.mp4',
+                description: 'Борх Три Галки',
+                descriptionfull: 'Известный также под именем Борх Три Галки. Уникальный золотой дракон, умеющий менять свой облик на человеческий или любой другой. В облике рыцаря Борха дракон путешествует в компании двух преданных ему зерриканских воительниц — Тэи и Вэи.',
+                ability: 'destroy',
+                position: 'any-row',
+                rarity: 'gold',
+                tags: ['dragon'],
+            },
         ],
         specials: [
             {
@@ -2654,3 +2666,5 @@ window.cardsModule = {
     getHiddenCardsByFaction,
     getVisibleCardsForDeckBuilding
 };
+
+window.minimalCardsData = minimalCardsData;

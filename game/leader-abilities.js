@@ -3873,14 +3873,39 @@ const leaderAbilities = {
 			this.removeCancelButton();
 		},
 		
-		dealDamage: function(card, amount) {
-			if (card.baseStrength === undefined) card.baseStrength = card.strength;
-			if (card.originalStrength === undefined) card.originalStrength = card.strength;
-			const newStrength = (card.strength || 0) - amount;
-			card.strength = Math.max(0, newStrength);
-			card.currentStrength = card.strength;
-			card._displayStrength = card.strength;
-		},
+dealDamage: function(card, amount) {
+    // Инициализируем поля, если их нет
+    if (card.baseStrength === undefined) card.baseStrength = card.strength;
+    if (card.modifiedStrength === undefined) card.modifiedStrength = card.strength;
+    if (card.currentStrength === undefined) card.currentStrength = card.strength;
+    if (card.originalStrength === undefined) card.originalStrength = card.strength;
+    
+    // Сохраняем состояние "под погодой"
+    const isUnderWeather = card.underWeather === true;
+    
+    // Наносим урон МОДИФИЦИРОВАННОЙ силе (реальной силе карты)
+    const newModifiedStrength = Math.max(0, card.modifiedStrength - amount);
+    card.modifiedStrength = newModifiedStrength;
+    
+    if (isUnderWeather) {
+        // Под погодой: currentStrength остаётся 1, но modifiedStrength уменьшается
+        card.currentStrength = 1;
+        card.strength = 1;
+        card._displayStrength = 1;
+    } else {
+        // Не под погодой: обновляем все значения
+        card.currentStrength = newModifiedStrength;
+        card.strength = newModifiedStrength;
+        card._displayStrength = newModifiedStrength;
+    }
+    
+    // Если modifiedStrength стал 0 — карта уничтожена
+    if (newModifiedStrength <= 0) {
+        card.strength = 0;
+        card.currentStrength = 0;
+        card._displayStrength = 0;
+    }
+},
 		
 		destroyCard: function(gameState, card, row, gameModule) {
 			const rowCards = gameState.opponent.rows[row].cards;

@@ -545,7 +545,7 @@ const skillSystem = {
 				requiresRowSelection: true
 			}
 		}, 	
-		
+
 	},
 
 	applyFlockEffect: function(effect, context) {
