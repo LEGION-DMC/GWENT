@@ -1241,7 +1241,7 @@ const gameModule = {
 		audioManager.playSound('warning');
 	},
 
-	 startOpponentTurn: function() {
+	startOpponentTurn: function() {
 		this.gameState.gamePhase = 'opponentTurn'; 
 		this.gameState.currentPlayer = 'opponent';
 		this.gameState.cardsPlayedThisTurn = 0;
@@ -1335,56 +1335,58 @@ const gameModule = {
         }
     },
 
-    updateCrownIndicators: function() {
-        const playerWins = this.gameState.roundsWon.player;
-        const opponentWins = this.gameState.roundsWon.opponent;
-        
-        const crown1Player = document.getElementById('crown1Player');
-        const crown2Player = document.getElementById('crown2Player');
-        
-        if (crown1Player) {
-            if (playerWins >= 1) {
-                crown1Player.classList.remove('crown-hidden');
-                crown1Player.classList.add('crown-visible');
-            } else {
-                crown1Player.classList.add('crown-hidden');
-                crown1Player.classList.remove('crown-visible');
-            }
-        }
-        
-        if (crown2Player) {
-            if (playerWins >= 2) {
-                crown2Player.classList.remove('crown-hidden');
-                crown2Player.classList.add('crown-visible');
-            } else {
-                crown2Player.classList.add('crown-hidden');
-                crown2Player.classList.remove('crown-visible');
-            }
-        }
-        
-        const crown1Opponent = document.getElementById('crown1Opponent');
-        const crown2Opponent = document.getElementById('crown2Opponent');
-        
-        if (crown1Opponent) {
-            if (opponentWins >= 1) {
-                crown1Opponent.classList.remove('crown-hidden');
-                crown1Opponent.classList.add('crown-visible');
-            } else {
-                crown1Opponent.classList.add('crown-hidden');
-                crown1Opponent.classList.remove('crown-visible');
-            }
-        }
-        
-        if (crown2Opponent) {
-            if (opponentWins >= 2) {
-                crown2Opponent.classList.remove('crown-hidden');
-                crown2Opponent.classList.add('crown-visible');
-            } else {
-                crown2Opponent.classList.add('crown-hidden');
-                crown2Opponent.classList.remove('crown-visible');
-            }
-        }
-    },
+	updateCrownIndicators: function() {
+		const playerWins = this.gameState.roundsWon.player;
+		const opponentWins = this.gameState.roundsWon.opponent;
+		
+		// ===== ИСПРАВЛЕНИЕ: ОТОБРАЖАЕМ ПРАВИЛЬНОЕ КОЛИЧЕСТВО КОРОН =====
+		// Показываем столько корон, сколько очков набрал игрок (максимум 2)
+		const crown1Player = document.getElementById('crown1Player');
+		const crown2Player = document.getElementById('crown2Player');
+		
+		if (crown1Player) {
+			if (playerWins >= 1) {
+				crown1Player.classList.remove('crown-hidden');
+				crown1Player.classList.add('crown-visible');
+			} else {
+				crown1Player.classList.add('crown-hidden');
+				crown1Player.classList.remove('crown-visible');
+			}
+		}
+		
+		if (crown2Player) {
+			if (playerWins >= 2) {
+				crown2Player.classList.remove('crown-hidden');
+				crown2Player.classList.add('crown-visible');
+			} else {
+				crown2Player.classList.add('crown-hidden');
+				crown2Player.classList.remove('crown-visible');
+			}
+		}
+		
+		const crown1Opponent = document.getElementById('crown1Opponent');
+		const crown2Opponent = document.getElementById('crown2Opponent');
+		
+		if (crown1Opponent) {
+			if (opponentWins >= 1) {
+				crown1Opponent.classList.remove('crown-hidden');
+				crown1Opponent.classList.add('crown-visible');
+			} else {
+				crown1Opponent.classList.add('crown-hidden');
+				crown1Opponent.classList.remove('crown-visible');
+			}
+		}
+		
+		if (crown2Opponent) {
+			if (opponentWins >= 2) {
+				crown2Opponent.classList.remove('crown-hidden');
+				crown2Opponent.classList.add('crown-visible');
+			} else {
+				crown2Opponent.classList.add('crown-hidden');
+				crown2Opponent.classList.remove('crown-visible');
+			}
+		}
+	},
 
     resetCrownIndicators: function() {
         const crowns = [
@@ -1441,6 +1443,7 @@ const gameModule = {
 				}
 			}
 			
+			// ===== ИСПРАВЛЕНИЕ: ПРИ НИЧЬЕ ОЧКИ ПОЛУЧАЮТ ОБА =====
 			if (roundWinner === 'player') {
 				this.gameState.roundsWon.player++;
 				this.gameState.roundResults.push('player');
@@ -1448,16 +1451,31 @@ const gameModule = {
 				this.gameState.roundsWon.opponent++;
 				this.gameState.roundResults.push('opponent');
 			} else {
+				// НИЧЬЯ: +1 очко ОБОИМ игрокам
 				this.gameState.roundsWon.player++;
+				this.gameState.roundsWon.opponent++;
 				this.gameState.roundResults.push('draw');
-				this.gameState.winnerOfLastRound = this.gameState.winnerOfLastRound || 'player';
+				// Победитель раунда не определяется
 			}
-			
+		}
+		
+		// ===== ИСПРАВЛЕНИЕ: ПРОВЕРКА ЗАВЕРШЕНИЯ ИГРЫ =====
+		const playerWins = this.gameState.roundsWon.player;
+		const opponentWins = this.gameState.roundsWon.opponent;
+		
+		// Игра заканчивается, когда кто-то набрал 2 очка
+		const isGameOver = (playerWins >= 2 || opponentWins >= 2);
+		
+		// Показываем результат раунда
+		if (roundWinner !== null) {
 			this.showRoundResult(roundWinner, playerScore, opponentScore);
+		} else {
+			// Ничья - показываем результат ничьи
+			this.showRoundResult('draw', playerScore, opponentScore);
 		}
 		
 		// Сохраняем победителя раунда для следующего хода (только если не ничья)
-		if (roundWinner !== 'draw') {
+		if (roundWinner !== 'draw' && roundWinner !== null) {
 			this.gameState.winnerOfLastRound = roundWinner;
 		}
 		
@@ -1465,20 +1483,16 @@ const gameModule = {
 			window.factionAbilitiesModule.handleRoundEndForMonsters(this.gameState);
 		}
 		
-		const playerWins = this.gameState.roundsWon.player;
-		const opponentWins = this.gameState.roundsWon.opponent;
-		
-		// Проверяем окончание игры
-		if (playerWins >= 2 || opponentWins >= 2) {
-			// Игра закончена, показываем финальный результат через 3.5 секунды
+		// Если игра закончена - показываем финальный результат
+		if (isGameOver) {
 			setTimeout(() => this.endGame(), 3500);
 		} else if (this.gameState.currentRound >= this.gameState.totalRounds) {
-			// Если это был последний раунд, но никто не выиграл 2 раунда (ничья по раундам)
+			// Если это был последний раунд, но никто не набрал 2 очка (маловероятно, но на всякий случай)
 			setTimeout(() => this.endGame(), 3500);
 		}
 		// Если игра не закончена, новый раунд запустится через showRoundResult
 	},
-	
+
     calculateTotalScore: function(player) {
         const rows = this.gameState[player].rows;
         
@@ -1739,21 +1753,21 @@ const gameModule = {
         }
     },
 
-    endGame: function() {
-        const playerWins = this.gameState.roundsWon.player;
-        const opponentWins = this.gameState.roundsWon.opponent;
-        
-        let gameWinner = null;
-        if (playerWins > opponentWins) {
-            gameWinner = 'player';
-        } else if (opponentWins > playerWins) {
-            gameWinner = 'opponent';
-        } else {
-            gameWinner = 'draw';
-        }
-        
-        this.showGameResult(gameWinner);
-    },
+	endGame: function() {
+		const playerWins = this.gameState.roundsWon.player;
+		const opponentWins = this.gameState.roundsWon.opponent;
+		
+		let gameWinner = null;
+		if (playerWins > opponentWins) {
+			gameWinner = 'player';
+		} else if (opponentWins > playerWins) {
+			gameWinner = 'opponent';
+		} else {
+			gameWinner = 'draw';
+		}
+		
+		this.showGameResult(gameWinner);
+	},
 
     clearAllBoardRows: function() {
         const rows = ['close', 'ranged', 'siege'];
@@ -4230,9 +4244,20 @@ const gameModule = {
 			resultImage = 'board/draw.png';
 		}
 		
+		// ===== ИСПРАВЛЕНИЕ: ОТОБРАЖАЕМ ТЕКУЩИЙ СЧЁТ =====
+		const scoreText = `${this.gameState.roundsWon.player} : ${this.gameState.roundsWon.opponent}`;
+		
 		resultOverlay.innerHTML = `
 			<div class="round-result-container">
 				<img src="${resultImage}" alt="Результат раунда" class="round-result-image">
+				<div class="round-score" style="
+					font-family: 'Gwent', sans-serif;
+					font-size: 32px;
+					color: #d4af37;
+					text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+					margin-top: 10px;
+					text-align: center;
+				">${scoreText}</div>
 			</div>
 		`;
 		
@@ -4240,6 +4265,7 @@ const gameModule = {
 		document.body.appendChild(resultOverlay);
 		this.animateResultAppear(resultOverlay);
 		
+		// ===== ИСПРАВЛЕНИЕ: ПРОВЕРКА ЗАВЕРШЕНИЯ ИГРЫ =====
 		const playerWins = this.gameState.roundsWon.player;
 		const opponentWins = this.gameState.roundsWon.opponent;
 		const isGameOver = (playerWins >= 2 || opponentWins >= 2);
@@ -4261,6 +4287,8 @@ const gameModule = {
 		const playerWins = this.gameState.roundsWon.player;
 		const opponentWins = this.gameState.roundsWon.opponent;
 		
+		// ===== ИСПРАВЛЕНИЕ: ПРОВЕРКА НА ЗАВЕРШЕНИЕ =====
+		// Игра завершена, если кто-то набрал 2 очка
 		if (playerWins >= 2 || opponentWins >= 2) {
 			return;
 		}

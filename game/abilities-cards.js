@@ -1362,34 +1362,6 @@ const skillSystem = {
 		return enemyCards.filter(card => card.strength === maxStrength);
 	},
 
-	destroyEnemyCard: function(targetCardData, context) {
-		const { card, row } = targetCardData;
-		
-		if (!context.gameState || !context.gameState.opponent) return;
-		
-		const rowState = context.gameState.opponent.rows[row];
-		if (!rowState) return;
-		
-		const cardIndex = rowState.cards.findIndex(c => c.id === card.id);
-		if (cardIndex !== -1) {
-			const destroyedCard = { ...rowState.cards[cardIndex] };
-			
-			rowState.cards.splice(cardIndex, 1);
-			
-			context.gameState.opponent.discard.push(destroyedCard);
-			
-			if (window.gameModule) {
-				window.gameModule.removeCardFromBoardVisual(card, row, 'opponent');
-				
-				window.gameModule.updateRowStrength(row, 'opponent');
-				
-				if (window.gameModule.displayOpponentDiscard) {
-					window.gameModule.displayOpponentDiscard();
-				}
-			}
-		}
-	},
-
 	createDestroyVisualEffect: function(targetCardData) {
 		if (!window.gameModule) return;
 		
